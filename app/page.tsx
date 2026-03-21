@@ -40,7 +40,7 @@ const SAMPLE_CARDS = [
       { label: "Academic Spinout", strength: "neutral" },
     ],
     description: "AI-driven molecular imaging for drug discovery acceleration.",
-    takeaway: "CNRS spinout; patent filing detected — IP protection before fundraise.",
+    takeaway: "CNRS spinout; patent filing detected — IP protection  fundraise.",
     signalCount: 2,
     signalDot: "green",
     href: "/startup/biosight",
@@ -119,9 +119,9 @@ export default function LandingPage() {
           </div>
 
           <h1 className="mb-4 text-[clamp(32px,5vw,52px)] font-extrabold leading-[1.1] tracking-[-0.03em] text-foreground">
-            The France AI Radar,
+            The French AI Radar
             <br />
-            <span className="text-primary">Discover AI startups <br></br>before they hit the venture radar.</span>
+            <span className="text-primary">Discover AI startups before the market.</span>
           </h1>
 
           <p className="mx-auto mb-8 max-w-[560px] text-[17px] leading-[1.65] text-muted-foreground">
