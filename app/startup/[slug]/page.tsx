@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { canAccessFullProfile, sectorLabel, stageLabel, SIGNAL_TYPE_LABELS, FOUNDER_SIGNAL_LABELS } from "@/lib/subscription"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { SaveButton } from "@/components/startup/save-button"
 import type { Venture, Profile } from "@/lib/types"
 
 // ------------------------------------------------------------------
@@ -104,6 +105,18 @@ export default async function StartupProfilePage({
     .select("founders(*)")
     .eq("startup_id", venture.id)
 
+  // Check watchlist status
+  let isBookmarked = false
+  if (user) {
+    const { data: wl } = await supabase
+      .from("watchlist")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("startup_id", venture.id)
+      .maybeSingle()
+    isBookmarked = !!wl
+  }
+
   const founders = (foundersRaw ?? []).map(
     (row: { founders: unknown }) => row.founders
   ) as {
@@ -173,9 +186,11 @@ export default async function StartupProfilePage({
             <Button variant="outline" size="sm" className="text-[13px]">
               Export PDF
             </Button>
-            <Button variant="outline" size="sm" className="text-[13px]">
-              Save
-            </Button>
+            <SaveButton
+              startupId={venture.id}
+              initialSaved={isBookmarked}
+              isLoggedIn={!!user}
+            />
             <Button variant="outline" size="sm" className="text-[13px]">
               Share
             </Button>
