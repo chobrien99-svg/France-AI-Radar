@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { type Startup } from "@/lib/types"
+import { type Venture } from "@/lib/types"
 import { sectorLabel, stageLabel } from "@/lib/subscription"
 
 const BADGE_CLASS: Record<string, string> = {
@@ -16,17 +16,17 @@ const DOT_CLASS: Record<string, string> = {
   neutral: "bg-zinc-400",
 }
 
-function signalDotStrength(badges: Startup["startup_badges"]): string {
-  if (badges.some((b) => b.strength === "positive")) return "positive"
-  if (badges.some((b) => b.strength === "warning")) return "warning"
-  if (badges.some((b) => b.strength === "risk")) return "risk"
+function signalDotStrength(tags: Venture["venture_tags"]): string {
+  if (tags.some((t) => t.strength === "positive")) return "positive"
+  if (tags.some((t) => t.strength === "warning")) return "warning"
+  if (tags.some((t) => t.strength === "risk")) return "risk"
   return "neutral"
 }
 
-function takeaway(startup: Startup): string | null {
-  if (!startup.investor_brief) return null
+function takeaway(venture: Venture): string | null {
+  if (!venture.investor_brief) return null
   // First sentence, max 120 chars
-  const first = startup.investor_brief.split(/\.\s+/)[0]
+  const first = venture.investor_brief.split(/\.\s+/)[0]
   if (first.length <= 120) return first + "."
   return first.slice(0, 117) + "…"
 }
@@ -48,39 +48,39 @@ function foundedLabel(date: string | null): string {
   return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
 }
 
-export function StartupCard({ startup }: { startup: Startup }) {
-  const dotStrength = signalDotStrength(startup.startup_badges)
-  const hint = takeaway(startup)
+export function StartupCard({ venture }: { venture: Venture }) {
+  const dotStrength = signalDotStrength(venture.venture_tags)
+  const hint = takeaway(venture)
 
   return (
-    <Link href={`/startup/${startup.slug}`} className="block">
+    <Link href={`/startup/${venture.slug}`} className="block">
       <div className="data-card cursor-pointer p-5">
         {/* Header */}
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="truncate text-[15px] font-bold tracking-tight text-foreground">
-              {startup.name}
+              {venture.name}
             </h3>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
-              {[startup.city, sectorLabel(startup.sector), foundedLabel(startup.founded_date)]
+              {[venture.city, sectorLabel(venture.sector), foundedLabel(venture.founded_date)]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
           </div>
           <span className="badge-signal badge-signal-neutral shrink-0 text-[10px]">
-            {stageLabel(startup.stage)}
+            {stageLabel(venture.stage)}
           </span>
         </div>
 
-        {/* Badges */}
-        {startup.startup_badges.length > 0 && (
+        {/* Tags */}
+        {venture.venture_tags.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-1.5">
-            {startup.startup_badges.slice(0, 3).map((badge) => (
+            {venture.venture_tags.slice(0, 3).map((tag) => (
               <span
-                key={badge.id}
-                className={BADGE_CLASS[badge.strength] ?? BADGE_CLASS.neutral}
+                key={tag.id}
+                className={BADGE_CLASS[tag.strength] ?? BADGE_CLASS.neutral}
               >
-                {badge.label}
+                {tag.label}
               </span>
             ))}
           </div>
@@ -88,7 +88,7 @@ export function StartupCard({ startup }: { startup: Startup }) {
 
         {/* Description */}
         <p className="mb-1.5 text-[13px] leading-snug text-foreground line-clamp-2">
-          {startup.description}
+          {venture.description}
         </p>
 
         {/* Takeaway */}
@@ -104,9 +104,9 @@ export function StartupCard({ startup }: { startup: Startup }) {
             className={`h-[7px] w-[7px] shrink-0 rounded-full ${DOT_CLASS[dotStrength]}`}
           />
           <span>
-            {startup.signal_count} signal{startup.signal_count !== 1 ? "s" : ""}
-            {startup.last_signal_date
-              ? ` · Last updated ${relativeDate(startup.last_signal_date)}`
+            {venture.signal_count} signal{venture.signal_count !== 1 ? "s" : ""}
+            {venture.last_signal_date
+              ? ` · Last updated ${relativeDate(venture.last_signal_date)}`
               : ""}
           </span>
         </div>
