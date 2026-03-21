@@ -68,7 +68,7 @@ export default async function DatabasePage({
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, email, full_name, subscription_tier, subscription_status")
+      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end")
       .eq("id", user.id)
       .single()
     profile = data
