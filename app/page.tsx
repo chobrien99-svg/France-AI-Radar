@@ -125,9 +125,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="mx-auto mb-8 max-w-[560px] text-[17px] leading-[1.65] text-muted-foreground">
-            Track 500+ AI startups across France. Founder signals, fundraising
-            intelligence, and sector analysis — updated weekly. Built for VCs,
-            corporate strategists, and LPs.
+            We surface AI startups across France at their earliest signal—at incorporation, in stealth, or at their first public trace. Structured intelligence built from administrative filings, founder activity, and ecosystem signals, designed for VCs, corporate strategists, and LPs.
           </p>
 
           <div className="flex items-center justify-center gap-3">
