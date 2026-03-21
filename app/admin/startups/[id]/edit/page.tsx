@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { StartupForm, type StartupFormValues, type TagRow } from "@/components/admin/startup-form"
 import { Button } from "@/components/ui/button"
 import { DeleteStartupButton } from "@/components/admin/delete-startup-button"
+import { LinkedFounders } from "@/components/admin/linked-founders"
 
 export default async function EditStartupPage({
   params,
@@ -15,13 +16,20 @@ export default async function EditStartupPage({
   const { id } = await params
   const supabase = await createServiceClient()
 
-  const { data: startup } = await supabase
-    .from("startups")
-    .select("*, startup_tags(label, strength)")
-    .eq("id", id)
-    .single()
+  const [{ data: startup }, { data: linkedRaw }, { data: allFoundersRaw }] = await Promise.all([
+    supabase.from("startups").select("*, startup_tags(label, strength)").eq("id", id).single(),
+    supabase.from("startup_founders").select("role, founders(id, name, slug)").eq("startup_id", id),
+    supabase.from("founders").select("id, name, slug, role").order("name"),
+  ])
 
   if (!startup) notFound()
+
+  const linkedFounders = (linkedRaw ?? []).map((row: { role: string | null; founders: unknown }) => {
+    const f = row.founders as { id: string; name: string; slug: string | null }
+    return { id: f.id, name: f.name, slug: f.slug, role: row.role }
+  })
+
+  const allFounders = (allFoundersRaw ?? []) as { id: string; name: string; slug: string | null; role: string | null }[]
 
   const tags: TagRow[] = (startup.startup_tags ?? []).map(
     (t: { label: string; strength: string }) => ({
@@ -67,6 +75,8 @@ export default async function EditStartupPage({
     fundraising_signal_summary: startup.fundraising_signal_summary ?? "",
     funding_notes: startup.funding_notes ?? "",
     entity_complexity: startup.entity_complexity ?? "",
+    siren: startup.siren ?? "",
+    siret: startup.siret ?? "",
   }
 
   return (
@@ -95,6 +105,12 @@ export default async function EditStartupPage({
         initialValues={initialValues}
         initialTags={tags}
         startupId={id}
+      />
+
+      <LinkedFounders
+        startupId={id}
+        linkedFounders={linkedFounders}
+        allFounders={allFounders}
       />
     </div>
   )
