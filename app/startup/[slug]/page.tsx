@@ -2,10 +2,11 @@ import React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { canAccessFullProfile, sectorLabel, stageLabel, SIGNAL_TYPE_LABELS, FOUNDER_SIGNAL_LABELS } from "@/lib/subscription"
+import { canAccessFullProfile, getExportLimit, sectorLabel, stageLabel, SIGNAL_TYPE_LABELS, FOUNDER_SIGNAL_LABELS } from "@/lib/subscription"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SaveButton } from "@/components/startup/save-button"
+import { ExportCsvButton } from "@/components/startup/export-csv-button"
 import type { Venture, Profile } from "@/lib/types"
 
 // ------------------------------------------------------------------
@@ -79,6 +80,22 @@ export default async function StartupProfilePage({
 
   const tier = profile?.subscription_tier ?? "free"
   const canFull = canAccessFullProfile(tier)
+
+  // Export quota
+  const exportLimit = getExportLimit(tier)
+  let exportRemaining: number | null = null
+  if (user && exportLimit !== null && exportLimit > 0) {
+    const period = new Date().toISOString().slice(0, 7) // YYYY-MM
+    const { data: usage } = await supabase
+      .from("export_usage")
+      .select("export_count")
+      .eq("user_id", user.id)
+      .eq("period", period)
+      .maybeSingle()
+    exportRemaining = exportLimit - (usage?.export_count ?? 0)
+  } else if (exportLimit === null) {
+    exportRemaining = null // unlimited
+  }
 
   // Fetch venture
   const { data: ventureRaw } = await supabase
@@ -184,9 +201,12 @@ export default async function StartupProfilePage({
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
-            <Button variant="outline" size="sm" className="text-[13px]">
-              Export PDF
-            </Button>
+            <ExportCsvButton
+              slug={venture.slug}
+              isLoggedIn={!!user}
+              tier={tier}
+              remaining={exportRemaining}
+            />
             <SaveButton
               startupId={venture.id}
               initialSaved={isBookmarked}
