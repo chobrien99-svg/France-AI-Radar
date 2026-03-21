@@ -161,14 +161,13 @@ export default async function DatabasePage({
 
   return (
     <div className="page-container">
-      <div
-        className="grid gap-6 py-6 pb-16"
-        style={{ gridTemplateColumns: "260px 1fr" }}
-      >
-        {/* Sidebar */}
-        <Suspense fallback={<SidebarSkeleton />}>
-          <FilterSidebar />
-        </Suspense>
+      <div className="grid gap-6 py-6 pb-16 lg:grid-cols-[260px_1fr]">
+        {/* Sidebar — hidden on mobile, visible lg+ */}
+        <div className="hidden lg:block">
+          <Suspense fallback={<SidebarSkeleton />}>
+            <FilterSidebar />
+          </Suspense>
+        </div>
 
         {/* Main content */}
         <div>
