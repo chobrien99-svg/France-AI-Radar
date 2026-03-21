@@ -88,11 +88,15 @@ export type Venture = {
 export type Founder = {
   id: string
   name: string
+  slug: string | null
   role: string | null
   bio: string | null
   linkedin_url: string | null
   founder_signals: string[]
   previous_companies: string[] | null
+  previous_exits: string[] | null
+  big_tech_employer: string | null
+  academic_lab: string | null
   has_phd: boolean
   is_repeat_founder: boolean
   has_big_tech_background: boolean

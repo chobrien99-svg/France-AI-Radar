@@ -1,6 +1,16 @@
 import Link from "next/link"
 import { type Venture } from "@/lib/types"
-import { sectorLabel, stageLabel } from "@/lib/subscription"
+import { sectorLabel, stageLabel, FOUNDER_SIGNAL_LABELS } from "@/lib/subscription"
+
+type FounderSummary = {
+  id: string
+  name: string
+  slug: string | null
+  founder_signals: string[] | null
+  big_tech_employer: string | null
+  has_phd: boolean
+  is_repeat_founder: boolean
+}
 
 const BADGE_CLASS: Record<string, string> = {
   positive: "badge-signal badge-signal-positive",
@@ -48,7 +58,13 @@ function foundedLabel(date: string | null): string {
   return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
 }
 
-export function StartupCard({ venture }: { venture: Venture }) {
+export function StartupCard({
+  venture,
+  founders = [],
+}: {
+  venture: Venture
+  founders?: FounderSummary[]
+}) {
   const dotStrength = signalDotStrength(venture.startup_tags)
   const hint = takeaway(venture)
 
@@ -96,6 +112,35 @@ export function StartupCard({ venture }: { venture: Venture }) {
           <p className="text-[13px] italic leading-snug text-muted-foreground line-clamp-2">
             {hint}
           </p>
+        )}
+
+        {/* Founder summary */}
+        {founders.length > 0 && (
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Founders
+            </p>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {founders.map((f) => {
+                const badges: string[] = []
+                if (f.big_tech_employer) badges.push(f.big_tech_employer)
+                else if (f.has_big_tech_background) badges.push("Big Tech")
+                if (f.has_phd) badges.push("PhD")
+                if (f.is_repeat_founder) badges.push("Repeat")
+
+                return (
+                  <span key={f.id} className="text-[12px] text-foreground">
+                    {f.name}
+                    {badges.length > 0 && (
+                      <span className="ml-1 text-muted-foreground">
+                        ({badges.join(", ")})
+                      </span>
+                    )}
+                  </span>
+                )
+              })}
+            </div>
+          </div>
         )}
 
         {/* Signal footer */}
