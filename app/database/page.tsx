@@ -172,29 +172,31 @@ export default async function DatabasePage({
 
         {/* Main content */}
         <div>
-          {/* Toolbar */}
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="relative max-w-[400px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <SearchInput
-                defaultValue={q}
-                placeholder="Search startups, founders, sectors…"
-                className="pl-9"
-              />
+          {/* Toolbar — Suspense required because SearchInput and SortDropdown use useSearchParams() */}
+          <Suspense fallback={<ToolbarSkeleton count={visible.length} total={total} />}>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="relative max-w-[400px] flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <SearchInput
+                  defaultValue={q}
+                  placeholder="Search startups, founders, sectors…"
+                  className="pl-9"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[13px] text-muted-foreground">
+                  Showing{" "}
+                  <strong className="text-foreground">{visible.length}</strong>{" "}
+                  of{" "}
+                  <strong className="text-foreground">{total}</strong> startups
+                </span>
+                <SortDropdown current={sort} />
+                <Button variant="outline" size="sm" className="text-xs">
+                  Export ↓
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[13px] text-muted-foreground">
-                Showing{" "}
-                <strong className="text-foreground">{visible.length}</strong>{" "}
-                of{" "}
-                <strong className="text-foreground">{total}</strong> startups
-              </span>
-              <SortDropdown current={sort} />
-              <Button variant="outline" size="sm" className="text-xs">
-                Export ↓
-              </Button>
-            </div>
-          </div>
+          </Suspense>
 
           {/* Card grid */}
           <div
@@ -249,6 +251,22 @@ function SidebarSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => (
         <Skeleton key={i} className="h-5 w-full" />
       ))}
+    </div>
+  )
+}
+
+function ToolbarSkeleton({ count, total }: { count: number; total: number }) {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <Skeleton className="h-9 max-w-[400px] flex-1" />
+      <div className="flex items-center gap-3">
+        <span className="text-[13px] text-muted-foreground">
+          Showing <strong className="text-foreground">{count}</strong> of{" "}
+          <strong className="text-foreground">{total}</strong> startups
+        </span>
+        <Skeleton className="h-8 w-28" />
+        <Skeleton className="h-8 w-20" />
+      </div>
     </div>
   )
 }
