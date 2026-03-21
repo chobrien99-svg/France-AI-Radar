@@ -218,7 +218,7 @@ export default async function AccountPage() {
             {watchlistItems && watchlistItems.length > 0 ? (
               <div className="space-y-2">
                 {watchlistItems.map((item) => {
-                  const s = item.startups as {
+                  const s = item.startups as unknown as {
                     id: string
                     name: string
                     slug: string
@@ -341,7 +341,7 @@ export default async function AccountPage() {
             {userAlerts && userAlerts.length > 0 ? (
               <div className="space-y-2">
                 {userAlerts.map((alert) => {
-                  const s = alert.startups as {
+                  const s = alert.startups as unknown as {
                     id: string
                     name: string
                     slug: string
