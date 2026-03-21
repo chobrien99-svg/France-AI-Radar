@@ -53,6 +53,8 @@ export async function POST(request: NextRequest) {
       fundraising_signal_summary: fields.fundraising_signal_summary || null,
       funding_notes: fields.funding_notes || null,
       entity_complexity: fields.entity_complexity || null,
+      siren: fields.siren || null,
+      siret: fields.siret || null,
     })
     .select("id, slug")
     .single()

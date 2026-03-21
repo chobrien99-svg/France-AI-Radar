@@ -56,8 +56,10 @@ export type StartupFormValues = {
   fundraising_status: string
   fundraising_signal_summary: string
   funding_notes: string
-  // Legal
+  // Legal (admin-only)
   entity_complexity: string
+  siren: string
+  siret: string
 }
 
 const DEFAULTS: StartupFormValues = {
@@ -73,6 +75,8 @@ const DEFAULTS: StartupFormValues = {
   total_raised_eur: "", last_round: "", est_next_raise: "",
   fundraising_status: "unknown", fundraising_signal_summary: "", funding_notes: "",
   entity_complexity: "",
+  siren: "",
+  siret: "",
 }
 
 function generateSlug(name: string): string {
@@ -151,6 +155,8 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       signal_source: form.signal_source || null,
       technology_layer: form.technology_layer || null,
       technology_stage: form.technology_stage || null,
+      siren: form.siren || null,
+      siret: form.siret || null,
       tags,
     }
 
@@ -497,7 +503,15 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       </div>
 
       {/* ── Legal ── */}
-      <SectionTitle>Legal</SectionTitle>
+      <SectionTitle>Legal (Admin only — never shown to users)</SectionTitle>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="SIREN (9 digits)">
+          <Input className={inputClass} value={form.siren} onChange={(e) => set("siren", e.target.value)} placeholder="123456789" maxLength={9} />
+        </Field>
+        <Field label="SIRET (14 digits)">
+          <Input className={inputClass} value={form.siret} onChange={(e) => set("siret", e.target.value)} placeholder="12345678900012" maxLength={14} />
+        </Field>
+      </div>
       <Field label="Entity complexity">
         <Input className={inputClass} value={form.entity_complexity} onChange={(e) => set("entity_complexity", e.target.value)} placeholder="e.g. Single SAS, holding in Luxembourg…" />
       </Field>

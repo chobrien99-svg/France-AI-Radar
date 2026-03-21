@@ -56,6 +56,8 @@ export async function PATCH(
       fundraising_signal_summary: fields.fundraising_signal_summary || null,
       funding_notes: fields.funding_notes || null,
       entity_complexity: fields.entity_complexity || null,
+      siren: fields.siren || null,
+      siret: fields.siret || null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
