@@ -16,7 +16,11 @@ const TIER_CLASS: Record<string, string> = {
   enterprise: "badge-signal badge-signal-positive",
 }
 
-export async function AppNav({ activePage }: { activePage?: "home" | "database" | "pricing" }) {
+export async function AppNav({
+  activePage,
+}: {
+  activePage?: "home" | "database" | "pricing" | "account"
+}) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -32,7 +36,7 @@ export async function AppNav({ activePage }: { activePage?: "home" | "database" 
     tier = data?.subscription_tier ?? "free"
   }
 
-  const navLink = (href: string, label: string, page: typeof activePage) =>
+  const navLink = (page: typeof activePage) =>
     activePage === page
       ? `rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-foreground bg-secondary`
       : `rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground`
@@ -52,33 +56,32 @@ export async function AppNav({ activePage }: { activePage?: "home" | "database" 
 
         {/* Links */}
         <div className="hidden items-center gap-1 md:flex">
-          <Link href="/" className={navLink("/", "Home", "home")}>
+          <Link href="/" className={navLink("home")}>
             Home
           </Link>
-          <Link href="/database" className={navLink("/database", "Database", "database")}>
+          <Link href="/database" className={navLink("database")}>
             Database
           </Link>
-          <Link href="/pricing" className={navLink("/pricing", "Pricing", "pricing")}>
+          <Link href="/pricing" className={navLink("pricing")}>
             Pricing
           </Link>
+          {user && (
+            <Link href="/account" className={navLink("account")}>
+              Account
+            </Link>
+          )}
         </div>
 
         {/* Right: tier badge + auth actions */}
         <div className="flex items-center gap-2.5">
           {user && tier ? (
             <>
-              {tier !== "professional" && tier !== "enterprise" ? (
-                <Link
-                  href="/pricing"
-                  className={`${TIER_CLASS[tier] ?? TIER_CLASS.free} hover:opacity-80 transition-opacity`}
-                >
-                  {TIER_LABEL[tier] ?? tier}
-                </Link>
-              ) : (
-                <span className={TIER_CLASS[tier] ?? TIER_CLASS.free}>
-                  {TIER_LABEL[tier] ?? tier}
-                </span>
-              )}
+              <Link
+                href="/account"
+                className={`${TIER_CLASS[tier] ?? TIER_CLASS.free} hover:opacity-80 transition-opacity`}
+              >
+                {TIER_LABEL[tier] ?? tier}
+              </Link>
               <form action="/auth/signout" method="POST">
                 <Button variant="ghost" size="sm" type="submit">
                   Sign out
