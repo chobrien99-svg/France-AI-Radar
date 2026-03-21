@@ -4,9 +4,12 @@ import { createServiceClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-02-25.clover",
-})
+// Instantiated inside handler so missing env vars don't crash at build time
+function getStripe() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: "2026-02-25.clover",
+  })
+}
 
 // Stripe requires the raw body for signature verification — use request.text()
 export async function POST(request: NextRequest) {
@@ -16,6 +19,8 @@ export async function POST(request: NextRequest) {
   if (!signature) {
     return NextResponse.json({ error: "Missing stripe-signature header" }, { status: 400 })
   }
+
+  const stripe = getStripe()
 
   let event: Stripe.Event
   try {
