@@ -85,6 +85,7 @@ export default async function DatabasePage({
   const times = parseList(params.time)
   const founderSignals = parseList(params.founderSignal)
   const signalTypes = parseList(params.signalType)
+  const signalSources = parseList(params.signalSource)
   const sort = (Array.isArray(params.sort) ? params.sort[0] : params.sort) ?? "newest"
 
   // Build query
@@ -132,6 +133,11 @@ export default async function DatabasePage({
   if (latestTime && latestTime !== "all") {
     const cutoff = cutoffDate(latestTime)
     if (cutoff) query = query.gte("last_signal_date", cutoff)
+  }
+
+  // Signal source filter
+  if (signalSources.length > 0) {
+    query = query.in("signal_source", signalSources)
   }
 
   // Founder signal filter (array overlap)
