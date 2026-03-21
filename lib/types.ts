@@ -185,6 +185,8 @@ export type Profile = {
   full_name: string | null
   subscription_tier: "free" | "explorer" | "professional" | "enterprise"
   subscription_status: string
+  stripe_customer_id: string | null
+  subscription_period_end: string | null
 }
 
 // Backward-compat aliases (remove once all UI is updated)
