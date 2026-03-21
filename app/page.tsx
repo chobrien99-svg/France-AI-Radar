@@ -142,8 +142,8 @@ export default function LandingPage() {
         <section className="mb-[72px]">
           <div className="mx-auto grid max-w-[720px] grid-cols-4 overflow-hidden rounded-xl border border-border bg-border gap-px">
             {[
-              { num: "523", label: "Startups Tracked" },
-              { num: "2,140", label: "Signals Detected" },
+              { num: "6", label: "Startups Tracked" },
+              { num: "21", label: "Signals Detected" },
               { num: "48", label: "Sectors Covered" },
               { num: "Weekly", label: "Updated" },
             ].map((item) => (
