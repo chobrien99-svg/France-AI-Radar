@@ -84,6 +84,12 @@ export type Venture = {
   // Signal provenance
   signal_source: SignalSource | null
 
+  // Contact & web presence
+  contact_email: string | null
+  contact_phone: string | null
+  website_url: string | null
+  linkedin_url: string | null
+
   // Legal
   entity_complexity: string | null
 
