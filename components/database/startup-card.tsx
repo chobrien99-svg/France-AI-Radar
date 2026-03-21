@@ -10,6 +10,7 @@ type FounderSummary = {
   big_tech_employer: string | null
   has_phd: boolean
   is_repeat_founder: boolean
+  has_big_tech_background: boolean
 }
 
 const BADGE_CLASS: Record<string, string> = {
