@@ -41,8 +41,8 @@ CREATE TYPE product_modality_type AS ENUM (
   'software', 'hardware', 'hybrid'
 );
 
-CREATE TYPE venture_origin_type AS ENUM (
-  'new_venture', 'founder_reboot', 'research_spinout',
+CREATE TYPE startup_origin_type AS ENUM (
+  'new_startup', 'founder_reboot', 'research_spinout',
   'consultancy_evolution', 'venture_studio_launch'
 );
 
@@ -55,16 +55,16 @@ CREATE TYPE fundraising_status_type AS ENUM (
   'not_currently_raising', 'unknown'
 );
 
-CREATE TYPE venture_relationship_type AS ENUM (
+CREATE TYPE startup_relationship_type AS ENUM (
   'founded_by_previous_company', 'technology_spinout', 'reboot_of',
   'pivot_from', 'asset_transfer'
 );
 
 -- ============================================
--- VENTURES
+-- STARTUPS
 -- ============================================
 
-CREATE TABLE ventures (
+CREATE TABLE startups (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
@@ -95,8 +95,8 @@ CREATE TABLE ventures (
   technical_thesis TEXT,
   technology_stage technology_stage_type,
 
-  -- Venture origin
-  venture_origin_type venture_origin_type DEFAULT 'new_venture',
+  -- Startup origin
+  startup_origin_type startup_origin_type DEFAULT 'new_startup',
 
   -- Fundraising
   total_raised_eur NUMERIC,
@@ -139,50 +139,50 @@ CREATE TABLE founders (
 );
 
 -- ============================================
--- VENTURE FOUNDERS  (junction: ventures ↔ founders)
+-- STARTUP FOUNDERS  (junction: startups ↔ founders)
 -- ============================================
 
-CREATE TABLE venture_founders (
-  venture_id UUID REFERENCES ventures(id) ON DELETE CASCADE,
+CREATE TABLE startup_founders (
+  startup_id UUID REFERENCES startups(id) ON DELETE CASCADE,
   founder_id UUID REFERENCES founders(id) ON DELETE CASCADE,
   role TEXT,
-  PRIMARY KEY (venture_id, founder_id)
+  PRIMARY KEY (startup_id, founder_id)
 );
 
 -- ============================================
--- VENTURE RELATIONSHIPS  (company lineage)
+-- STARTUP RELATIONSHIPS  (company lineage)
 -- ============================================
 
-CREATE TABLE venture_relationships (
+CREATE TABLE startup_relationships (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  parent_venture_id UUID REFERENCES ventures(id) ON DELETE SET NULL,
-  child_venture_id UUID REFERENCES ventures(id) ON DELETE CASCADE,
-  relationship_type venture_relationship_type NOT NULL,
+  parent_startup_id UUID REFERENCES startups(id) ON DELETE SET NULL,
+  child_startup_id UUID REFERENCES startups(id) ON DELETE CASCADE,
+  relationship_type startup_relationship_type NOT NULL,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================
--- FOUNDER VENTURES  (founder history outside current ventures)
+-- FOUNDER STARTUPS  (founder history outside current startups)
 -- ============================================
 
-CREATE TABLE founder_ventures (
+CREATE TABLE founder_startups (
   founder_id UUID REFERENCES founders(id) ON DELETE CASCADE,
-  venture_name TEXT NOT NULL,
+  startup_name TEXT NOT NULL,
   role TEXT,
   start_year INT,
   end_year INT,
   outcome TEXT,
-  PRIMARY KEY (founder_id, venture_name)
+  PRIMARY KEY (founder_id, startup_name)
 );
 
 -- ============================================
--- VENTURE EVENTS  (major dated milestones)
+-- STARTUP EVENTS  (major dated milestones)
 -- ============================================
 
-CREATE TABLE venture_events (
+CREATE TABLE startup_events (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  venture_id UUID REFERENCES ventures(id) ON DELETE CASCADE,
+  startup_id UUID REFERENCES startups(id) ON DELETE CASCADE,
   event_date DATE NOT NULL,
   event_type signal_type NOT NULL,
   strength signal_strength DEFAULT 'neutral',
@@ -197,7 +197,7 @@ CREATE TABLE venture_events (
 
 CREATE TABLE signals (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  venture_id UUID REFERENCES ventures(id) ON DELETE CASCADE,
+  startup_id UUID REFERENCES startups(id) ON DELETE CASCADE,
   signal_date DATE NOT NULL,
   signal_type signal_type NOT NULL,
   strength signal_strength DEFAULT 'neutral',
@@ -212,7 +212,7 @@ CREATE TABLE signals (
 
 CREATE TABLE products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  venture_id UUID REFERENCES ventures(id) ON DELETE CASCADE,
+  startup_id UUID REFERENCES startups(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   description TEXT,
   product_type TEXT,
@@ -227,7 +227,7 @@ CREATE TABLE products (
 
 CREATE TABLE legal_entities (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  venture_id UUID REFERENCES ventures(id) ON DELETE CASCADE,
+  startup_id UUID REFERENCES startups(id) ON DELETE CASCADE,
   legal_name TEXT NOT NULL,
   legal_form TEXT,
   siren TEXT UNIQUE,
@@ -240,12 +240,12 @@ CREATE TABLE legal_entities (
 );
 
 -- ============================================
--- VENTURE TAGS  (formerly startup_badges)
+-- STARTUP TAGS  (formerly startup_badges)
 -- ============================================
 
-CREATE TABLE venture_tags (
+CREATE TABLE startup_tags (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  venture_id UUID REFERENCES ventures(id) ON DELETE CASCADE,
+  startup_id UUID REFERENCES startups(id) ON DELETE CASCADE,
   label TEXT NOT NULL,
   strength signal_strength DEFAULT 'neutral',
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -284,38 +284,38 @@ CREATE TABLE saved_searches (
 -- INDEXES
 -- ============================================
 
-CREATE INDEX idx_ventures_sector ON ventures(sector);
-CREATE INDEX idx_ventures_stage ON ventures(stage);
-CREATE INDEX idx_ventures_city ON ventures(city);
-CREATE INDEX idx_ventures_last_signal ON ventures(last_signal_date DESC);
-CREATE INDEX idx_ventures_first_seen ON ventures(first_seen_at DESC);
-CREATE INDEX idx_ventures_fundraising_status ON ventures(fundraising_status);
-CREATE INDEX idx_ventures_technology_layer ON ventures(technology_layer);
-CREATE INDEX idx_ventures_origin_type ON ventures(venture_origin_type);
-CREATE INDEX idx_ventures_product_modality ON ventures(product_modality);
+CREATE INDEX idx_startups_sector ON startups(sector);
+CREATE INDEX idx_startups_stage ON startups(stage);
+CREATE INDEX idx_startups_city ON startups(city);
+CREATE INDEX idx_startups_last_signal ON startups(last_signal_date DESC);
+CREATE INDEX idx_startups_first_seen ON startups(first_seen_at DESC);
+CREATE INDEX idx_startups_fundraising_status ON startups(fundraising_status);
+CREATE INDEX idx_startups_technology_layer ON startups(technology_layer);
+CREATE INDEX idx_startups_origin_type ON startups(startup_origin_type);
+CREATE INDEX idx_startups_product_modality ON startups(product_modality);
 
-CREATE INDEX idx_signals_venture ON signals(venture_id);
+CREATE INDEX idx_signals_startup ON signals(startup_id);
 CREATE INDEX idx_signals_date ON signals(signal_date DESC);
 
 CREATE INDEX idx_founders_repeat ON founders(is_repeat_founder);
 CREATE INDEX idx_founders_bigtech ON founders(has_big_tech_background);
 CREATE INDEX idx_founders_phd ON founders(has_phd);
 
-CREATE INDEX idx_venture_founders_venture ON venture_founders(venture_id);
-CREATE INDEX idx_venture_founders_founder ON venture_founders(founder_id);
+CREATE INDEX idx_startup_founders_startup ON startup_founders(startup_id);
+CREATE INDEX idx_startup_founders_founder ON startup_founders(founder_id);
 
-CREATE INDEX idx_venture_events_venture ON venture_events(venture_id);
-CREATE INDEX idx_venture_events_date ON venture_events(event_date DESC);
+CREATE INDEX idx_startup_events_startup ON startup_events(startup_id);
+CREATE INDEX idx_startup_events_date ON startup_events(event_date DESC);
 
-CREATE INDEX idx_venture_relationships_child ON venture_relationships(child_venture_id);
-CREATE INDEX idx_venture_relationships_parent ON venture_relationships(parent_venture_id);
+CREATE INDEX idx_startup_relationships_child ON startup_relationships(child_startup_id);
+CREATE INDEX idx_startup_relationships_parent ON startup_relationships(parent_startup_id);
 
-CREATE INDEX idx_products_venture ON products(venture_id);
+CREATE INDEX idx_products_startup ON products(startup_id);
 
-CREATE INDEX idx_legal_entities_venture ON legal_entities(venture_id);
+CREATE INDEX idx_legal_entities_startup ON legal_entities(startup_id);
 CREATE INDEX idx_legal_entities_siren ON legal_entities(siren);
 
-CREATE INDEX idx_tags_venture ON venture_tags(venture_id);
+CREATE INDEX idx_tags_startup ON startup_tags(startup_id);
 
 CREATE INDEX idx_profiles_stripe ON profiles(stripe_customer_id);
 
@@ -323,31 +323,31 @@ CREATE INDEX idx_profiles_stripe ON profiles(stripe_customer_id);
 -- ROW LEVEL SECURITY
 -- ============================================
 
-ALTER TABLE ventures ENABLE ROW LEVEL SECURITY;
+ALTER TABLE startups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE founders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE venture_founders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE venture_relationships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE founder_ventures ENABLE ROW LEVEL SECURITY;
-ALTER TABLE venture_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE startup_founders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE startup_relationships ENABLE ROW LEVEL SECURITY;
+ALTER TABLE founder_startups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE startup_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE signals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE legal_entities ENABLE ROW LEVEL SECURITY;
-ALTER TABLE venture_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE startup_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE saved_searches ENABLE ROW LEVEL SECURITY;
 
 -- Public read
-CREATE POLICY "Public read ventures" ON ventures FOR SELECT USING (true);
+CREATE POLICY "Public read startups" ON startups FOR SELECT USING (true);
 CREATE POLICY "Public read founders" ON founders FOR SELECT USING (true);
-CREATE POLICY "Public read venture_founders" ON venture_founders FOR SELECT USING (true);
-CREATE POLICY "Public read venture_relationships" ON venture_relationships FOR SELECT USING (true);
-CREATE POLICY "Public read founder_ventures" ON founder_ventures FOR SELECT USING (true);
+CREATE POLICY "Public read startup_founders" ON startup_founders FOR SELECT USING (true);
+CREATE POLICY "Public read startup_relationships" ON startup_relationships FOR SELECT USING (true);
+CREATE POLICY "Public read founder_startups" ON founder_startups FOR SELECT USING (true);
 CREATE POLICY "Public read products" ON products FOR SELECT USING (true);
-CREATE POLICY "Public read venture_tags" ON venture_tags FOR SELECT USING (true);
+CREATE POLICY "Public read startup_tags" ON startup_tags FOR SELECT USING (true);
 
 -- Authenticated read (intel/sensitive data)
 CREATE POLICY "Auth read signals" ON signals FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Auth read venture_events" ON venture_events FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Auth read startup_events" ON startup_events FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Auth read legal_entities" ON legal_entities FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Profile policies
@@ -388,8 +388,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER ventures_updated_at
-  BEFORE UPDATE ON ventures
+CREATE TRIGGER startups_updated_at
+  BEFORE UPDATE ON startups
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 CREATE TRIGGER profiles_updated_at
