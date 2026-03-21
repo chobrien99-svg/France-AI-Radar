@@ -65,7 +65,7 @@ export default async function AccountPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, subscription_tier, subscription_status, subscription_period_end, stripe_customer_id"
+      "id, email, full_name, subscription_tier, subscription_status, subscription_period_end, stripe_customer_id, is_admin"
     )
     .eq("id", user.id)
     .single()
@@ -116,6 +116,19 @@ export default async function AccountPage() {
             <p className="mt-1 text-[13px] text-muted-foreground">{profile.email}</p>
           )}
         </div>
+
+        {/* Admin shortcut — only visible to admins */}
+        {(profile as { is_admin?: boolean }).is_admin && (
+          <div className="mb-8 flex items-center justify-between gap-4 rounded-xl border border-border bg-secondary/40 px-5 py-4">
+            <div>
+              <p className="text-[13px] font-semibold text-foreground">Admin Dashboard</p>
+              <p className="text-[12px] text-muted-foreground">Manage startups, founders, and site content.</p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin">Go to Admin →</Link>
+            </Button>
+          </div>
+        )}
 
         {/* Subscription card */}
         <div className="data-card mb-10 p-6">
