@@ -109,11 +109,15 @@ export default async function StartupProfilePage({
   ) as {
     id: string
     name: string
+    slug: string | null
     role: string | null
     bio: string | null
     linkedin_url: string | null
     founder_signals: string[] | null
     previous_companies: string[] | null
+    previous_exits: string[] | null
+    big_tech_employer: string | null
+    academic_lab: string | null
     has_phd: boolean
     is_repeat_founder: boolean
     has_big_tech_background: boolean
@@ -259,11 +263,15 @@ type Signal = {
 type Founder = {
   id: string
   name: string
+  slug: string | null
   role: string | null
   bio: string | null
   linkedin_url: string | null
   founder_signals: string[] | null
   previous_companies: string[] | null
+  previous_exits: string[] | null
+  big_tech_employer: string | null
+  academic_lab: string | null
   has_phd: boolean
   is_repeat_founder: boolean
   has_big_tech_background: boolean
@@ -349,9 +357,18 @@ function PremiumContent({
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-[14px] font-bold text-foreground">
-                      {founder.name}
-                    </p>
+                    {founder.slug ? (
+                      <Link
+                        href={`/founder/${founder.slug}`}
+                        className="text-[14px] font-bold text-foreground underline-offset-2 hover:underline"
+                      >
+                        {founder.name}
+                      </Link>
+                    ) : (
+                      <p className="text-[14px] font-bold text-foreground">
+                        {founder.name}
+                      </p>
+                    )}
                     {founder.role && (
                       <p className="text-[12px] font-medium text-primary">
                         {founder.role}
@@ -369,11 +386,43 @@ function PremiumContent({
                     </a>
                   )}
                 </div>
+
                 {founder.bio && (
                   <p className="text-[13px] leading-snug text-muted-foreground">
                     {founder.bio}
                   </p>
                 )}
+
+                {/* Pedigree summary */}
+                <div className="mt-3 space-y-1.5">
+                  {founder.big_tech_employer && (
+                    <p className="text-[12px] text-muted-foreground">
+                      <span className="font-medium text-foreground">Big Tech: </span>
+                      {founder.big_tech_employer}
+                    </p>
+                  )}
+                  {founder.academic_lab && (
+                    <p className="text-[12px] text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {founder.has_phd ? "PhD: " : "Lab: "}
+                      </span>
+                      {founder.academic_lab}
+                    </p>
+                  )}
+                  {founder.previous_exits && founder.previous_exits.length > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      <span className="font-medium text-foreground">Exits: </span>
+                      {founder.previous_exits.join(", ")}
+                    </p>
+                  )}
+                  {founder.previous_companies && founder.previous_companies.length > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      <span className="font-medium text-foreground">Background: </span>
+                      {founder.previous_companies.join(", ")}
+                    </p>
+                  )}
+                </div>
+
                 {founder.founder_signals && founder.founder_signals.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {founder.founder_signals.map((sig) => (

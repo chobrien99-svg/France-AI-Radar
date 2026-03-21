@@ -90,7 +90,9 @@ export default async function DatabasePage({
   // Build query
   let query = supabase
     .from("startups")
-    .select("*, startup_tags(id, label, strength)")
+    .select(
+      "*, startup_tags(id, label, strength), startup_founders(founders(id, name, slug, founder_signals, big_tech_employer, has_phd, is_repeat_founder, has_big_tech_background))"
+    )
     .eq("is_active", true)
 
   if (q) {
@@ -204,9 +206,37 @@ export default async function DatabasePage({
               gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
             }}
           >
-            {visible.map((startup) => (
-              <StartupCard key={startup.id} venture={startup} />
-            ))}
+            {visible.map((startup) => {
+              const raw = startup as Venture & {
+                startup_founders?: Array<{
+                  founders: {
+                    id: string
+                    name: string
+                    slug: string | null
+                    founder_signals: string[] | null
+                    big_tech_employer: string | null
+                    has_phd: boolean
+                    is_repeat_founder: boolean
+                    has_big_tech_background: boolean
+                  } | null
+                }>
+              }
+              const founders = (raw.startup_founders ?? [])
+                .map((sf) => sf.founders)
+                .filter(Boolean) as Array<{
+                  id: string
+                  name: string
+                  slug: string | null
+                  founder_signals: string[] | null
+                  big_tech_employer: string | null
+                  has_phd: boolean
+                  is_repeat_founder: boolean
+                  has_big_tech_background: boolean
+                }>
+              return (
+                <StartupCard key={startup.id} venture={startup} founders={founders} />
+              )
+            })}
           </div>
 
           {/* Upgrade gate */}
