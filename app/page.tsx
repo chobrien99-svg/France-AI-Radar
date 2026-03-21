@@ -1,65 +1,300 @@
-import Image from "next/image";
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
-export default function Home() {
+// Sample cards pulled directly from seed data for the landing page
+const SAMPLE_CARDS = [
+  {
+    name: "NovaMind AI",
+    meta: "Paris, France · Founded Jan 2026",
+    sector: "AI Agents",
+    badges: [
+      { label: "Fundraising Signal", strength: "positive" },
+      { label: "Founder Reboot", strength: "warning" },
+    ],
+    description: "Autonomous agent framework for enterprise workflow orchestration.",
+    takeaway: "Ex-DeepMind founder; likely preparing seed round based on hiring velocity.",
+    signalCount: 3,
+    signalDot: "green",
+    href: "/startup/novamind-ai",
+  },
+  {
+    name: "Katrix.AI",
+    meta: "Meudon, France · Founded Nov 2025",
+    sector: "Robotics AI",
+    badges: [
+      { label: "Founder Reboot", strength: "warning" },
+      { label: "First Seen Jan 2026", strength: "neutral" },
+    ],
+    description: "Hybrid perception stack for autonomous systems.",
+    takeaway: "Potential relaunch of robotics tech focused on perception infrastructure.",
+    signalCount: 1,
+    signalDot: "amber",
+    href: "/startup/katrix-ai",
+  },
+  {
+    name: "BioSight",
+    meta: "Lyon, France · Founded Mar 2026",
+    sector: "BioAI",
+    badges: [
+      { label: "IP Signal", strength: "positive" },
+      { label: "Academic Spinout", strength: "neutral" },
+    ],
+    description: "AI-driven molecular imaging for drug discovery acceleration.",
+    takeaway: "CNRS spinout; patent filing detected — IP protection before fundraise.",
+    signalCount: 2,
+    signalDot: "green",
+    href: "/startup/biosight",
+  },
+]
+
+const signalDotClass: Record<string, string> = {
+  green: "bg-emerald-500",
+  amber: "bg-amber-500",
+  red: "bg-rose-500",
+}
+
+const badgeClass: Record<string, string> = {
+  positive: "badge-signal badge-signal-positive",
+  warning: "badge-signal badge-signal-warning",
+  risk: "badge-signal badge-signal-risk",
+  neutral: "badge-signal badge-signal-neutral",
+}
+
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-background">
+      {/* ── NAV ─────────────────────────────────────────── */}
+      <nav className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
+        <div className="page-container flex h-14 items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-primary text-[12px] font-extrabold text-primary-foreground">
+              AR
+            </div>
+            <span className="text-[15px] font-bold tracking-tight text-foreground">
+              AI Radar
+            </span>
+          </Link>
+
+          {/* Nav links */}
+          <div className="hidden items-center gap-1 md:flex">
+            <Link
+              href="/"
+              className="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              Home
+            </Link>
+            <Link
+              href="/database"
+              className="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              Database
+            </Link>
+            <Link
+              href="/pricing"
+              className="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              Pricing
+            </Link>
+          </div>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-2.5">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/auth/login">Log in</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/pricing">Get Access</Link>
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="page-container">
+        {/* ── HERO ────────────────────────────────────────── */}
+        <section className="py-20 text-center md:py-24">
+          {/* Kicker pill */}
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-1.5 text-[12px] font-semibold tracking-[0.04em] text-primary">
+            ◆ Investor Intelligence Platform
+          </div>
+
+          <h1 className="mb-4 text-[clamp(32px,5vw,52px)] font-extrabold leading-[1.1] tracking-[-0.03em] text-foreground">
+            The French AI Ecosystem,
+            <br />
+            <span className="text-primary">Decoded for Investors</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="mx-auto mb-8 max-w-[560px] text-[17px] leading-[1.65] text-muted-foreground">
+            Track 500+ AI startups across France. Founder signals, fundraising
+            intelligence, and sector analysis — updated weekly. Built for VCs,
+            corporate strategists, and LPs.
           </p>
+
+          <div className="flex items-center justify-center gap-3">
+            <Button size="lg" asChild>
+              <Link href="/database">Explore the Database →</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/startup/novamind-ai">View Sample Report</Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* ── PROOF BAR ────────────────────────────────────── */}
+        <section className="mb-[72px]">
+          <div className="mx-auto grid max-w-[720px] grid-cols-4 overflow-hidden rounded-xl border border-border bg-border gap-px">
+            {[
+              { num: "523", label: "Startups Tracked" },
+              { num: "2,140", label: "Signals Detected" },
+              { num: "48", label: "Sectors Covered" },
+              { num: "Weekly", label: "Updated" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="bg-card px-4 py-5 text-center"
+              >
+                <div className="text-[22px] font-bold tracking-tight text-foreground">
+                  {item.num}
+                </div>
+                <div className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                  {item.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── VALUE PROPS ──────────────────────────────────── */}
+        <section className="py-[72px]">
+          <p className="section-kicker mb-2 text-center">Why AI Radar</p>
+          <h2 className="mb-2 text-center text-2xl font-bold tracking-[-0.02em] text-foreground">
+            Intelligence, Not Noise
+          </h2>
+          <p className="mb-12 text-center text-[15px] text-muted-foreground">
+            What separates AI Radar from startup directories and news feeds.
+          </p>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {[
+              {
+                icon: "⚡",
+                title: "Signal Detection",
+                body: "Fundraising moves, corporate restructuring, key hires, and pivots — detected and surfaced before they hit the press. Know what's happening, not what happened.",
+              },
+              {
+                icon: "👤",
+                title: "Founder Intelligence",
+                body: "Big Tech alumni, repeat founders, academic spinouts, and corporate reboots — every founder's background mapped and scored for signal strength.",
+              },
+              {
+                icon: "◎",
+                title: "Sector Mapping",
+                body: "AI Agents, Robotics, BioAI, DeepTech, and 44 more sectors — filterable, exportable, and always current. See the full landscape, not just the loudest startups.",
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="rounded-xl border border-border bg-card p-7 transition-shadow hover:shadow-sm"
+              >
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-[10px] bg-primary/10 text-[18px]">
+                  {card.icon}
+                </div>
+                <h3 className="mb-2 text-[15px] font-bold tracking-tight text-foreground">
+                  {card.title}
+                </h3>
+                <p className="text-[13px] leading-relaxed text-muted-foreground">
+                  {card.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── SAMPLE CARDS ─────────────────────────────────── */}
+        <section className="pb-[72px]">
+          <p className="section-kicker mb-2 text-center">Live from the database</p>
+          <h2 className="mb-2 text-center text-xl font-bold tracking-[-0.02em] text-foreground">
+            See What&apos;s Inside
+          </h2>
+          <p className="mb-8 text-center text-[14px] text-muted-foreground">
+            Real intelligence cards from this week&apos;s updates.
+          </p>
+
+          <div className="mx-auto grid max-w-[960px] grid-cols-1 gap-4 md:grid-cols-3">
+            {SAMPLE_CARDS.map((card) => (
+              <Link key={card.name} href={card.href} className="block">
+                <div className="data-card cursor-pointer p-5">
+                  {/* Header */}
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[15px] font-bold tracking-tight text-foreground">
+                        {card.name}
+                      </div>
+                      <div className="mt-0.5 text-[12px] text-muted-foreground">
+                        {card.meta}
+                      </div>
+                    </div>
+                    <span className="badge-signal badge-signal-neutral whitespace-nowrap">
+                      {card.sector}
+                    </span>
+                  </div>
+
+                  {/* Badges */}
+                  <div className="mb-3 flex flex-wrap gap-1.5">
+                    {card.badges.map((b) => (
+                      <span key={b.label} className={badgeClass[b.strength]}>
+                        {b.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Body */}
+                  <p className="mb-1.5 text-[13px] leading-snug text-foreground">
+                    {card.description}
+                  </p>
+                  <p className="text-[13px] italic leading-snug text-muted-foreground">
+                    {card.takeaway}
+                  </p>
+
+                  {/* Signal footer */}
+                  <div className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-[12px] text-muted-foreground">
+                    <span
+                      className={`h-[7px] w-[7px] shrink-0 rounded-full ${signalDotClass[card.signalDot]}`}
+                    />
+                    {card.signalCount} new signal{card.signalCount !== 1 ? "s" : ""} this week
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ── BOTTOM CTA ───────────────────────────────────── */}
+        <section className="pb-20 text-center">
+          <h2 className="mb-3 text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+            Ready to see the full picture?
+          </h2>
+          <p className="mb-6 text-[15px] text-muted-foreground">
+            Join investors who track the French AI ecosystem with clarity.
+          </p>
+          <Button size="lg" asChild>
+            <Link href="/pricing">View Pricing →</Link>
+          </Button>
+        </section>
+      </div>
+
+      {/* ── FOOTER ───────────────────────────────────────── */}
+      <footer className="border-t border-border py-6">
+        <div className="page-container flex flex-col items-center justify-between gap-2 text-[12px] text-muted-foreground md:flex-row">
+          <span>AI Radar by French Tech Journal</span>
+          <div className="flex items-center gap-4">
+            <Link href="#" className="hover:text-foreground">Privacy</Link>
+            <Link href="#" className="hover:text-foreground">Terms</Link>
+            <Link href="#" className="hover:text-foreground">Contact</Link>
+            <span>© 2026</span>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </footer>
     </div>
-  );
+  )
 }
