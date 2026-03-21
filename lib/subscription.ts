@@ -69,6 +69,19 @@ export const SIGNAL_SOURCE_LABELS: Record<string, string> = {
   france_2030_laureat: "France 2030 Lauréat",
 }
 
+/** Monthly CSV export limit. null = unlimited, 0 = no access. */
+export function getExportLimit(tier: string): number | null {
+  switch (tier) {
+    case "explorer":
+      return 5
+    case "professional":
+    case "enterprise":
+      return null
+    default: // free
+      return 0
+  }
+}
+
 export function sectorLabel(sector: string): string {
   return SECTOR_LABELS[sector] ?? sector
 }
