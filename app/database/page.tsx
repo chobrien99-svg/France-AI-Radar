@@ -6,7 +6,7 @@ import { FilterSidebar } from "@/components/database/filter-sidebar"
 import { StartupCard } from "@/components/database/startup-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import type { Startup, Profile } from "@/lib/types"
+import type { Venture, Profile } from "@/lib/types"
 import { SortDropdown } from "@/components/database/sort-dropdown"
 import { SearchInput } from "@/components/database/search-input"
 
@@ -89,8 +89,8 @@ export default async function DatabasePage({
 
   // Build query
   let query = supabase
-    .from("startups")
-    .select("*, startup_badges(id, label, strength)")
+    .from("ventures")
+    .select("*, venture_tags(id, label, strength)")
     .eq("is_active", true)
 
   if (q) {
@@ -152,11 +152,11 @@ export default async function DatabasePage({
     query = query.order("last_signal_date", { ascending: false, nullsFirst: false })
   }
 
-  const { data: allStartups } = await query
-  const startups = (allStartups ?? []) as Startup[]
+  const { data: allVentures } = await query
+  const ventures = (allVentures ?? []) as Venture[]
 
-  const total = startups.length
-  const visible = limit !== null ? startups.slice(0, limit) : startups
+  const total = ventures.length
+  const visible = limit !== null ? ventures.slice(0, limit) : ventures
   const isLimited = limit !== null && total > limit
 
   return (
@@ -206,7 +206,7 @@ export default async function DatabasePage({
             }}
           >
             {visible.map((startup) => (
-              <StartupCard key={startup.id} startup={startup} />
+              <StartupCard key={startup.id} venture={startup} />
             ))}
           </div>
 
