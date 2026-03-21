@@ -61,6 +61,14 @@ export const FOUNDER_SIGNAL_LABELS: Record<string, string> = {
   corporate_reboot: "Corporate Reboot",
 }
 
+export const SIGNAL_SOURCE_LABELS: Record<string, string> = {
+  stealth: "Stealth",
+  incorporated: "Incorporated",
+  accelerator: "Accelerator",
+  incubator: "Incubator",
+  france_2030_laureat: "France 2030 Lauréat",
+}
+
 export function sectorLabel(sector: string): string {
   return SECTOR_LABELS[sector] ?? sector
 }

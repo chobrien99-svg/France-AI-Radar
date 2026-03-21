@@ -26,6 +26,13 @@ export type FundraisingStatus =
   | "not_currently_raising"
   | "unknown"
 
+export type SignalSource =
+  | "stealth"
+  | "incorporated"
+  | "accelerator"
+  | "incubator"
+  | "france_2030_laureat"
+
 export type VentureTag = {
   id: string
   label: string
@@ -73,6 +80,9 @@ export type Venture = {
   funding_notes: string | null
   fundraising_status: FundraisingStatus
   fundraising_signal_summary: string | null
+
+  // Signal provenance
+  signal_source: SignalSource | null
 
   // Legal
   entity_complexity: string | null

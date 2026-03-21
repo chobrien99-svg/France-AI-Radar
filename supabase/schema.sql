@@ -60,6 +60,14 @@ CREATE TYPE startup_relationship_type AS ENUM (
   'pivot_from', 'asset_transfer'
 );
 
+CREATE TYPE signal_source_type AS ENUM (
+  'stealth',
+  'incorporated',
+  'accelerator',
+  'incubator',
+  'france_2030_laureat'
+);
+
 -- ============================================
 -- STARTUPS
 -- ============================================
@@ -105,6 +113,9 @@ CREATE TABLE startups (
   funding_notes TEXT,
   fundraising_status fundraising_status_type DEFAULT 'unknown',
   fundraising_signal_summary TEXT,
+
+  -- Signal provenance
+  signal_source signal_source_type,
 
   -- Legal
   entity_complexity TEXT,
@@ -293,6 +304,7 @@ CREATE INDEX idx_startups_fundraising_status ON startups(fundraising_status);
 CREATE INDEX idx_startups_technology_layer ON startups(technology_layer);
 CREATE INDEX idx_startups_origin_type ON startups(startup_origin_type);
 CREATE INDEX idx_startups_product_modality ON startups(product_modality);
+CREATE INDEX idx_startups_signal_source ON startups(signal_source);
 
 CREATE INDEX idx_signals_startup ON signals(startup_id);
 CREATE INDEX idx_signals_date ON signals(signal_date DESC);

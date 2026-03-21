@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { type Venture } from "@/lib/types"
-import { sectorLabel, stageLabel, FOUNDER_SIGNAL_LABELS } from "@/lib/subscription"
+import { sectorLabel, stageLabel, FOUNDER_SIGNAL_LABELS, SIGNAL_SOURCE_LABELS } from "@/lib/subscription"
 
 type FounderSummary = {
   id: string
@@ -59,6 +59,12 @@ function foundedLabel(date: string | null): string {
   return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
 }
 
+function firstSeenLabel(date: string | null): string {
+  if (!date) return ""
+  const d = new Date(date)
+  return `Added ${d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`
+}
+
 export function StartupCard({
   venture,
   founders = [],
@@ -84,9 +90,16 @@ export function StartupCard({
                 .join(" · ")}
             </p>
           </div>
-          <span className="badge-signal badge-signal-neutral shrink-0 text-[10px]">
-            {stageLabel(venture.stage)}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <span className="badge-signal badge-signal-neutral text-[10px]">
+              {stageLabel(venture.stage)}
+            </span>
+            {venture.signal_source && (
+              <span className="badge-signal badge-signal-neutral text-[10px] opacity-80">
+                {SIGNAL_SOURCE_LABELS[venture.signal_source] ?? venture.signal_source}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Tags */}
@@ -145,16 +158,23 @@ export function StartupCard({
         )}
 
         {/* Signal footer */}
-        <div className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-[12px] text-muted-foreground">
-          <span
-            className={`h-[7px] w-[7px] shrink-0 rounded-full ${DOT_CLASS[dotStrength]}`}
-          />
-          <span>
-            {venture.signal_count} signal{venture.signal_count !== 1 ? "s" : ""}
-            {venture.last_signal_date
-              ? ` · Last updated ${relativeDate(venture.last_signal_date)}`
-              : ""}
-          </span>
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3 text-[12px] text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-[7px] w-[7px] shrink-0 rounded-full ${DOT_CLASS[dotStrength]}`}
+            />
+            <span>
+              {venture.signal_count} signal{venture.signal_count !== 1 ? "s" : ""}
+              {venture.last_signal_date
+                ? ` · Last updated ${relativeDate(venture.last_signal_date)}`
+                : ""}
+            </span>
+          </div>
+          {venture.first_seen_at && (
+            <span className="shrink-0 text-[11px]">
+              {firstSeenLabel(venture.first_seen_at)}
+            </span>
+          )}
         </div>
       </div>
     </Link>

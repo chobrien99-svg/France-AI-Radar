@@ -9,6 +9,7 @@ import {
   STAGE_LABELS,
   SIGNAL_TYPE_LABELS,
   FOUNDER_SIGNAL_LABELS,
+  SIGNAL_SOURCE_LABELS,
 } from "@/lib/subscription"
 
 const TIME_OPTIONS = [
@@ -43,6 +44,7 @@ export function FilterSidebar() {
     signalType: parseParam(searchParams.get("signalType")),
     stage: parseParam(searchParams.get("stage")),
     location: parseParam(searchParams.get("location")),
+    signalSource: parseParam(searchParams.get("signalSource")),
   }
 
   const update = useCallback(
@@ -85,6 +87,19 @@ export function FilterSidebar() {
           options={TIME_OPTIONS}
           selected={selected.time}
           onToggle={(v) => toggle("time", selected.time, v)}
+        />
+
+        <Separator />
+
+        {/* Signal Source */}
+        <FilterGroup
+          label="Signal Source"
+          options={Object.entries(SIGNAL_SOURCE_LABELS).map(([value, label]) => ({
+            value,
+            label,
+          }))}
+          selected={selected.signalSource}
+          onToggle={(v) => toggle("signalSource", selected.signalSource, v)}
         />
 
         <Separator />
