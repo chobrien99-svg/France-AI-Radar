@@ -89,8 +89,8 @@ export default async function DatabasePage({
 
   // Build query
   let query = supabase
-    .from("ventures")
-    .select("*, venture_tags(id, label, strength)")
+    .from("startups")
+    .select("*, startup_tags(id, label, strength)")
     .eq("is_active", true)
 
   if (q) {
