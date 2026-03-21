@@ -5,6 +5,9 @@ import { AppNav } from "@/components/app-nav"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { WatchlistRemoveButton } from "@/components/account/watchlist-remove-button"
+import { CreateListDialog } from "@/components/account/create-list-dialog"
+import { DeleteListButton } from "@/components/account/delete-list-button"
 
 const TIER_LABEL: Record<string, string> = {
   free: "Free",
@@ -238,9 +241,12 @@ export default async function AccountPage() {
                           {[s.city, s.sector, s.stage].filter(Boolean).join(" · ")}
                         </p>
                       </div>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/startup/${s.slug}`}>View →</Link>
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <WatchlistRemoveButton startupId={s.id} />
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/startup/${s.slug}`}>View →</Link>
+                        </Button>
+                      </div>
                     </div>
                   )
                 })}
@@ -296,6 +302,12 @@ export default async function AccountPage() {
 
           {/* ── Lists ── */}
           <TabsContent value="lists">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[13px] text-muted-foreground">
+                Curate startup lists to organise your deal flow.
+              </p>
+              <CreateListDialog />
+            </div>
             {userLists && userLists.length > 0 ? (
               <div className="space-y-2">
                 {userLists.map((list) => {
@@ -320,18 +332,15 @@ export default async function AccountPage() {
                           {list.description ? ` · ${list.description}` : ""}
                         </p>
                       </div>
-                      <span className="badge-signal badge-signal-neutral text-[10px]">
-                        Coming soon
-                      </span>
+                      <DeleteListButton listId={list.id} />
                     </div>
                   )
                 })}
               </div>
             ) : (
               <EmptyState
-                title="Lists coming soon"
-                description="Create curated lists of startups to organise your deal flow and share with your team."
-                comingSoon
+                title="No lists yet"
+                description="Create a list to group startups by theme, stage, or deal status."
               />
             )}
           </TabsContent>
