@@ -16,7 +16,7 @@ const DOT_CLASS: Record<string, string> = {
   neutral: "bg-zinc-400",
 }
 
-function signalDotStrength(tags: Venture["venture_tags"]): string {
+function signalDotStrength(tags: Venture["startup_tags"]): string {
   if (tags.some((t) => t.strength === "positive")) return "positive"
   if (tags.some((t) => t.strength === "warning")) return "warning"
   if (tags.some((t) => t.strength === "risk")) return "risk"
@@ -49,7 +49,7 @@ function foundedLabel(date: string | null): string {
 }
 
 export function StartupCard({ venture }: { venture: Venture }) {
-  const dotStrength = signalDotStrength(venture.venture_tags)
+  const dotStrength = signalDotStrength(venture.startup_tags)
   const hint = takeaway(venture)
 
   return (
@@ -73,9 +73,9 @@ export function StartupCard({ venture }: { venture: Venture }) {
         </div>
 
         {/* Tags */}
-        {venture.venture_tags.length > 0 && (
+        {venture.startup_tags.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-1.5">
-            {venture.venture_tags.slice(0, 3).map((tag) => (
+            {venture.startup_tags.slice(0, 3).map((tag) => (
               <span
                 key={tag.id}
                 className={BADGE_CLASS[tag.strength] ?? BADGE_CLASS.neutral}

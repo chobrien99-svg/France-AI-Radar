@@ -63,8 +63,8 @@ export type Venture = {
   technical_thesis: string | null
   technology_stage: TechnologyStage | null
 
-  // Venture origin
-  venture_origin_type: VentureOriginType
+  // Startup origin
+  startup_origin_type: VentureOriginType
 
   // Fundraising
   total_raised_eur: number | null
@@ -82,7 +82,7 @@ export type Venture = {
   last_signal_date: string | null
 
   // Joined relations
-  venture_tags: VentureTag[]
+  startup_tags: VentureTag[]
 }
 
 export type Founder = {

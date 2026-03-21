@@ -80,8 +80,8 @@ export default async function StartupProfilePage({
 
   // Fetch venture
   const { data: ventureRaw } = await supabase
-    .from("ventures")
-    .select("*, venture_tags(id, label, strength)")
+    .from("startups")
+    .select("*, startup_tags(id, label, strength)")
     .eq("slug", slug)
     .eq("is_active", true)
     .single()
@@ -151,9 +151,9 @@ export default async function StartupProfilePage({
                 .filter(Boolean)
                 .join(" · ")}
             </p>
-            {venture.venture_tags.length > 0 && (
+            {venture.startup_tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {venture.venture_tags.map((tag) => (
+                {venture.startup_tags.map((tag) => (
                   <span
                     key={tag.id}
                     className={BADGE_CLASS[tag.strength] ?? BADGE_CLASS.neutral}
