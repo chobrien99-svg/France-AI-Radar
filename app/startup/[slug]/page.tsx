@@ -1,3 +1,4 @@
+import React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -301,8 +302,60 @@ function PremiumContent({
   signals: Signal[]
   founders: Founder[]
 }) {
+  const hasContact =
+    venture.website_url || venture.linkedin_url || venture.contact_email || venture.contact_phone
+
   return (
     <div className="space-y-10">
+      {/* Contact & Web Presence */}
+      {hasContact && (
+        <section>
+          <SectionHeader label="Contact & Web Presence" />
+          <div className="mt-4 flex flex-wrap gap-4">
+            {venture.website_url && (
+              <ContactItem
+                icon={
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5C8 1.5 5.5 4.5 5.5 8s2.5 6.5 2.5 6.5M8 1.5C8 1.5 10.5 4.5 10.5 8S8 14.5 8 14.5M1.5 8h13"/></svg>
+                }
+                label="Website"
+                href={venture.website_url}
+                display={venture.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+              />
+            )}
+            {venture.linkedin_url && (
+              <ContactItem
+                icon={
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm1.3 2.5a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6zm-1 3.5h2V12h-2V7zm3 0h2v.7c.3-.5 1-1 2-1 2 0 2.5 1.4 2.5 3.1V12h-2V10c0-.8 0-1.7-1-1.7s-1.5.8-1.5 1.7v2h-2V7z"/></svg>
+                }
+                label="LinkedIn"
+                href={venture.linkedin_url}
+                display="View profile"
+              />
+            )}
+            {venture.contact_email && (
+              <ContactItem
+                icon={
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="1.5" y="3.5" width="13" height="9" rx="1"/><path d="m1.5 4 6.5 5 6.5-5"/></svg>
+                }
+                label="Email"
+                href={`mailto:${venture.contact_email}`}
+                display={venture.contact_email}
+              />
+            )}
+            {venture.contact_phone && (
+              <ContactItem
+                icon={
+                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M2 2.5A1.5 1.5 0 0 1 3.5 1h1a1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 0 1.5 1.5h2A1.5 1.5 0 0 0 11 2.5 1.5 1.5 0 0 1 12.5 1h1A1.5 1.5 0 0 1 15 2.5v1A12.5 12.5 0 0 1 2.5 16h-1A1.5 1.5 0 0 1 0 14.5v-1A1.5 1.5 0 0 1 1.5 12"/></svg>
+                }
+                label="Phone"
+                href={`tel:${venture.contact_phone}`}
+                display={venture.contact_phone}
+              />
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Investor Brief */}
       {venture.investor_brief && (
         <section>
@@ -545,6 +598,33 @@ function PremiumContent({
         </section>
       )}
     </div>
+  )
+}
+
+function ContactItem({
+  icon,
+  label,
+  href,
+  display,
+}: {
+  icon: React.ReactNode
+  label: string
+  href: string
+  display: string
+}) {
+  return (
+    <a
+      href={href}
+      target={href.startsWith("http") ? "_blank" : undefined}
+      rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+      className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[13px] transition-colors hover:bg-accent"
+    >
+      <span className="shrink-0 text-muted-foreground">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="truncate font-medium text-foreground">{display}</p>
+      </div>
+    </a>
   )
 }
 

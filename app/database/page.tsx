@@ -240,7 +240,12 @@ export default async function DatabasePage({
                   has_big_tech_background: boolean
                 }>
               return (
-                <StartupCard key={startup.id} venture={startup} founders={founders} />
+                <StartupCard
+                  key={startup.id}
+                  venture={startup}
+                  founders={founders}
+                  showContact={tier === "professional" || tier === "enterprise"}
+                />
               )
             })}
           </div>
