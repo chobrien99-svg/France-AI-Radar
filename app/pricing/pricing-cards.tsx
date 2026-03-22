@@ -7,31 +7,26 @@ import { Button } from "@/components/ui/button"
 type Interval = "monthly" | "annual"
 
 const EXPLORER_FEATURES = [
-  "50 startup profiles / month",
-  "Basic sector & stage filters",
-  "Signal badge overview",
-  "Weekly digest email",
-  "Name & keyword search",
+  "Limited startup access (preview only)",
+  "Basic filters",
+  "Weekly highlights",
 ]
 
 const PRO_FEATURES = [
-  "Unlimited startup profiles",
-  "All filters including founder signals",
+  "Unlimited startup access",
   "Full investor briefs & timelines",
-  "Founding team deep-dives",
-  "10 PDF exports / month",
-  "Saved searches & watchlists",
-  "Priority alerts on new signals",
+  "Advanced filters (sector, founder, signals)",
+  "Save companies & create lists",
+  "CSV export",
+  "Alerts on new signals",
 ]
 
 const ENTERPRISE_FEATURES = [
-  "Everything in Professional",
-  "Unlimited PDF exports",
-  "API access",
-  "Custom watchlists",
-  "10 team seats",
-  "Dedicated account manager",
-  "Custom data requests",
+  "Team access",
+  "Advanced exports",
+  "Custom alerts and monitoring",
+  "API access (coming)",
+  "Dedicated support",
 ]
 
 function CheckIcon() {
@@ -91,33 +86,33 @@ export function PricingCards() {
         >
           Annual
           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-            Save 20%
+            2 months free
           </span>
         </button>
       </div>
 
       {/* Tier cards */}
       <div className="mx-auto grid max-w-[960px] gap-5 md:grid-cols-3">
+
         {/* Explorer */}
         <div className="data-card flex flex-col p-6">
           <div className="mb-6">
-            <p className="mb-1 text-[13px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
               Explorer
             </p>
             <div className="flex items-end gap-1.5">
               <span className="text-[32px] font-bold tracking-tight text-foreground">
-                {annual ? "€39" : "€49"}
+                {annual ? "€90" : "€9"}
               </span>
-              <span className="mb-1 text-[13px] text-muted-foreground">/mo</span>
+              <span className="mb-1 text-[13px] text-muted-foreground">
+                {annual ? "/ year" : "/ month"}
+              </span>
             </div>
-            {annual && (
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
-                Billed annually (€470/yr)
-              </p>
+            {!annual && (
+              <p className="mt-0.5 text-[12px] text-muted-foreground">or €90 / year</p>
             )}
             <p className="mt-3 text-[13px] text-muted-foreground">
-              For investors who want a structured view of the French AI
-              landscape.
+              For exploring the Radar and previewing early signals.
             </p>
           </div>
 
@@ -126,43 +121,52 @@ export function PricingCards() {
           </div>
 
           <Button variant="outline" className="w-full" asChild>
-            <Link
-              href={`/api/stripe/checkout?tier=explorer&interval=${interval}`}
-            >
+            <Link href={`/api/stripe/checkout?tier=explorer&interval=${interval}`}>
               Start Exploring
             </Link>
           </Button>
         </div>
 
         {/* Professional — featured */}
-        <div
-          className="relative flex flex-col rounded-xl border-2 border-primary bg-card p-6 shadow-md"
-        >
-          {/* Recommended badge */}
+        <div className="relative flex flex-col rounded-xl border-2 border-primary bg-card p-6 shadow-md">
+          {/* Badge */}
           <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
             <span className="rounded-full bg-primary px-3.5 py-1 text-[11px] font-semibold text-primary-foreground">
-              Recommended
+              Founding Member
             </span>
           </div>
 
           <div className="mb-6">
-            <p className="mb-1 text-[13px] font-semibold uppercase tracking-[0.1em] text-primary">
-              Professional
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary">
+              ⭐ Professional
             </p>
             <div className="flex items-end gap-1.5">
               <span className="text-[32px] font-bold tracking-tight text-foreground">
-                {annual ? "€119" : "€149"}
+                {annual ? "€290" : "€29"}
               </span>
-              <span className="mb-1 text-[13px] text-muted-foreground">/mo</span>
+              <span className="mb-1 text-[13px] text-muted-foreground">
+                {annual ? "/ year" : "/ month"}
+              </span>
             </div>
-            {annual && (
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
-                Billed annually (€1,430/yr)
-              </p>
+            {!annual && (
+              <p className="mt-0.5 text-[12px] text-muted-foreground">or €290 / year · 2 months free</p>
             )}
+            {annual && (
+              <p className="mt-0.5 text-[12px] text-muted-foreground">2 months free</p>
+            )}
+
+            {/* Future price */}
+            <p className="mt-1 text-[11px] text-muted-foreground/60">
+              <span className="line-through">{annual ? "€790 / year" : "€79 / month"}</span>
+              {" "}future price
+            </p>
+
+            <p className="mt-2.5 text-[12px] font-medium text-primary">
+              Lock in early pricing as we expand the database.
+            </p>
+
             <p className="mt-3 text-[13px] text-muted-foreground">
-              For active dealmakers who need full signal depth on every
-              opportunity.
+              Full access to the French AI Radar—every startup, signal, and investor brief.
             </p>
           </div>
 
@@ -171,10 +175,8 @@ export function PricingCards() {
           </div>
 
           <Button className="w-full" asChild>
-            <Link
-              href={`/api/stripe/checkout?tier=professional&interval=${interval}`}
-            >
-              Go Professional
+            <Link href={`/api/stripe/checkout?tier=professional&interval=${interval}`}>
+              Get Full Access
             </Link>
           </Button>
         </div>
@@ -182,7 +184,7 @@ export function PricingCards() {
         {/* Enterprise */}
         <div className="data-card flex flex-col p-6">
           <div className="mb-6">
-            <p className="mb-1 text-[13px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
               Enterprise
             </p>
             <div className="flex items-end gap-1.5">
@@ -191,11 +193,7 @@ export function PricingCards() {
               </span>
             </div>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
-              Tailored to your team
-            </p>
-            <p className="mt-3 text-[13px] text-muted-foreground">
-              For VC firms, corporate M&A teams, and LPs who need team
-              access and custom data.
+              For venture funds and strategic teams.
             </p>
           </div>
 
@@ -208,7 +206,12 @@ export function PricingCards() {
               Contact Us
             </Link>
           </Button>
+
+          <p className="mt-3 text-center text-[11px] text-muted-foreground">
+            Onboarding a limited number of early partners.
+          </p>
         </div>
+
       </div>
     </>
   )
