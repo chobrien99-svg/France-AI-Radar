@@ -130,7 +130,7 @@ export default function LandingPage() {
 
           <div className="flex items-center justify-center gap-3">
             <Button size="lg" asChild>
-              <Link href="/database">Explore the Database →</Link>
+              <Link href="/database">Explore the Radar →</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <Link href="/startup/novamind-ai">View Sample Report</Link>
