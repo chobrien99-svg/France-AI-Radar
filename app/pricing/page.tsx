@@ -53,17 +53,45 @@ export default function PricingPage() {
         {/* Header */}
         <div className="mb-12 text-center">
           <p className="section-kicker mb-3">Pricing</p>
-          <h1 className="mb-3 text-[32px] font-bold tracking-tight text-foreground md:text-[38px]">
-            Choose Your Intelligence Level
+          <h1 className="mb-3 text-[32px] font-bold tracking-tight text-foreground md:text-[40px]">
+            Access the French AI Radar
           </h1>
-          <p className="mx-auto max-w-[480px] text-[15px] text-muted-foreground">
-            Access the French AI ecosystem's most complete investor
-            intelligence platform. Cancel anytime.
+          <p className="mx-auto max-w-[500px] text-[16px] text-muted-foreground">
+            Early-stage AI intelligence across France—before it reaches the market.
+          </p>
+          <p className="mx-auto mt-3 max-w-[460px] text-[13px] text-muted-foreground/70">
+            We're starting with a curated set of high-signal companies and expanding the database weekly.
           </p>
         </div>
 
         {/* Billing toggle + tier cards (client) */}
         <PricingCards />
+
+        {/* Early Access Pricing note */}
+        <div className="mx-auto mt-12 max-w-[600px] rounded-xl border border-border bg-secondary/30 px-7 py-6 text-center">
+          <p className="mb-1.5 text-[13px] font-semibold text-foreground">Early Access Pricing</p>
+          <p className="text-[13px] leading-relaxed text-muted-foreground">
+            We're offering discounted access for early users as we build the most comprehensive
+            intelligence layer on the French AI ecosystem. Pricing will increase as the database
+            and feature set expand.
+          </p>
+        </div>
+
+        {/* Trust signals */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
+          {[
+            "Cancel anytime",
+            "No long-term commitment",
+            "Secure payments via Stripe",
+          ].map((item) => (
+            <span key={item} className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <svg className="h-3.5 w-3.5 text-primary" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="2.5 8 6.5 12 13.5 4" />
+              </svg>
+              {item}
+            </span>
+          ))}
+        </div>
 
         {/* FAQ */}
         <div className="mx-auto mt-20 max-w-[640px]">
@@ -114,7 +142,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Is there a free trial?",
-    a: "There's no time-limited trial, but the free tier gives you access to 10 startup profiles with public data so you can evaluate the product before upgrading.",
+    a: "There's no time-limited trial, but the free tier gives you access to a preview of startup profiles so you can evaluate the product before upgrading.",
   },
   {
     q: "How is AI Radar different from Crunchbase or Dealroom?",
