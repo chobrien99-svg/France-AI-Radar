@@ -86,13 +86,13 @@ export default async function DatabasePage({
   const signalTypes = parseList(params.signalType)
   const sort = (Array.isArray(params.sort) ? params.sort[0] : params.sort) ?? "newest"
 
-  // Build query
+  // Build query — scoped to AI Radar product via product_organizations inner join
   let query = supabase
     .from("organizations")
     .select(
-      "*, organization_tags(id, tag, strength), organization_people(people(id, full_name, slug, big_tech_employer, has_phd, is_repeat_founder, has_big_tech_background))"
+      "*, organization_tags(id, tag, strength), organization_people(people(id, full_name, slug, big_tech_employer, has_phd, is_repeat_founder, has_big_tech_background)), product_organizations!inner(product_catalog!inner(slug))"
     )
-    .eq("organization_type", "startup")
+    .eq("product_organizations.product_catalog.slug", "ai-radar")
     .eq("status", "active")
 
   if (q) {

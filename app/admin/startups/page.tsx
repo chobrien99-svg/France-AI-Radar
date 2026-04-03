@@ -9,8 +9,8 @@ export default async function AdminStartupsPage() {
 
   const { data: startups } = await supabase
     .from("organizations")
-    .select("id, name, slug, status, signal_count, created_at")
-    .eq("organization_type", "startup")
+    .select("id, name, slug, status, signal_count, created_at, product_organizations!inner(product_catalog!inner(slug))")
+    .eq("product_organizations.product_catalog.slug", "ai-radar")
     .order("created_at", { ascending: false })
 
   return (

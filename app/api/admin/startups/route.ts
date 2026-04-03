@@ -69,5 +69,18 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Assign to AI Radar product
+  const { data: product } = await supabase
+    .from("product_catalog")
+    .select("id")
+    .eq("slug", "ai-radar")
+    .single()
+
+  if (product) {
+    await supabase
+      .from("product_organizations")
+      .insert({ product_id: product.id, organization_id: startup.id })
+  }
+
   return NextResponse.json(startup, { status: 201 })
 }
