@@ -34,9 +34,9 @@ export default async function EditStartupPage({
   }))
 
   const tags: TagRow[] = (startup.organization_tags ?? []).map(
-    (t: { tag: string; strength: string }) => ({
-      label: t.tag,
-      strength: t.strength as TagRow["strength"],
+    (t: { tag: string; strength: number }) => ({
+      tag: t.tag,
+      strength: t.strength,
     })
   )
 
