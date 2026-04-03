@@ -10,7 +10,7 @@ export function WatchlistRemoveButton({ startupId }: { startupId: string }) {
 
   async function remove() {
     setLoading(true)
-    await fetch(`/api/watchlist?startup_id=${startupId}`, { method: "DELETE" })
+    await fetch(`/api/watchlist?organization_id=${startupId}`, { method: "DELETE" })
     router.refresh()
     setLoading(false)
   }

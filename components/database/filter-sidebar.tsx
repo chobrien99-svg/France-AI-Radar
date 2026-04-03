@@ -5,11 +5,7 @@ import { useCallback } from "react"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import {
-  SECTOR_LABELS,
-  STAGE_LABELS,
   SIGNAL_TYPE_LABELS,
-  FOUNDER_SIGNAL_LABELS,
-  SIGNAL_SOURCE_LABELS,
 } from "@/lib/subscription"
 
 const TIME_OPTIONS = [
@@ -39,12 +35,8 @@ export function FilterSidebar() {
 
   const selected = {
     time: parseParam(searchParams.get("time")),
-    sector: parseParam(searchParams.get("sector")),
-    founderSignal: parseParam(searchParams.get("founderSignal")),
     signalType: parseParam(searchParams.get("signalType")),
-    stage: parseParam(searchParams.get("stage")),
     location: parseParam(searchParams.get("location")),
-    signalSource: parseParam(searchParams.get("signalSource")),
   }
 
   const update = useCallback(
@@ -91,44 +83,6 @@ export function FilterSidebar() {
 
         <Separator />
 
-        {/* Signal Source */}
-        <FilterGroup
-          label="Signal Source"
-          options={Object.entries(SIGNAL_SOURCE_LABELS).map(([value, label]) => ({
-            value,
-            label,
-          }))}
-          selected={selected.signalSource}
-          onToggle={(v) => toggle("signalSource", selected.signalSource, v)}
-        />
-
-        <Separator />
-
-        {/* Sector */}
-        <FilterGroup
-          label="Sector"
-          options={Object.entries(SECTOR_LABELS).map(([value, label]) => ({
-            value,
-            label,
-          }))}
-          selected={selected.sector}
-          onToggle={(v) => toggle("sector", selected.sector, v)}
-        />
-
-        <Separator />
-
-        {/* Founder Signal */}
-        <FilterGroup
-          label="Founder Signal"
-          options={Object.entries(FOUNDER_SIGNAL_LABELS).map(
-            ([value, label]) => ({ value, label })
-          )}
-          selected={selected.founderSignal}
-          onToggle={(v) => toggle("founderSignal", selected.founderSignal, v)}
-        />
-
-        <Separator />
-
         {/* Signal Type */}
         <FilterGroup
           label="Signal Type"
@@ -137,19 +91,6 @@ export function FilterSidebar() {
           )}
           selected={selected.signalType}
           onToggle={(v) => toggle("signalType", selected.signalType, v)}
-        />
-
-        <Separator />
-
-        {/* Stage */}
-        <FilterGroup
-          label="Stage"
-          options={Object.entries(STAGE_LABELS).map(([value, label]) => ({
-            value,
-            label,
-          }))}
-          selected={selected.stage}
-          onToggle={(v) => toggle("stage", selected.stage, v)}
         />
 
         <Separator />

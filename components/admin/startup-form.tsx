@@ -7,12 +7,21 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { tagStrengthLabel } from "@/lib/types"
 
 // ------------------------------------------------------------------
 // Types
 // ------------------------------------------------------------------
 
-export type TagRow = { label: string; strength: "positive" | "warning" | "risk" | "neutral" }
+/** strength is now an integer: 5=strong, 3=moderate, 2=neutral, 1=weak */
+export type TagRow = { tag: string; strength: number }
+
+const STRENGTH_OPTIONS: { value: number; label: string }[] = [
+  { value: 5, label: "Strong" },
+  { value: 3, label: "Moderate" },
+  { value: 2, label: "Neutral" },
+  { value: 1, label: "Weak" },
+]
 
 export type StartupFormValues = {
   // Core
@@ -20,33 +29,23 @@ export type StartupFormValues = {
   slug: string
   city: string
   country: string
-  sector: string
-  stage: string
   founded_date: string
   first_seen_at: string
-  incorporation_date: string
-  signal_source: string
-  is_active: boolean
+  status: string
   // Contact
-  website_url: string
+  website: string
   linkedin_url: string
-  contact_email: string
-  contact_phone: string
+  email: string
+  phone: string
   // Narrative
   description: string
-  investor_brief: string
-  analyst_note: string
   // Product
   product_description: string
   target_market: string
   competitive_landscape: string
   technology_layer: string
-  product_modality: string
   technical_thesis: string
-  technology_stage: string
   // Strategy
-  startup_origin_type: string
-  company_origin: string
   current_strategy: string
   business_model_hypothesis: string
   // Fundraising
@@ -55,28 +54,22 @@ export type StartupFormValues = {
   est_next_raise: string
   fundraising_status: string
   fundraising_signal_summary: string
-  funding_notes: string
   // Legal (admin-only)
   entity_complexity: string
-  siren: string
-  siret: string
 }
 
 const DEFAULTS: StartupFormValues = {
   name: "", slug: "", city: "", country: "France",
-  sector: "ai_agents", stage: "unknown",
-  founded_date: "", first_seen_at: "", incorporation_date: "",
-  signal_source: "", is_active: true,
-  website_url: "", linkedin_url: "", contact_email: "", contact_phone: "",
-  description: "", investor_brief: "", analyst_note: "",
+  founded_date: "", first_seen_at: "",
+  status: "active",
+  website: "", linkedin_url: "", email: "", phone: "",
+  description: "",
   product_description: "", target_market: "", competitive_landscape: "",
-  technology_layer: "", product_modality: "software", technical_thesis: "", technology_stage: "",
-  startup_origin_type: "new_startup", company_origin: "", current_strategy: "", business_model_hypothesis: "",
+  technology_layer: "", technical_thesis: "",
+  current_strategy: "", business_model_hypothesis: "",
   total_raised_eur: "", last_round: "", est_next_raise: "",
-  fundraising_status: "unknown", fundraising_signal_summary: "", funding_notes: "",
+  fundraising_status: "unknown", fundraising_signal_summary: "",
   entity_complexity: "",
-  siren: "",
-  siret: "",
 }
 
 function generateSlug(name: string): string {
@@ -107,7 +100,7 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
   const [form, setForm] = useState<StartupFormValues>({ ...DEFAULTS, ...initialValues })
   const [tags, setTags] = useState<TagRow[]>(initialTags)
   const [newTagLabel, setNewTagLabel] = useState("")
-  const [newTagStrength, setNewTagStrength] = useState<TagRow["strength"]>("neutral")
+  const [newTagStrength, setNewTagStrength] = useState<number>(2)
   const [slugLocked, setSlugLocked] = useState(!!startupId)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -128,9 +121,9 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
 
   function addTag() {
     if (!newTagLabel.trim()) return
-    setTags((prev) => [...prev, { label: newTagLabel.trim(), strength: newTagStrength }])
+    setTags((prev) => [...prev, { tag: newTagLabel.trim(), strength: newTagStrength }])
     setNewTagLabel("")
-    setNewTagStrength("neutral")
+    setNewTagStrength(2)
   }
 
   function removeTag(i: number) {
@@ -151,16 +144,11 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       total_raised_eur: form.total_raised_eur ? Number(form.total_raised_eur) : null,
       founded_date: form.founded_date || null,
       first_seen_at: form.first_seen_at || null,
-      incorporation_date: form.incorporation_date || null,
-      signal_source: form.signal_source || null,
       technology_layer: form.technology_layer || null,
-      technology_stage: form.technology_stage || null,
-      siren: form.siren || null,
-      siret: form.siret || null,
       tags,
     }
 
-    const url = startupId ? `/api/admin/startups/${startupId}` : "/api/admin/startups"
+    const url = startupId ? `/api/admin/organizations/${startupId}` : "/api/admin/organizations"
     const method = startupId ? "PATCH" : "POST"
 
     const res = await fetch(url, {
@@ -177,7 +165,7 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
     }
 
     const data = await res.json()
-    router.push(`/admin/startups/${data.id}/edit`)
+    router.push(`/admin/organizations/${data.id}/edit`)
     router.refresh()
   }
 
@@ -264,78 +252,36 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
           <Input className={inputClass} value={form.country} onChange={(e) => set("country", e.target.value)} />
         </Field>
         <Field label="Status">
-          <Select value={form.is_active ? "true" : "false"} onChange={(e) => set("is_active", e.target.value === "true")}>
-            <option value="true">Active (published)</option>
-            <option value="false">Hidden (draft)</option>
+          <Select value={form.status} onChange={(e) => set("status", e.target.value)}>
+            <option value="active">Active (published)</option>
+            <option value="inactive">Hidden (draft)</option>
           </Select>
         </Field>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Sector" required>
-          <Select className={inputClass} value={form.sector} onChange={(e) => set("sector", e.target.value)}>
-            <option value="ai_agents">AI Agents</option>
-            <option value="robotics">Robotics</option>
-            <option value="bioai">BioAI</option>
-            <option value="deeptech">Deep Tech</option>
-            <option value="cybersecurity_ai">Cybersecurity AI</option>
-            <option value="fintech_ai">Fintech AI</option>
-            <option value="healthtech_ai">Healthtech AI</option>
-            <option value="edtech_ai">EdTech AI</option>
-            <option value="climate_ai">Climate AI</option>
-            <option value="legaltech_ai">LegalTech AI</option>
-            <option value="logistics_ai">Logistics AI</option>
-            <option value="manufacturing_ai">Manufacturing AI</option>
-            <option value="other">Other</option>
-          </Select>
-        </Field>
-        <Field label="Stage">
-          <Select className={inputClass} value={form.stage} onChange={(e) => set("stage", e.target.value)}>
-            <option value="pre_seed">Pre-Seed</option>
-            <option value="seed">Seed</option>
-            <option value="series_a">Series A</option>
-            <option value="series_b_plus">Series B+</option>
-            <option value="unknown">Unknown</option>
-          </Select>
-        </Field>
-        <Field label="Signal Source">
-          <Select className={inputClass} value={form.signal_source} onChange={(e) => set("signal_source", e.target.value)}>
-            <option value="">— None —</option>
-            <option value="stealth">Stealth</option>
-            <option value="incorporated">Incorporated</option>
-            <option value="accelerator">Accelerator</option>
-            <option value="incubator">Incubator</option>
-            <option value="france_2030_laureat">France 2030 Lauréat</option>
-          </Select>
-        </Field>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Founded date">
           <Input type="date" className={inputClass} value={form.founded_date} onChange={(e) => set("founded_date", e.target.value)} />
         </Field>
         <Field label="First seen at">
           <Input type="date" className={inputClass} value={form.first_seen_at} onChange={(e) => set("first_seen_at", e.target.value)} />
         </Field>
-        <Field label="Incorporation date">
-          <Input type="date" className={inputClass} value={form.incorporation_date} onChange={(e) => set("incorporation_date", e.target.value)} />
-        </Field>
       </div>
 
       {/* ── Contact ── */}
       <SectionTitle>Contact & Web Presence</SectionTitle>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Website URL">
-          <Input className={inputClass} value={form.website_url} onChange={(e) => set("website_url", e.target.value)} placeholder="https://example.com" />
+        <Field label="Website">
+          <Input className={inputClass} value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://example.com" />
         </Field>
         <Field label="LinkedIn URL">
           <Input className={inputClass} value={form.linkedin_url} onChange={(e) => set("linkedin_url", e.target.value)} placeholder="https://linkedin.com/company/..." />
         </Field>
-        <Field label="Contact email">
-          <Input type="email" className={inputClass} value={form.contact_email} onChange={(e) => set("contact_email", e.target.value)} placeholder="hello@example.com" />
+        <Field label="Email">
+          <Input type="email" className={inputClass} value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="hello@example.com" />
         </Field>
-        <Field label="Contact phone">
-          <Input type="tel" className={inputClass} value={form.contact_phone} onChange={(e) => set("contact_phone", e.target.value)} placeholder="+33 1 23 45 67 89" />
+        <Field label="Phone">
+          <Input type="tel" className={inputClass} value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+33 1 23 45 67 89" />
         </Field>
       </div>
 
@@ -343,12 +289,6 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       <SectionTitle>Narrative</SectionTitle>
       <Field label="Description (public)">
         <Textarea className={textareaClass} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Short public description shown on the card and profile…" />
-      </Field>
-      <Field label="Investor brief (Professional+)">
-        <Textarea className="min-h-[160px] text-[13px]" value={form.investor_brief} onChange={(e) => set("investor_brief", e.target.value)} placeholder="Detailed analysis for investors…" />
-      </Field>
-      <Field label="Analyst note">
-        <Textarea className={textareaClass} value={form.analyst_note} onChange={(e) => set("analyst_note", e.target.value)} placeholder="Why this matters / key thesis…" />
       </Field>
 
       {/* ── Product ── */}
@@ -364,56 +304,24 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
           <Textarea className={textareaClass} value={form.competitive_landscape} onChange={(e) => set("competitive_landscape", e.target.value)} />
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Technology layer">
-          <Select className={inputClass} value={form.technology_layer} onChange={(e) => set("technology_layer", e.target.value)}>
-            <option value="">— None —</option>
-            <option value="perception">Perception</option>
-            <option value="robotics">Robotics</option>
-            <option value="agent_platform">Agent Platform</option>
-            <option value="orchestration">Orchestration</option>
-            <option value="vertical_ai">Vertical AI</option>
-            <option value="infrastructure">Infrastructure</option>
-            <option value="other">Other</option>
-          </Select>
-        </Field>
-        <Field label="Product modality">
-          <Select className={inputClass} value={form.product_modality} onChange={(e) => set("product_modality", e.target.value)}>
-            <option value="software">Software</option>
-            <option value="hardware">Hardware</option>
-            <option value="hybrid">Hybrid</option>
-          </Select>
-        </Field>
-        <Field label="Technology stage">
-          <Select className={inputClass} value={form.technology_stage} onChange={(e) => set("technology_stage", e.target.value)}>
-            <option value="">— None —</option>
-            <option value="concept">Concept</option>
-            <option value="prototype">Prototype</option>
-            <option value="pilot">Pilot</option>
-            <option value="production">Production</option>
-          </Select>
-        </Field>
-      </div>
+      <Field label="Technology layer">
+        <Select className={inputClass} value={form.technology_layer} onChange={(e) => set("technology_layer", e.target.value)}>
+          <option value="">— None —</option>
+          <option value="perception">Perception</option>
+          <option value="robotics">Robotics</option>
+          <option value="agent_platform">Agent Platform</option>
+          <option value="orchestration">Orchestration</option>
+          <option value="vertical_ai">Vertical AI</option>
+          <option value="infrastructure">Infrastructure</option>
+          <option value="other">Other</option>
+        </Select>
+      </Field>
       <Field label="Technical thesis">
         <Textarea className={textareaClass} value={form.technical_thesis} onChange={(e) => set("technical_thesis", e.target.value)} />
       </Field>
 
       {/* ── Strategy ── */}
-      <SectionTitle>Strategy & Origin</SectionTitle>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Origin type">
-          <Select className={inputClass} value={form.startup_origin_type} onChange={(e) => set("startup_origin_type", e.target.value)}>
-            <option value="new_startup">New Startup</option>
-            <option value="founder_reboot">Founder Reboot</option>
-            <option value="research_spinout">Research Spinout</option>
-            <option value="consultancy_evolution">Consultancy Evolution</option>
-            <option value="venture_studio_launch">Venture Studio Launch</option>
-          </Select>
-        </Field>
-        <Field label="Company origin">
-          <Input className={inputClass} value={form.company_origin} onChange={(e) => set("company_origin", e.target.value)} placeholder="e.g. Spun out of INRIA in 2023…" />
-        </Field>
-      </div>
+      <SectionTitle>Strategy</SectionTitle>
       <Field label="Current strategy">
         <Textarea className={textareaClass} value={form.current_strategy} onChange={(e) => set("current_strategy", e.target.value)} />
       </Field>
@@ -442,31 +350,28 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
           <option value="not_currently_raising">Not currently raising</option>
         </Select>
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Fundraising signal summary">
-          <Textarea className={textareaClass} value={form.fundraising_signal_summary} onChange={(e) => set("fundraising_signal_summary", e.target.value)} />
-        </Field>
-        <Field label="Funding notes">
-          <Textarea className={textareaClass} value={form.funding_notes} onChange={(e) => set("funding_notes", e.target.value)} />
-        </Field>
-      </div>
+      <Field label="Fundraising signal summary">
+        <Textarea className={textareaClass} value={form.fundraising_signal_summary} onChange={(e) => set("fundraising_signal_summary", e.target.value)} />
+      </Field>
 
       {/* ── Tags ── */}
       <SectionTitle>Signal Tags</SectionTitle>
       {tags.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
-          {tags.map((tag, i) => (
+          {tags.map((tag, i) => {
+            const displayStrength = tagStrengthLabel(tag.strength)
+            return (
             <div
               key={i}
               className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 text-[12px]"
             >
               <span className={`h-2 w-2 rounded-full ${
-                tag.strength === "positive" ? "bg-emerald-500"
-                : tag.strength === "warning" ? "bg-amber-500"
-                : tag.strength === "risk" ? "bg-rose-500"
+                displayStrength === "positive" ? "bg-emerald-500"
+                : displayStrength === "warning" ? "bg-amber-500"
+                : displayStrength === "risk" ? "bg-rose-500"
                 : "bg-zinc-400"
               }`} />
-              <span className="text-foreground">{tag.label}</span>
+              <span className="text-foreground">{tag.tag}</span>
               <button
                 type="button"
                 onClick={() => removeTag(i)}
@@ -476,7 +381,7 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
                 ×
               </button>
             </div>
-          ))}
+          )})}
         </div>
       )}
       <div className="flex gap-2">
@@ -484,18 +389,17 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
           className="flex-1 text-[13px]"
           value={newTagLabel}
           onChange={(e) => setNewTagLabel(e.target.value)}
-          placeholder="Tag label, e.g. Series A candidate"
+          placeholder="Tag name, e.g. Series A candidate"
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag() } }}
         />
         <Select
           className="w-36"
-          value={newTagStrength}
-          onChange={(e) => setNewTagStrength(e.target.value as TagRow["strength"])}
+          value={String(newTagStrength)}
+          onChange={(e) => setNewTagStrength(Number(e.target.value))}
         >
-          <option value="positive">Positive</option>
-          <option value="warning">Warning</option>
-          <option value="risk">Risk</option>
-          <option value="neutral">Neutral</option>
+          {STRENGTH_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </Select>
         <Button type="button" variant="outline" onClick={addTag}>
           Add Tag
@@ -504,14 +408,6 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
 
       {/* ── Legal ── */}
       <SectionTitle>Legal (Admin only — never shown to users)</SectionTitle>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="SIREN (9 digits)">
-          <Input className={inputClass} value={form.siren} onChange={(e) => set("siren", e.target.value)} placeholder="123456789" maxLength={9} />
-        </Field>
-        <Field label="SIRET (14 digits)">
-          <Input className={inputClass} value={form.siret} onChange={(e) => set("siret", e.target.value)} placeholder="12345678900012" maxLength={14} />
-        </Field>
-      </div>
       <Field label="Entity complexity">
         <Input className={inputClass} value={form.entity_complexity} onChange={(e) => set("entity_complexity", e.target.value)} placeholder="e.g. Single SAS, holding in Luxembourg…" />
       </Field>
@@ -525,7 +421,7 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
             Cancel
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : startupId ? "Save Changes" : "Create Startup"}
+            {saving ? "Saving…" : startupId ? "Save Changes" : "Create Organization"}
           </Button>
         </div>
       </div>

@@ -8,66 +8,66 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 
-type LinkedFounder = {
+type LinkedPerson = {
   id: string
-  name: string
+  full_name: string
   slug: string | null
   role: string | null
 }
 
-type AllFounder = {
+type AllPerson = {
   id: string
-  name: string
+  full_name: string
   slug: string | null
   role: string | null
 }
 
 interface Props {
-  startupId: string
-  linkedFounders: LinkedFounder[]
-  allFounders: AllFounder[]
+  organizationId: string
+  linkedPeople: LinkedPerson[]
+  allPeople: AllPerson[]
 }
 
-export function LinkedFounders({ startupId, linkedFounders: initial, allFounders }: Props) {
+export function LinkedFounders({ organizationId, linkedPeople: initial, allPeople }: Props) {
   const router = useRouter()
-  const [linked, setLinked] = useState<LinkedFounder[]>(initial)
+  const [linked, setLinked] = useState<LinkedPerson[]>(initial)
   const [selectedId, setSelectedId] = useState("")
   const [linkRole, setLinkRole] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const unlinkedFounders = allFounders.filter((f) => !linked.some((l) => l.id === f.id))
+  const unlinkedPeople = allPeople.filter((f) => !linked.some((l) => l.id === f.id))
 
   async function addLink() {
     if (!selectedId) return
     setLoading(true)
     setError(null)
 
-    const res = await fetch(`/api/admin/startups/${startupId}/founders`, {
+    const res = await fetch(`/api/admin/organizations/${organizationId}/people`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ founder_id: selectedId, role: linkRole || null }),
+      body: JSON.stringify({ person_id: selectedId, role: linkRole || null }),
     })
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
-      setError(body.error ?? "Failed to link founder.")
+      setError(body.error ?? "Failed to link person.")
       setLoading(false)
       return
     }
 
-    const founder = allFounders.find((f) => f.id === selectedId)!
-    setLinked((prev) => [...prev, { id: founder.id, name: founder.name, slug: founder.slug, role: linkRole || null }])
+    const person = allPeople.find((f) => f.id === selectedId)!
+    setLinked((prev) => [...prev, { id: person.id, full_name: person.full_name, slug: person.slug, role: linkRole || null }])
     setSelectedId("")
     setLinkRole("")
     setLoading(false)
     router.refresh()
   }
 
-  async function removeLink(founderId: string) {
+  async function removeLink(personId: string) {
     setLoading(true)
-    await fetch(`/api/admin/startups/${startupId}/founders?founder_id=${founderId}`, { method: "DELETE" })
-    setLinked((prev) => prev.filter((f) => f.id !== founderId))
+    await fetch(`/api/admin/organizations/${organizationId}/people?person_id=${personId}`, { method: "DELETE" })
+    setLinked((prev) => prev.filter((f) => f.id !== personId))
     setLoading(false)
     router.refresh()
   }
@@ -77,10 +77,10 @@ export function LinkedFounders({ startupId, linkedFounders: initial, allFounders
       <Separator className="mb-6" />
       <div className="mb-4 flex items-center justify-between">
         <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          Linked Founders
+          Linked People
         </p>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/founders/new">+ Create new founder</Link>
+          <Link href="/admin/people/new">+ Create new person</Link>
         </Button>
       </div>
 
@@ -90,13 +90,13 @@ export function LinkedFounders({ startupId, linkedFounders: initial, allFounders
           {linked.map((f) => (
             <div key={f.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
               <div>
-                <p className="text-[13px] font-semibold text-foreground">{f.name}</p>
+                <p className="text-[13px] font-semibold text-foreground">{f.full_name}</p>
                 {f.role && <p className="text-[11px] text-muted-foreground">{f.role}</p>}
               </div>
               <div className="flex items-center gap-2">
                 {f.slug && (
                   <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/admin/founders/${f.id}/edit`}>Edit founder</Link>
+                    <Link href={`/admin/people/${f.id}/edit`}>Edit person</Link>
                   </Button>
                 )}
                 <Button
@@ -113,27 +113,27 @@ export function LinkedFounders({ startupId, linkedFounders: initial, allFounders
           ))}
         </div>
       ) : (
-        <p className="mb-4 text-[13px] text-muted-foreground">No founders linked yet.</p>
+        <p className="mb-4 text-[13px] text-muted-foreground">No people linked yet.</p>
       )}
 
       {/* Link existing founder */}
-      {unlinkedFounders.length > 0 && (
+      {unlinkedPeople.length > 0 && (
         <div className="flex gap-2">
           <Select
             className="flex-1 text-[13px]"
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
           >
-            <option value="">— Select a founder to link —</option>
-            {unlinkedFounders.map((f) => (
-              <option key={f.id} value={f.id}>{f.name}</option>
+            <option value="">— Select a person to link —</option>
+            {unlinkedPeople.map((f) => (
+              <option key={f.id} value={f.id}>{f.full_name}</option>
             ))}
           </Select>
           <Input
             className="w-48 text-[13px]"
             value={linkRole}
             onChange={(e) => setLinkRole(e.target.value)}
-            placeholder="Role at this startup"
+            placeholder="Role at this organization"
           />
           <Button type="button" variant="outline" onClick={addLink} disabled={!selectedId || loading}>
             Link

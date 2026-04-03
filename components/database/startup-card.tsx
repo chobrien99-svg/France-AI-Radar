@@ -1,12 +1,10 @@
 import Link from "next/link"
-import { type Venture } from "@/lib/types"
-import { sectorLabel, stageLabel, FOUNDER_SIGNAL_LABELS, SIGNAL_SOURCE_LABELS } from "@/lib/subscription"
+import { type Venture, tagStrengthLabel } from "@/lib/types"
 
 type FounderSummary = {
   id: string
-  name: string
+  full_name: string
   slug: string | null
-  founder_signals: string[] | null
   big_tech_employer: string | null
   has_phd: boolean
   is_repeat_founder: boolean
@@ -27,17 +25,20 @@ const DOT_CLASS: Record<string, string> = {
   neutral: "bg-zinc-400",
 }
 
-function signalDotStrength(tags: Venture["startup_tags"]): string {
-  if (tags.some((t) => t.strength === "positive")) return "positive"
-  if (tags.some((t) => t.strength === "warning")) return "warning"
-  if (tags.some((t) => t.strength === "risk")) return "risk"
+function signalDotStrength(tags: Venture["organization_tags"]): string {
+  if (tags.some((t) => t.strength >= 5)) return "positive"
+  if (tags.some((t) => t.strength >= 3)) return "neutral"
+  if (tags.some((t) => t.strength <= 1)) return "risk"
   return "neutral"
 }
 
 function takeaway(venture: Venture): string | null {
-  if (!venture.investor_brief) return null
+  const profile = Array.isArray(venture.organization_profiles)
+    ? venture.organization_profiles[0]
+    : venture.organization_profiles
+  if (!profile?.investor_brief) return null
   // First sentence, max 120 chars
-  const first = venture.investor_brief.split(/\.\s+/)[0]
+  const first = profile.investor_brief.split(/\.\s+/)[0]
   if (first.length <= 120) return first + "."
   return first.slice(0, 117) + "…"
 }
@@ -74,7 +75,7 @@ export function StartupCard({
   founders?: FounderSummary[]
   showContact?: boolean
 }) {
-  const dotStrength = signalDotStrength(venture.startup_tags)
+  const dotStrength = signalDotStrength(venture.organization_tags)
   const hint = takeaway(venture)
 
   return (
@@ -87,34 +88,27 @@ export function StartupCard({
               {venture.name}
             </h3>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
-              {[venture.city, sectorLabel(venture.sector), foundedLabel(venture.founded_date)]
+              {[venture.city, foundedLabel(venture.founded_date)]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <span className="badge-signal badge-signal-neutral text-[10px]">
-              {stageLabel(venture.stage)}
-            </span>
-            {venture.signal_source && (
-              <span className="badge-signal badge-signal-neutral text-[10px] opacity-80">
-                {SIGNAL_SOURCE_LABELS[venture.signal_source] ?? venture.signal_source}
-              </span>
-            )}
-          </div>
         </div>
 
         {/* Tags */}
-        {venture.startup_tags.length > 0 && (
+        {venture.organization_tags.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-1.5">
-            {venture.startup_tags.slice(0, 3).map((tag) => (
-              <span
-                key={tag.id}
-                className={BADGE_CLASS[tag.strength] ?? BADGE_CLASS.neutral}
-              >
-                {tag.label}
-              </span>
-            ))}
+            {venture.organization_tags.slice(0, 3).map((tag) => {
+              const sl = tagStrengthLabel(tag.strength)
+              return (
+                <span
+                  key={tag.id}
+                  className={BADGE_CLASS[sl] ?? BADGE_CLASS.neutral}
+                >
+                  {tag.tag}
+                </span>
+              )
+            })}
           </div>
         )}
 
@@ -146,7 +140,7 @@ export function StartupCard({
 
                 return (
                   <span key={f.id} className="text-[12px] text-foreground">
-                    {f.name}
+                    {f.full_name}
                     {badges.length > 0 && (
                       <span className="ml-1 text-muted-foreground">
                         ({badges.join(", ")})
@@ -160,24 +154,24 @@ export function StartupCard({
         )}
 
         {/* Contact row — Professional+ only */}
-        {showContact && (venture.website_url || venture.contact_email || venture.contact_phone) && (
+        {showContact && (venture.website || venture.email || venture.phone) && (
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3 text-[12px] text-muted-foreground">
-            {venture.website_url && (
+            {venture.website && (
               <span className="flex items-center gap-1">
                 <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5C8 1.5 5.5 4.5 5.5 8s2.5 6.5 2.5 6.5M8 1.5C8 1.5 10.5 4.5 10.5 8S8 14.5 8 14.5M1.5 8h13"/></svg>
-                <span className="truncate max-w-[160px]">{venture.website_url.replace(/^https?:\/\//, "")}</span>
+                <span className="truncate max-w-[160px]">{venture.website.replace(/^https?:\/\//, "")}</span>
               </span>
             )}
-            {venture.contact_email && (
+            {venture.email && (
               <span className="flex items-center gap-1">
                 <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="1.5" y="3.5" width="13" height="9" rx="1"/><path d="m1.5 4 6.5 5 6.5-5"/></svg>
-                <span className="truncate max-w-[200px]">{venture.contact_email}</span>
+                <span className="truncate max-w-[200px]">{venture.email}</span>
               </span>
             )}
-            {venture.contact_phone && (
+            {venture.phone && (
               <span className="flex items-center gap-1">
                 <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M5.5 2h-.25A2.25 2.25 0 0 0 3 4.25v7.5A2.25 2.25 0 0 0 5.25 14h5.5A2.25 2.25 0 0 0 13 11.75v-7.5A2.25 2.25 0 0 0 10.75 2H10.5"/></svg>
-                <span>{venture.contact_phone}</span>
+                <span>{venture.phone}</span>
               </span>
             )}
           </div>

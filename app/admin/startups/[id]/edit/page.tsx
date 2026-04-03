@@ -17,23 +17,25 @@ export default async function EditStartupPage({
   const supabase = await createServiceClient()
 
   const [{ data: startup }, { data: linkedRaw }, { data: allFoundersRaw }] = await Promise.all([
-    supabase.from("startups").select("*, startup_tags(label, strength)").eq("id", id).single(),
-    supabase.from("startup_founders").select("role, founders(id, name, slug)").eq("startup_id", id),
-    supabase.from("founders").select("id, name, slug, role").order("name"),
+    supabase.from("organizations").select("*, organization_tags(tag, strength)").eq("id", id).single(),
+    supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
+    supabase.from("people").select("id, full_name, slug, role").order("full_name"),
   ])
 
   if (!startup) notFound()
 
-  const linkedFounders = (linkedRaw ?? []).map((row: { role: string | null; founders: unknown }) => {
-    const f = row.founders as { id: string; name: string; slug: string | null }
-    return { id: f.id, name: f.name, slug: f.slug, role: row.role }
+  const linkedFounders = (linkedRaw ?? []).map((row: { role: string | null; people: unknown }) => {
+    const f = row.people as { id: string; full_name: string; slug: string | null }
+    return { id: f.id, name: f.full_name, slug: f.slug, role: row.role }
   })
 
-  const allFounders = (allFoundersRaw ?? []) as { id: string; name: string; slug: string | null; role: string | null }[]
+  const allFounders = (allFoundersRaw ?? []).map((f: { id: string; full_name: string; slug: string | null; role: string | null }) => ({
+    id: f.id, name: f.full_name, slug: f.slug, role: f.role,
+  }))
 
-  const tags: TagRow[] = (startup.startup_tags ?? []).map(
-    (t: { label: string; strength: string }) => ({
-      label: t.label,
+  const tags: TagRow[] = (startup.organization_tags ?? []).map(
+    (t: { tag: string; strength: string }) => ({
+      label: t.tag,
       strength: t.strength as TagRow["strength"],
     })
   )
@@ -49,7 +51,7 @@ export default async function EditStartupPage({
     first_seen_at: startup.first_seen_at ?? "",
     incorporation_date: startup.incorporation_date ?? "",
     signal_source: startup.signal_source ?? "",
-    is_active: startup.is_active ?? true,
+    is_active: startup.status === "active",
     website_url: startup.website_url ?? "",
     linkedin_url: startup.linkedin_url ?? "",
     contact_email: startup.contact_email ?? "",
@@ -88,8 +90,8 @@ export default async function EditStartupPage({
           </p>
           <h1 className="mt-0.5 text-[24px] font-bold text-foreground">{startup.name}</h1>
           <div className="mt-2 flex items-center gap-3">
-            <span className={`badge-signal ${startup.is_active ? "badge-signal-positive" : "badge-signal-neutral"}`}>
-              {startup.is_active ? "Active" : "Hidden"}
+            <span className={`badge-signal ${startup.status === "active" ? "badge-signal-positive" : "badge-signal-neutral"}`}>
+              {startup.status === "active" ? "Active" : "Hidden"}
             </span>
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/startup/${startup.slug}`} target="_blank">

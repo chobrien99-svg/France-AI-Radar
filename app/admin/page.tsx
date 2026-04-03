@@ -11,8 +11,8 @@ export default async function AdminDashboard() {
     { count: totalStartups },
     { count: activeStartups },
   ] = await Promise.all([
-    supabase.from("startups").select("*", { count: "exact", head: true }),
-    supabase.from("startups").select("*", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("organizations").select("*", { count: "exact", head: true }).eq("organization_type", "startup"),
+    supabase.from("organizations").select("*", { count: "exact", head: true }).eq("organization_type", "startup").eq("status", "active"),
   ])
 
   return (

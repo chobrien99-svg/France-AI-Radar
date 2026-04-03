@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 
 export type FounderFormValues = {
-  name: string
+  full_name: string
   slug: string
   role: string
   bio: string
@@ -18,27 +18,16 @@ export type FounderFormValues = {
   has_phd: boolean
   is_repeat_founder: boolean
   has_big_tech_background: boolean
-  // Comma-separated in the UI, stored as arrays
-  previous_companies: string
+  // Number of previous exits
   previous_exits: string
-  // Multi-select checkboxes
-  founder_signals: string[]
 }
 
 const DEFAULTS: FounderFormValues = {
-  name: "", slug: "", role: "", bio: "", linkedin_url: "",
+  full_name: "", slug: "", role: "", bio: "", linkedin_url: "",
   big_tech_employer: "", academic_lab: "",
   has_phd: false, is_repeat_founder: false, has_big_tech_background: false,
-  previous_companies: "", previous_exits: "",
-  founder_signals: [],
+  previous_exits: "",
 }
-
-const SIGNAL_OPTIONS = [
-  { value: "big_tech_alumni", label: "Big Tech Alumni" },
-  { value: "repeat_founder", label: "Repeat Founder" },
-  { value: "academic_spinout", label: "Academic Spinout" },
-  { value: "corporate_reboot", label: "Corporate Reboot" },
-]
 
 function generateSlug(name: string): string {
   return name
@@ -47,10 +36,6 @@ function generateSlug(name: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-}
-
-function parseArray(val: string): string[] {
-  return val.split(",").map((s) => s.trim()).filter(Boolean)
 }
 
 interface Props {
@@ -67,9 +52,9 @@ export function FounderForm({ initialValues, founderId }: Props) {
 
   useEffect(() => {
     if (!slugLocked) {
-      setForm((prev) => ({ ...prev, slug: generateSlug(prev.name) }))
+      setForm((prev) => ({ ...prev, slug: generateSlug(prev.full_name) }))
     }
-  }, [form.name, slugLocked])
+  }, [form.full_name, slugLocked])
 
   const set = useCallback(
     <K extends keyof FounderFormValues>(key: K, value: FounderFormValues[K]) => {
@@ -78,28 +63,18 @@ export function FounderForm({ initialValues, founderId }: Props) {
     []
   )
 
-  function toggleSignal(value: string) {
-    setForm((prev) => ({
-      ...prev,
-      founder_signals: prev.founder_signals.includes(value)
-        ? prev.founder_signals.filter((s) => s !== value)
-        : [...prev.founder_signals, value],
-    }))
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name.trim()) { setError("Name is required."); return }
+    if (!form.full_name.trim()) { setError("Name is required."); return }
     setSaving(true)
     setError(null)
 
     const payload = {
       ...form,
-      previous_companies: parseArray(form.previous_companies),
-      previous_exits: parseArray(form.previous_exits),
+      previous_exits: form.previous_exits ? Number(form.previous_exits) : null,
     }
 
-    const url = founderId ? `/api/admin/founders/${founderId}` : "/api/admin/founders"
+    const url = founderId ? `/api/admin/people/${founderId}` : "/api/admin/people"
     const method = founderId ? "PATCH" : "POST"
 
     const res = await fetch(url, {
@@ -116,7 +91,7 @@ export function FounderForm({ initialValues, founderId }: Props) {
     }
 
     const data = await res.json()
-    router.push(`/admin/founders/${data.id}/edit`)
+    router.push(`/admin/people/${data.id}/edit`)
     router.refresh()
   }
 
@@ -148,7 +123,7 @@ export function FounderForm({ initialValues, founderId }: Props) {
       {/* ── Identity ── */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Full name" required>
-          <Input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Marie Dupont" />
+          <Input className={inputClass} value={form.full_name} onChange={(e) => set("full_name", e.target.value)} placeholder="Marie Dupont" />
         </Field>
         <Field label="Slug (URL)">
           <div className="flex gap-2">
@@ -210,30 +185,9 @@ export function FounderForm({ initialValues, founderId }: Props) {
         ))}
       </div>
 
-      <Field label="Founder signals">
-        <div className="mt-1 flex flex-wrap gap-4">
-          {SIGNAL_OPTIONS.map((opt) => (
-            <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-[13px] text-foreground">
-              <input
-                type="checkbox"
-                checked={form.founder_signals.includes(opt.value)}
-                onChange={() => toggleSignal(opt.value)}
-                className="h-4 w-4 rounded border-border accent-primary"
-              />
-              {opt.label}
-            </label>
-          ))}
-        </div>
+      <Field label="Previous exits (count)">
+        <Input type="number" className={inputClass} value={form.previous_exits} onChange={(e) => set("previous_exits", e.target.value)} placeholder="0" min={0} />
       </Field>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Previous companies (comma-separated)">
-          <Input className={inputClass} value={form.previous_companies} onChange={(e) => set("previous_companies", e.target.value)} placeholder="Criteo, BlaBlaCar, Doctolib" />
-        </Field>
-        <Field label="Previous exits (comma-separated)">
-          <Input className={inputClass} value={form.previous_exits} onChange={(e) => set("previous_exits", e.target.value)} placeholder="Acquired by Google, IPO on Euronext" />
-        </Field>
-      </div>
 
       {/* ── Submit ── */}
       <Separator className="mt-6" />
@@ -242,7 +196,7 @@ export function FounderForm({ initialValues, founderId }: Props) {
         <div className="ml-auto flex gap-3">
           <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : founderId ? "Save Changes" : "Create Founder"}
+            {saving ? "Saving…" : founderId ? "Save Changes" : "Create Person"}
           </Button>
         </div>
       </div>

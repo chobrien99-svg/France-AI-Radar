@@ -29,10 +29,10 @@ export function SaveButton({ startupId, initialSaved, isLoggedIn }: Props) {
         await fetch("/api/watchlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ startup_id: startupId }),
+          body: JSON.stringify({ organization_id: startupId }),
         })
       } else {
-        await fetch(`/api/watchlist?startup_id=${startupId}`, { method: "DELETE" })
+        await fetch(`/api/watchlist?organization_id=${startupId}`, { method: "DELETE" })
       }
       router.refresh()
     } catch {

@@ -16,7 +16,7 @@ export default async function EditFounderPage({
   const supabase = await createServiceClient()
 
   const { data: founder } = await supabase
-    .from("founders")
+    .from("people")
     .select("*")
     .eq("id", id)
     .single()
@@ -24,7 +24,7 @@ export default async function EditFounderPage({
   if (!founder) notFound()
 
   const initialValues: Partial<FounderFormValues> = {
-    name: founder.name ?? "",
+    name: founder.full_name ?? "",
     slug: founder.slug ?? "",
     role: founder.role ?? "",
     bio: founder.bio ?? "",
@@ -34,8 +34,8 @@ export default async function EditFounderPage({
     has_phd: founder.has_phd ?? false,
     is_repeat_founder: founder.is_repeat_founder ?? false,
     has_big_tech_background: founder.has_big_tech_background ?? false,
-    founder_signals: founder.founder_signals ?? [],
-    previous_companies: (founder.previous_companies ?? []).join(", "),
+    founder_signals: [],
+    previous_companies: "",
     previous_exits: (founder.previous_exits ?? []).join(", "),
   }
 
@@ -46,7 +46,7 @@ export default async function EditFounderPage({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Admin › Founders
           </p>
-          <h1 className="mt-0.5 text-[24px] font-bold text-foreground">{founder.name}</h1>
+          <h1 className="mt-0.5 text-[24px] font-bold text-foreground">{founder.full_name}</h1>
           {founder.slug && (
             <div className="mt-2">
               <Button variant="ghost" size="sm" asChild>
@@ -55,7 +55,7 @@ export default async function EditFounderPage({
             </div>
           )}
         </div>
-        <DeleteFounderButton founderId={id} founderName={founder.name} />
+        <DeleteFounderButton founderId={id} founderName={founder.full_name} />
       </div>
 
       <FounderForm initialValues={initialValues} founderId={id} />

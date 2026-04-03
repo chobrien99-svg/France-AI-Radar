@@ -8,9 +8,9 @@ export default async function AdminFoundersPage() {
   const supabase = await createServiceClient()
 
   const { data: founders } = await supabase
-    .from("founders")
-    .select("id, name, slug, role, is_repeat_founder, has_phd, has_big_tech_background, big_tech_employer, created_at")
-    .order("name")
+    .from("people")
+    .select("id, full_name, slug, role, is_repeat_founder, has_phd, has_big_tech_background, big_tech_employer, created_at")
+    .order("full_name")
 
   return (
     <div>
@@ -45,7 +45,7 @@ export default async function AdminFoundersPage() {
               return (
                 <tr key={f.id} className="bg-background hover:bg-secondary/20 transition-colors">
                   <td className="px-4 py-3">
-                    <p className="font-semibold text-foreground">{f.name}</p>
+                    <p className="font-semibold text-foreground">{f.full_name}</p>
                     <p className="text-[11px] text-muted-foreground">{f.slug}</p>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{f.role ?? "—"}</td>
