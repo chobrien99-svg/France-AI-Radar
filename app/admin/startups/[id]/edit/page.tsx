@@ -26,11 +26,11 @@ export default async function EditStartupPage({
 
   const linkedFounders = (linkedRaw ?? []).map((row: { role: string | null; people: unknown }) => {
     const f = row.people as { id: string; full_name: string; slug: string | null }
-    return { id: f.id, name: f.full_name, slug: f.slug, role: row.role }
+    return { id: f.id, full_name: f.full_name, slug: f.slug, role: row.role }
   })
 
   const allFounders = (allFoundersRaw ?? []).map((f: { id: string; full_name: string; slug: string | null; role: string | null }) => ({
-    id: f.id, name: f.full_name, slug: f.slug, role: f.role,
+    id: f.id, full_name: f.full_name, slug: f.slug, role: f.role,
   }))
 
   const tags: TagRow[] = (startup.organization_tags ?? []).map(
