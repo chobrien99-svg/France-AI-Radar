@@ -85,7 +85,7 @@ export default async function AccountPage() {
 
   const { data: watchlistItems } = await supabase
     .from("watchlist")
-    .select("id, created_at, startups(id, name, slug, sector, stage, city)")
+    .select("id, created_at, organizations(id, name, slug)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
@@ -97,7 +97,7 @@ export default async function AccountPage() {
 
   const { data: userAlerts } = await supabase
     .from("alerts")
-    .select("id, is_active, created_at, startups(id, name, slug)")
+    .select("id, is_active, created_at, organizations(id, name, slug)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
@@ -234,13 +234,10 @@ export default async function AccountPage() {
             {watchlistItems && watchlistItems.length > 0 ? (
               <div className="space-y-2">
                 {watchlistItems.map((item) => {
-                  const s = item.startups as unknown as {
+                  const s = item.organizations as unknown as {
                     id: string
                     name: string
                     slug: string
-                    sector: string
-                    stage: string
-                    city: string | null
                   } | null
                   if (!s) return null
                   return (
@@ -250,9 +247,6 @@ export default async function AccountPage() {
                     >
                       <div>
                         <p className="text-[14px] font-semibold text-foreground">{s.name}</p>
-                        <p className="mt-0.5 text-[12px] text-muted-foreground">
-                          {[s.city, s.sector, s.stage].filter(Boolean).join(" · ")}
-                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <WatchlistRemoveButton startupId={s.id} />
@@ -363,7 +357,7 @@ export default async function AccountPage() {
             {userAlerts && userAlerts.length > 0 ? (
               <div className="space-y-2">
                 {userAlerts.map((alert) => {
-                  const s = alert.startups as unknown as {
+                  const s = alert.organizations as unknown as {
                     id: string
                     name: string
                     slug: string

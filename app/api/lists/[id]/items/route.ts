@@ -12,8 +12,8 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { startup_id } = await request.json()
-  if (!startup_id) return NextResponse.json({ error: "startup_id required" }, { status: 400 })
+  const { startup_id: organization_id } = await request.json()
+  if (!organization_id) return NextResponse.json({ error: "startup_id required" }, { status: 400 })
 
   // Verify list ownership
   const { data: list } = await supabase
@@ -27,7 +27,7 @@ export async function POST(
 
   const { error } = await supabase
     .from("list_items")
-    .insert({ list_id, startup_id })
+    .insert({ list_id, organization_id })
 
   if (error) {
     if (error.code === "23505") return NextResponse.json({ added: true })
@@ -46,8 +46,8 @@ export async function DELETE(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const startup_id = request.nextUrl.searchParams.get("startup_id")
-  if (!startup_id) return NextResponse.json({ error: "startup_id required" }, { status: 400 })
+  const organization_id = request.nextUrl.searchParams.get("startup_id")
+  if (!organization_id) return NextResponse.json({ error: "startup_id required" }, { status: 400 })
 
   // Verify list ownership
   const { data: list } = await supabase
@@ -63,7 +63,7 @@ export async function DELETE(
     .from("list_items")
     .delete()
     .eq("list_id", list_id)
-    .eq("startup_id", startup_id)
+    .eq("organization_id", organization_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

@@ -12,15 +12,18 @@ export async function POST(
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  const { id: startup_id } = await params
+  const { id: organization_id } = await params
   const { founder_id, role } = await request.json()
   if (!founder_id) return NextResponse.json({ error: "founder_id required" }, { status: 400 })
 
   const supabase = await createServiceClient()
 
   const { error } = await supabase
-    .from("startup_founders")
-    .upsert({ startup_id, founder_id, role: role || null }, { onConflict: "startup_id,founder_id" })
+    .from("organization_people")
+    .upsert(
+      { organization_id, person_id: founder_id, role: role || null, is_founder: true, is_current: true },
+      { onConflict: "organization_id,person_id,role" }
+    )
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
@@ -35,17 +38,17 @@ export async function DELETE(
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  const { id: startup_id } = await params
+  const { id: organization_id } = await params
   const founder_id = request.nextUrl.searchParams.get("founder_id")
   if (!founder_id) return NextResponse.json({ error: "founder_id required" }, { status: 400 })
 
   const supabase = await createServiceClient()
 
   const { error } = await supabase
-    .from("startup_founders")
+    .from("organization_people")
     .delete()
-    .eq("startup_id", startup_id)
-    .eq("founder_id", founder_id)
+    .eq("organization_id", organization_id)
+    .eq("person_id", founder_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 

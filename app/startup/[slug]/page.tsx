@@ -2,7 +2,9 @@ import React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { canAccessFullProfile, getExportLimit, sectorLabel, stageLabel, SIGNAL_TYPE_LABELS, FOUNDER_SIGNAL_LABELS } from "@/lib/subscription"
+import { canAccessFullProfile, getExportLimit, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
+import { tagStrengthLabel } from "@/lib/types"
+import type { OrganizationProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SaveButton } from "@/components/startup/save-button"
@@ -99,10 +101,11 @@ export default async function StartupProfilePage({
 
   // Fetch venture
   const { data: ventureRaw } = await supabase
-    .from("startups")
-    .select("*, startup_tags(id, label, strength)")
+    .from("organizations")
+    .select("*, organization_tags(id, tag, strength), organization_profiles(*)")
     .eq("slug", slug)
-    .eq("is_active", true)
+    .eq("organization_type", "startup")
+    .eq("status", "active")
     .single()
 
   if (!ventureRaw) notFound()
@@ -111,17 +114,18 @@ export default async function StartupProfilePage({
   // Fetch signals (auth-gated at RLS level)
   const { data: signalsRaw } = await supabase
     .from("signals")
-    .select("id, startup_id, signal_date, signal_type, strength, title, description")
-    .eq("startup_id", venture.id)
+    .select("id, organization_id, signal_date, signal_type, strength, title, description")
+    .eq("organization_id", venture.id)
     .order("signal_date", { ascending: false })
 
   const signals = signalsRaw ?? []
 
   // Fetch founders via junction table
   const { data: foundersRaw } = await supabase
-    .from("startup_founders")
-    .select("founders(*)")
-    .eq("startup_id", venture.id)
+    .from("organization_people")
+    .select("people(*)")
+    .eq("organization_id", venture.id)
+    .eq("is_founder", true)
 
   // Check watchlist status
   let isBookmarked = false
@@ -130,23 +134,26 @@ export default async function StartupProfilePage({
       .from("watchlist")
       .select("id")
       .eq("user_id", user.id)
-      .eq("startup_id", venture.id)
+      .eq("organization_id", venture.id)
       .maybeSingle()
     isBookmarked = !!wl
   }
 
+  // Resolve profile fields from joined organization_profiles
+  const profileData = Array.isArray(venture.organization_profiles)
+    ? venture.organization_profiles[0] ?? null
+    : venture.organization_profiles ?? null
+
   const founders = (foundersRaw ?? []).map(
-    (row: { founders: unknown }) => row.founders
+    (row: { people: unknown }) => row.people
   ) as {
     id: string
-    name: string
+    full_name: string
     slug: string | null
     role: string | null
     bio: string | null
     linkedin_url: string | null
-    founder_signals: string[] | null
-    previous_companies: string[] | null
-    previous_exits: string[] | null
+    previous_exits: number
     big_tech_employer: string | null
     academic_lab: string | null
     has_phd: boolean
@@ -177,25 +184,26 @@ export default async function StartupProfilePage({
             <p className="text-[13px] text-muted-foreground">
               {[
                 venture.city,
-                sectorLabel(venture.sector),
                 venture.founded_date
                   ? `Founded ${formatDateShort(venture.founded_date)}`
                   : null,
-                stageLabel(venture.stage),
               ]
                 .filter(Boolean)
                 .join(" · ")}
             </p>
-            {venture.startup_tags.length > 0 && (
+            {venture.organization_tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {venture.startup_tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className={BADGE_CLASS[tag.strength] ?? BADGE_CLASS.neutral}
-                  >
-                    {tag.label}
-                  </span>
-                ))}
+                {venture.organization_tags.map((tag) => {
+                  const strengthLabel = tagStrengthLabel(tag.strength)
+                  return (
+                    <span
+                      key={tag.id}
+                      className={BADGE_CLASS[strengthLabel] ?? BADGE_CLASS.neutral}
+                    >
+                      {tag.tag}
+                    </span>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -238,6 +246,7 @@ export default async function StartupProfilePage({
             venture={venture}
             signals={signals}
             founders={founders}
+            profileData={profileData}
           />
         )}
       </div>
@@ -288,7 +297,7 @@ function UpgradeGate({ tier }: { tier: string }) {
 
 type Signal = {
   id: string
-  startup_id: string
+  organization_id: string
   signal_date: string
   signal_type: string
   strength: string
@@ -296,16 +305,14 @@ type Signal = {
   description: string | null
 }
 
-type Founder = {
+type FounderLocal = {
   id: string
-  name: string
+  full_name: string
   slug: string | null
   role: string | null
   bio: string | null
   linkedin_url: string | null
-  founder_signals: string[] | null
-  previous_companies: string[] | null
-  previous_exits: string[] | null
+  previous_exits: number
   big_tech_employer: string | null
   academic_lab: string | null
   has_phd: boolean
@@ -317,13 +324,15 @@ function PremiumContent({
   venture,
   signals,
   founders,
+  profileData,
 }: {
   venture: Venture
   signals: Signal[]
-  founders: Founder[]
+  founders: FounderLocal[]
+  profileData: OrganizationProfile | null
 }) {
   const hasContact =
-    venture.website_url || venture.linkedin_url || venture.contact_email || venture.contact_phone
+    venture.website || venture.linkedin_url || venture.email || venture.phone
 
   return (
     <div className="space-y-10">
@@ -332,14 +341,14 @@ function PremiumContent({
         <section>
           <SectionHeader label="Contact & Web Presence" />
           <div className="mt-4 flex flex-wrap gap-4">
-            {venture.website_url && (
+            {venture.website && (
               <ContactItem
                 icon={
                   <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5C8 1.5 5.5 4.5 5.5 8s2.5 6.5 2.5 6.5M8 1.5C8 1.5 10.5 4.5 10.5 8S8 14.5 8 14.5M1.5 8h13"/></svg>
                 }
                 label="Website"
-                href={venture.website_url}
-                display={venture.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                href={venture.website}
+                display={venture.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
               />
             )}
             {venture.linkedin_url && (
@@ -352,24 +361,24 @@ function PremiumContent({
                 display="View profile"
               />
             )}
-            {venture.contact_email && (
+            {venture.email && (
               <ContactItem
                 icon={
                   <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="1.5" y="3.5" width="13" height="9" rx="1"/><path d="m1.5 4 6.5 5 6.5-5"/></svg>
                 }
                 label="Email"
-                href={`mailto:${venture.contact_email}`}
-                display={venture.contact_email}
+                href={`mailto:${venture.email}`}
+                display={venture.email}
               />
             )}
-            {venture.contact_phone && (
+            {venture.phone && (
               <ContactItem
                 icon={
                   <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M2 2.5A1.5 1.5 0 0 1 3.5 1h1a1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 0 1.5 1.5h2A1.5 1.5 0 0 0 11 2.5 1.5 1.5 0 0 1 12.5 1h1A1.5 1.5 0 0 1 15 2.5v1A12.5 12.5 0 0 1 2.5 16h-1A1.5 1.5 0 0 1 0 14.5v-1A1.5 1.5 0 0 1 1.5 12"/></svg>
                 }
                 label="Phone"
-                href={`tel:${venture.contact_phone}`}
-                display={venture.contact_phone}
+                href={`tel:${venture.phone}`}
+                display={venture.phone}
               />
             )}
           </div>
@@ -377,21 +386,21 @@ function PremiumContent({
       )}
 
       {/* Investor Brief */}
-      {venture.investor_brief && (
+      {profileData?.investor_brief && (
         <section>
           <SectionHeader label="Investor Brief" />
           <div className="mt-4 space-y-3 text-[14px] leading-relaxed text-foreground">
-            {venture.investor_brief.split(/\n\n+/).map((para, i) => (
+            {profileData.investor_brief.split(/\n\n+/).map((para, i) => (
               <p key={i}>{para}</p>
             ))}
           </div>
-          {venture.analyst_note && (
+          {profileData.analyst_note && (
             <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
               <p className="text-[12px] font-semibold uppercase tracking-wide text-primary">
                 Why this matters
               </p>
               <p className="mt-1 text-[13px] leading-relaxed text-foreground">
-                {venture.analyst_note}
+                {profileData.analyst_note}
               </p>
             </div>
           )}
@@ -450,11 +459,11 @@ function PremiumContent({
                         href={`/founder/${founder.slug}`}
                         className="text-[14px] font-bold text-foreground underline-offset-2 hover:underline"
                       >
-                        {founder.name}
+                        {founder.full_name}
                       </Link>
                     ) : (
                       <p className="text-[14px] font-bold text-foreground">
-                        {founder.name}
+                        {founder.full_name}
                       </p>
                     )}
                     {founder.role && (
@@ -497,32 +506,14 @@ function PremiumContent({
                       {founder.academic_lab}
                     </p>
                   )}
-                  {founder.previous_exits && founder.previous_exits.length > 0 && (
+                  {founder.previous_exits > 0 && (
                     <p className="text-[12px] text-muted-foreground">
                       <span className="font-medium text-foreground">Exits: </span>
-                      {founder.previous_exits.join(", ")}
-                    </p>
-                  )}
-                  {founder.previous_companies && founder.previous_companies.length > 0 && (
-                    <p className="text-[12px] text-muted-foreground">
-                      <span className="font-medium text-foreground">Background: </span>
-                      {founder.previous_companies.join(", ")}
+                      {founder.previous_exits}
                     </p>
                   )}
                 </div>
 
-                {founder.founder_signals && founder.founder_signals.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {founder.founder_signals.map((sig) => (
-                      <span
-                        key={sig}
-                        className="badge-signal badge-signal-neutral"
-                      >
-                        {FOUNDER_SIGNAL_LABELS[sig] ?? sig}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -530,39 +521,39 @@ function PremiumContent({
       )}
 
       {/* Product & Market */}
-      {(venture.product_description ||
-        venture.target_market ||
-        venture.competitive_landscape) && (
+      {(profileData?.product_description ||
+        profileData?.target_market ||
+        profileData?.competitive_landscape) && (
         <section>
           <SectionHeader label="Product & Market" />
           <div className="mt-4 space-y-4 text-[14px] leading-relaxed">
-            {venture.product_description && (
+            {profileData.product_description && (
               <p>
                 <strong className="font-semibold text-foreground">
                   What they&apos;re building:{" "}
                 </strong>
                 <span className="text-muted-foreground">
-                  {venture.product_description}
+                  {profileData.product_description}
                 </span>
               </p>
             )}
-            {venture.target_market && (
+            {profileData.target_market && (
               <p>
                 <strong className="font-semibold text-foreground">
                   Target market:{" "}
                 </strong>
                 <span className="text-muted-foreground">
-                  {venture.target_market}
+                  {profileData.target_market}
                 </span>
               </p>
             )}
-            {venture.competitive_landscape && (
+            {profileData.competitive_landscape && (
               <p>
                 <strong className="font-semibold text-foreground">
                   Competitive landscape:{" "}
                 </strong>
                 <span className="text-muted-foreground">
-                  {venture.competitive_landscape}
+                  {profileData.competitive_landscape}
                 </span>
               </p>
             )}
@@ -573,8 +564,7 @@ function PremiumContent({
       {/* Funding */}
       {(venture.total_raised_eur ||
         venture.last_round ||
-        venture.est_next_raise ||
-        venture.funding_notes) && (
+        profileData?.est_next_raise) && (
         <section>
           <SectionHeader label="Funding" />
           <div className="mt-4 data-card-compact p-5">
@@ -594,23 +584,15 @@ function PremiumContent({
               <div>
                 <p className="metric-label">Est. Next Raise</p>
                 <p className="metric-value mt-1 text-base">
-                  {venture.est_next_raise ?? "—"}
+                  {profileData?.est_next_raise ?? "—"}
                 </p>
               </div>
             </div>
-            {venture.funding_notes && (
+            {profileData?.fundraising_signal_summary && (
               <>
                 <Separator className="my-4" />
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  {venture.funding_notes}
-                </p>
-              </>
-            )}
-            {venture.fundraising_signal_summary && (
-              <>
-                <Separator className="my-4" />
-                <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  {venture.fundraising_signal_summary}
+                  {profileData.fundraising_signal_summary}
                 </p>
               </>
             )}

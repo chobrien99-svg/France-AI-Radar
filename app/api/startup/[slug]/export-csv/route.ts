@@ -73,16 +73,17 @@ export async function GET(
 
   // Fetch startup with all related data
   const { data: startup } = await supabase
-    .from("startups")
+    .from("organizations")
     .select(`
       *,
-      startup_tags(label, strength),
-      startup_founders(
-        founders(name, role, linkedin_url, has_phd, is_repeat_founder, has_big_tech_background, big_tech_employer, previous_companies, previous_exits)
+      organization_tags(tag, strength),
+      organization_people(
+        people(full_name, role, linkedin_url, has_phd, is_repeat_founder, has_big_tech_background, big_tech_employer, previous_exits)
       )
     `)
     .eq("slug", slug)
-    .eq("is_active", true)
+    .eq("status", "active")
+    .eq("organization_type", "startup")
     .single()
 
   if (!startup) {
@@ -94,63 +95,44 @@ export async function GET(
   await svc.rpc("increment_export_usage", { p_user_id: user.id, p_period: period })
 
   // Build CSV
-  const tags = (startup.startup_tags as Array<{ label: string; strength: string }> ?? [])
-    .map((t) => t.label)
+  const tags = (startup.organization_tags as Array<{ tag: string; strength: number }> ?? [])
+    .map((t) => t.tag)
 
   const founders = (
-    startup.startup_founders as Array<{ founders: { name: string; role: string | null } | null }> ?? []
+    startup.organization_people as Array<{ people: { full_name: string; role: string | null } | null }> ?? []
   )
-    .map((sf) => sf.founders)
+    .map((sf) => sf.people)
     .filter(Boolean)
-    .map((f) => [f!.name, f!.role].filter(Boolean).join(" – "))
+    .map((f) => [f!.full_name, f!.role].filter(Boolean).join(" – "))
 
   const headers = [
-    "name", "slug", "website_url", "linkedin_url",
-    "contact_email", "contact_phone",
-    "city", "country", "sector", "stage",
-    "founded_date", "first_seen_at", "signal_source",
+    "name", "slug", "website", "linkedin_url",
+    "email", "phone",
+    "country",
+    "founded_date",
     "description",
-    "investor_brief", "analyst_note",
-    "product_description", "target_market", "competitive_landscape",
-    "company_origin", "current_strategy", "business_model_hypothesis",
-    "technology_layer", "product_modality", "technical_thesis", "technology_stage",
-    "startup_origin_type",
-    "total_raised_eur", "last_round", "est_next_raise",
-    "fundraising_status", "fundraising_signal_summary", "funding_notes",
+    "technology_layer",
+    "total_raised_eur", "last_round",
+    "fundraising_status",
     "signal_count", "last_signal_date",
-    "entity_complexity",
     "tags", "founders",
   ]
 
   const humanHeaders: Record<string, string> = {
-    name: "Name", slug: "Slug", website_url: "Website", linkedin_url: "LinkedIn",
-    contact_email: "Contact Email", contact_phone: "Contact Phone",
-    city: "City", country: "Country",
-    sector: "Sector", stage: "Stage",
-    founded_date: "Founded", first_seen_at: "First Seen", signal_source: "Signal Source",
+    name: "Name", slug: "Slug", website: "Website", linkedin_url: "LinkedIn",
+    email: "Contact Email", phone: "Contact Phone",
+    country: "Country",
+    founded_date: "Founded",
     description: "Description",
-    investor_brief: "Investor Brief", analyst_note: "Analyst Note",
-    product_description: "Product Description", target_market: "Target Market",
-    competitive_landscape: "Competitive Landscape",
-    company_origin: "Company Origin", current_strategy: "Current Strategy",
-    business_model_hypothesis: "Business Model Hypothesis",
-    technology_layer: "Technology Layer", product_modality: "Product Modality",
-    technical_thesis: "Technical Thesis", technology_stage: "Technology Stage",
-    startup_origin_type: "Origin Type",
+    technology_layer: "Technology Layer",
     total_raised_eur: "Total Raised (EUR)", last_round: "Last Round",
-    est_next_raise: "Est. Next Raise",
     fundraising_status: "Fundraising Status",
-    fundraising_signal_summary: "Fundraising Signal Summary", funding_notes: "Funding Notes",
     signal_count: "Signal Count", last_signal_date: "Last Signal Date",
-    entity_complexity: "Entity Complexity",
     tags: "Tags", founders: "Founders",
   }
 
   const values: Record<string, unknown> = {
     ...startup,
-    sector: sectorLabel(startup.sector),
-    stage: stageLabel(startup.stage),
-    signal_source: startup.signal_source ? (SIGNAL_SOURCE_LABELS[startup.signal_source] ?? startup.signal_source) : null,
     tags: tags.join("; "),
     founders: founders.join("; "),
   }

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { canAccessFullProfile, FOUNDER_SIGNAL_LABELS, sectorLabel, stageLabel } from "@/lib/subscription"
+import { canAccessFullProfile } from "@/lib/subscription"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import type { Profile } from "@/lib/types"
@@ -38,7 +38,7 @@ export default async function FounderProfilePage({
 
   // Fetch founder by slug
   const { data: founderRaw } = await supabase
-    .from("founders")
+    .from("people")
     .select("*")
     .eq("slug", slug)
     .single()
@@ -47,14 +47,12 @@ export default async function FounderProfilePage({
 
   const founder = founderRaw as {
     id: string
-    name: string
+    full_name: string
     slug: string
     role: string | null
     bio: string | null
     linkedin_url: string | null
-    founder_signals: string[] | null
-    previous_companies: string[] | null
-    previous_exits: string[] | null
+    previous_exits: number
     big_tech_employer: string | null
     academic_lab: string | null
     has_phd: boolean
@@ -64,13 +62,14 @@ export default async function FounderProfilePage({
 
   // Fetch the startups this founder is associated with
   const { data: ventureLinksRaw } = await supabase
-    .from("startup_founders")
-    .select("role, startups(id, name, slug, sector, stage, city)")
-    .eq("founder_id", founder.id)
+    .from("organization_people")
+    .select("role, organizations(id, name, slug)")
+    .eq("person_id", founder.id)
+    .eq("is_founder", true)
 
-  const ventures = (ventureLinksRaw ?? []).map((row: { role: string | null; startups: unknown }) => ({
+  const ventures = (ventureLinksRaw ?? []).map((row: { role: string | null; organizations: unknown }) => ({
     role: row.role,
-    ...(row.startups as { id: string; name: string; slug: string; sector: string; stage: string; city: string | null }),
+    ...(row.organizations as { id: string; name: string; slug: string }),
   }))
 
   return (
@@ -91,21 +90,10 @@ export default async function FounderProfilePage({
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             <h1 className="text-[26px] font-bold tracking-tight text-foreground">
-              {founder.name}
+              {founder.full_name}
             </h1>
             {founder.role && (
               <p className="text-[14px] font-medium text-primary">{founder.role}</p>
-            )}
-
-            {/* Pedigree badges */}
-            {founder.founder_signals && founder.founder_signals.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {founder.founder_signals.map((sig) => (
-                  <span key={sig} className="badge-signal badge-signal-neutral">
-                    {FOUNDER_SIGNAL_LABELS[sig] ?? sig}
-                  </span>
-                ))}
-              </div>
             )}
           </div>
 
@@ -184,14 +172,12 @@ function UpgradeGate({ tier }: { tier: string }) {
 
 type FounderDetail = {
   id: string
-  name: string
+  full_name: string
   slug: string
   role: string | null
   bio: string | null
   linkedin_url: string | null
-  founder_signals: string[] | null
-  previous_companies: string[] | null
-  previous_exits: string[] | null
+  previous_exits: number
   big_tech_employer: string | null
   academic_lab: string | null
   has_phd: boolean
@@ -203,9 +189,6 @@ type VentureLink = {
   id: string
   name: string
   slug: string
-  sector: string
-  stage: string
-  city: string | null
   role: string | null
 }
 
@@ -227,8 +210,7 @@ function PremiumContent({
   const hasPedigreeDetails =
     founder.big_tech_employer ||
     founder.academic_lab ||
-    (founder.previous_companies && founder.previous_companies.length > 0) ||
-    (founder.previous_exits && founder.previous_exits.length > 0)
+    founder.previous_exits > 0
 
   return (
     <div className="space-y-10">
@@ -261,39 +243,14 @@ function PremiumContent({
               </div>
             )}
 
-            {founder.previous_companies && founder.previous_companies.length > 0 && (
-              <div className="rounded-xl border border-border bg-background p-4 sm:col-span-2">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Previous Companies
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {founder.previous_companies.map((company) => (
-                    <span
-                      key={company}
-                      className="rounded-md border border-border bg-muted px-2 py-0.5 text-[13px] text-foreground"
-                    >
-                      {company}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {founder.previous_exits && founder.previous_exits.length > 0 && (
+            {founder.previous_exits > 0 && (
               <div className="rounded-xl border border-border bg-background p-4 sm:col-span-2">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Previous Exits
                 </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {founder.previous_exits.map((exit) => (
-                    <span
-                      key={exit}
-                      className="rounded-md border border-primary/30 bg-primary/5 px-2 py-0.5 text-[13px] font-medium text-primary"
-                    >
-                      {exit}
-                    </span>
-                  ))}
-                </div>
+                <p className="text-[14px] font-semibold text-foreground">
+                  {founder.previous_exits} exit{founder.previous_exits !== 1 ? "s" : ""}
+                </p>
               </div>
             )}
 
@@ -317,9 +274,7 @@ function PremiumContent({
                   <p className="mt-0.5 text-[12px] font-medium text-primary">{v.role}</p>
                 )}
                 <p className="mt-1 text-[12px] text-muted-foreground">
-                  {[v.city, sectorLabel(v.sector), stageLabel(v.stage)]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  {v.role ?? ""}
                 </p>
               </Link>
             ))}

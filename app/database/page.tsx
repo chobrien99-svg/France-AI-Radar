@@ -1,12 +1,13 @@
 import { Suspense } from "react"
 import { Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
-import { getStartupLimit, sectorLabel } from "@/lib/subscription"
+import { getStartupLimit } from "@/lib/subscription"
 import { FilterSidebar } from "@/components/database/filter-sidebar"
 import { StartupCard } from "@/components/database/startup-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import type { Venture, Profile } from "@/lib/types"
+import type { Venture, Profile, OrganizationProfile } from "@/lib/types"
+import { tagStrengthLabel } from "@/lib/types"
 import { SortDropdown } from "@/components/database/sort-dropdown"
 import { SearchInput } from "@/components/database/search-input"
 
@@ -79,33 +80,24 @@ export default async function DatabasePage({
 
   // Parse filters
   const q = (Array.isArray(params.q) ? params.q[0] : params.q) ?? ""
-  const sectors = parseList(params.sector)
-  const stages = parseList(params.stage)
   const locations = parseList(params.location)
   const times = parseList(params.time)
   const founderSignals = parseList(params.founderSignal)
   const signalTypes = parseList(params.signalType)
-  const signalSources = parseList(params.signalSource)
   const sort = (Array.isArray(params.sort) ? params.sort[0] : params.sort) ?? "newest"
 
   // Build query
   let query = supabase
-    .from("startups")
+    .from("organizations")
     .select(
-      "*, startup_tags(id, label, strength), startup_founders(founders(id, name, slug, founder_signals, big_tech_employer, has_phd, is_repeat_founder, has_big_tech_background))"
+      "*, organization_tags(id, tag, strength), organization_people(people(id, full_name, slug, big_tech_employer, has_phd, is_repeat_founder, has_big_tech_background))"
     )
-    .eq("is_active", true)
+    .eq("organization_type", "startup")
+    .eq("status", "active")
 
   if (q) {
     query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
   }
-  if (sectors.length > 0) {
-    query = query.in("sector", sectors)
-  }
-  if (stages.length > 0) {
-    query = query.in("stage", stages)
-  }
-
   // Location: map values to actual city names
   if (locations.length > 0) {
     const cities: string[] = []
@@ -133,11 +125,6 @@ export default async function DatabasePage({
   if (latestTime && latestTime !== "all") {
     const cutoff = cutoffDate(latestTime)
     if (cutoff) query = query.gte("last_signal_date", cutoff)
-  }
-
-  // Signal source filter
-  if (signalSources.length > 0) {
-    query = query.in("signal_source", signalSources)
   }
 
   // Founder signal filter (array overlap)
@@ -214,12 +201,11 @@ export default async function DatabasePage({
           >
             {visible.map((startup) => {
               const raw = startup as Venture & {
-                startup_founders?: Array<{
-                  founders: {
+                organization_people?: Array<{
+                  people: {
                     id: string
-                    name: string
+                    full_name: string
                     slug: string | null
-                    founder_signals: string[] | null
                     big_tech_employer: string | null
                     has_phd: boolean
                     is_repeat_founder: boolean
@@ -227,13 +213,12 @@ export default async function DatabasePage({
                   } | null
                 }>
               }
-              const founders = (raw.startup_founders ?? [])
-                .map((sf) => sf.founders)
+              const founders = (raw.organization_people ?? [])
+                .map((op) => op.people)
                 .filter(Boolean) as Array<{
                   id: string
-                  name: string
+                  full_name: string
                   slug: string | null
-                  founder_signals: string[] | null
                   big_tech_employer: string | null
                   has_phd: boolean
                   is_repeat_founder: boolean
