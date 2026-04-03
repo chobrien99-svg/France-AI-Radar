@@ -71,7 +71,6 @@ export default async function EditStartupPage({
     fundraising_signal_summary: profile?.fundraising_signal_summary ?? "",
     entity_complexity: profile?.entity_complexity ?? "",
   }
-  }
 
   return (
     <div className="mx-auto max-w-3xl">
