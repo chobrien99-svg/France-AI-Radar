@@ -17,7 +17,7 @@ export default async function EditStartupPage({
   const supabase = await createServiceClient()
 
   const [{ data: startup }, { data: linkedRaw }, { data: allFoundersRaw }] = await Promise.all([
-    supabase.from("organizations").select("*, organization_tags(tag, strength)").eq("id", id).single(),
+    supabase.from("organizations").select("*, organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
     supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
     supabase.from("people").select("id, full_name, slug, role").order("full_name"),
   ])
@@ -40,45 +40,37 @@ export default async function EditStartupPage({
     })
   )
 
+  const profile = Array.isArray(startup.organization_profiles)
+    ? startup.organization_profiles[0]
+    : startup.organization_profiles
+
   const initialValues: Partial<StartupFormValues> = {
     name: startup.name ?? "",
     slug: startup.slug ?? "",
     city: startup.city ?? "",
     country: startup.country ?? "France",
-    sector: startup.sector ?? "ai_agents",
-    stage: startup.stage ?? "unknown",
     founded_date: startup.founded_date ?? "",
     first_seen_at: startup.first_seen_at ?? "",
-    incorporation_date: startup.incorporation_date ?? "",
-    signal_source: startup.signal_source ?? "",
-    is_active: startup.status === "active",
-    website_url: startup.website_url ?? "",
+    status: startup.status ?? "active",
+    website: startup.website ?? "",
     linkedin_url: startup.linkedin_url ?? "",
-    contact_email: startup.contact_email ?? "",
-    contact_phone: startup.contact_phone ?? "",
+    email: startup.email ?? "",
+    phone: startup.phone ?? "",
     description: startup.description ?? "",
-    investor_brief: startup.investor_brief ?? "",
-    analyst_note: startup.analyst_note ?? "",
-    product_description: startup.product_description ?? "",
-    target_market: startup.target_market ?? "",
-    competitive_landscape: startup.competitive_landscape ?? "",
+    product_description: profile?.product_description ?? "",
+    target_market: profile?.target_market ?? "",
+    competitive_landscape: profile?.competitive_landscape ?? "",
     technology_layer: startup.technology_layer ?? "",
-    product_modality: startup.product_modality ?? "software",
-    technical_thesis: startup.technical_thesis ?? "",
-    technology_stage: startup.technology_stage ?? "",
-    startup_origin_type: startup.startup_origin_type ?? "new_startup",
-    company_origin: startup.company_origin ?? "",
-    current_strategy: startup.current_strategy ?? "",
-    business_model_hypothesis: startup.business_model_hypothesis ?? "",
+    technical_thesis: profile?.technical_thesis ?? "",
+    current_strategy: profile?.current_strategy ?? "",
+    business_model_hypothesis: profile?.business_model_hypothesis ?? "",
     total_raised_eur: startup.total_raised_eur != null ? String(startup.total_raised_eur) : "",
     last_round: startup.last_round ?? "",
-    est_next_raise: startup.est_next_raise ?? "",
+    est_next_raise: profile?.est_next_raise ?? "",
     fundraising_status: startup.fundraising_status ?? "unknown",
-    fundraising_signal_summary: startup.fundraising_signal_summary ?? "",
-    funding_notes: startup.funding_notes ?? "",
-    entity_complexity: startup.entity_complexity ?? "",
-    siren: startup.siren ?? "",
-    siret: startup.siret ?? "",
+    fundraising_signal_summary: profile?.fundraising_signal_summary ?? "",
+    entity_complexity: profile?.entity_complexity ?? "",
+  }
   }
 
   return (
