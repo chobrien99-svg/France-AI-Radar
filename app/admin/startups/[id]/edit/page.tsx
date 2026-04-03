@@ -101,9 +101,9 @@ export default async function EditStartupPage({
       />
 
       <LinkedFounders
-        startupId={id}
-        linkedFounders={linkedFounders}
-        allFounders={allFounders}
+        organizationId={id}
+        linkedPeople={linkedFounders}
+        allPeople={allFounders}
       />
     </div>
   )
