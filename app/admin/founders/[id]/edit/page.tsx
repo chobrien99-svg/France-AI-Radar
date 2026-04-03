@@ -24,7 +24,7 @@ export default async function EditFounderPage({
   if (!founder) notFound()
 
   const initialValues: Partial<FounderFormValues> = {
-    name: founder.full_name ?? "",
+    full_name: founder.full_name ?? "",
     slug: founder.slug ?? "",
     role: founder.role ?? "",
     bio: founder.bio ?? "",
@@ -34,9 +34,7 @@ export default async function EditFounderPage({
     has_phd: founder.has_phd ?? false,
     is_repeat_founder: founder.is_repeat_founder ?? false,
     has_big_tech_background: founder.has_big_tech_background ?? false,
-    founder_signals: [],
-    previous_companies: "",
-    previous_exits: (founder.previous_exits ?? []).join(", "),
+    previous_exits: String(founder.previous_exits ?? 0),
   }
 
   return (
