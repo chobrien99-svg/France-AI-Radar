@@ -148,7 +148,7 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       tags,
     }
 
-    const url = startupId ? `/api/admin/organizations/${startupId}` : "/api/admin/organizations"
+    const url = startupId ? `/api/admin/startups/${startupId}` : "/api/admin/startups"
     const method = startupId ? "PATCH" : "POST"
 
     const res = await fetch(url, {
@@ -165,7 +165,7 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
     }
 
     const data = await res.json()
-    router.push(`/admin/organizations/${data.id}/edit`)
+    router.push(`/admin/startups/${data.id}/edit`)
     router.refresh()
   }
 

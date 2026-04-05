@@ -43,7 +43,7 @@ export function LinkedFounders({ organizationId, linkedPeople: initial, allPeopl
     setLoading(true)
     setError(null)
 
-    const res = await fetch(`/api/admin/organizations/${organizationId}/people`, {
+    const res = await fetch(`/api/admin/startups/${organizationId}/founders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ person_id: selectedId, role: linkRole || null }),
@@ -66,7 +66,7 @@ export function LinkedFounders({ organizationId, linkedPeople: initial, allPeopl
 
   async function removeLink(personId: string) {
     setLoading(true)
-    await fetch(`/api/admin/organizations/${organizationId}/people?person_id=${personId}`, { method: "DELETE" })
+    await fetch(`/api/admin/startups/${organizationId}/founders?founder_id=${personId}`, { method: "DELETE" })
     setLinked((prev) => prev.filter((f) => f.id !== personId))
     setLoading(false)
     router.refresh()

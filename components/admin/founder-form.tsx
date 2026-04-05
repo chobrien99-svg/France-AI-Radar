@@ -74,7 +74,7 @@ export function FounderForm({ initialValues, founderId }: Props) {
       previous_exits: form.previous_exits ? Number(form.previous_exits) : null,
     }
 
-    const url = founderId ? `/api/admin/people/${founderId}` : "/api/admin/people"
+    const url = founderId ? `/api/admin/founders/${founderId}` : "/api/admin/founders"
     const method = founderId ? "PATCH" : "POST"
 
     const res = await fetch(url, {
@@ -91,7 +91,7 @@ export function FounderForm({ initialValues, founderId }: Props) {
     }
 
     const data = await res.json()
-    router.push(`/admin/people/${data.id}/edit`)
+    router.push(`/admin/founders/${data.id}/edit`)
     router.refresh()
   }
 
