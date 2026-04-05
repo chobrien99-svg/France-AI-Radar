@@ -86,11 +86,49 @@ export default async function DatabasePage({
   const signalTypes = parseList(params.signalType)
   const sort = (Array.isArray(params.sort) ? params.sort[0] : params.sort) ?? "newest"
 
+  // Resolve location filter city names → city_id UUIDs
+  let locationCityIds: string[] | null = null
+  let locationExcludeCityIds: string[] | null = null
+  if (locations.length > 0) {
+    const cityNames: string[] = []
+    let includeOther = false
+    for (const loc of locations) {
+      if (loc === "other") {
+        includeOther = true
+      } else {
+        cityNames.push(...cityForLocation(loc))
+      }
+    }
+    if (cityNames.length > 0 || includeOther) {
+      // Fetch IDs for the known cities
+      const knownCities = ["Paris", "Lyon", "Toulouse", "Grenoble"]
+      const { data: cityRows } = await supabase
+        .from("cities")
+        .select("id, name")
+        .in("name", cityNames.length > 0 ? cityNames : knownCities)
+      const cityIdMap = new Map((cityRows ?? []).map((c: { id: string; name: string }) => [c.name, c.id]))
+
+      if (cityNames.length > 0 && !includeOther) {
+        locationCityIds = cityNames.map((n) => cityIdMap.get(n)).filter(Boolean) as string[]
+      } else if (includeOther) {
+        // Fetch IDs for all known metro cities to exclude
+        const { data: knownRows } = await supabase
+          .from("cities")
+          .select("id")
+          .in("name", knownCities)
+        locationExcludeCityIds = (knownRows ?? []).map((c: { id: string }) => c.id)
+        if (cityNames.length > 0) {
+          locationCityIds = cityNames.map((n) => cityIdMap.get(n)).filter(Boolean) as string[]
+        }
+      }
+    }
+  }
+
   // Build query — scoped to AI Radar product via product_organizations inner join
   let query = supabase
     .from("organizations")
     .select(
-      "*, organization_tags(id, tag, strength), organization_people(people(id, full_name, slug, big_tech_employer, has_phd, is_repeat_founder, has_big_tech_background)), product_organizations!inner(product_catalog!inner(slug))"
+      "*, cities(id, name), organization_tags(id, tag, strength), organization_people(people(id, full_name, slug, big_tech_employer, has_phd, is_repeat_founder, has_big_tech_background)), product_organizations!inner(product_catalog!inner(slug))"
     )
     .eq("product_organizations.product_catalog.slug", "ai-radar")
     .eq("status", "active")
@@ -98,26 +136,16 @@ export default async function DatabasePage({
   if (q) {
     query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
   }
-  // Location: map values to actual city names
-  if (locations.length > 0) {
-    const cities: string[] = []
-    let includeOther = false
-    for (const loc of locations) {
-      if (loc === "other") {
-        includeOther = true
-      } else {
-        cities.push(...cityForLocation(loc))
-      }
-    }
-    if (cities.length > 0 && !includeOther) {
-      query = query.in("city", cities)
-    } else if (cities.length > 0 && includeOther) {
-      query = query.or(
-        `city.in.(${cities.map((c) => `"${c}"`).join(",")}),city.not.in.(Paris,Lyon,Toulouse,Grenoble)`
-      )
-    } else if (includeOther) {
-      query = query.not("city", "in", '("Paris","Lyon","Toulouse","Grenoble")')
-    }
+  // Location filter using city_id
+  if (locationCityIds && !locationExcludeCityIds) {
+    query = query.in("city_id", locationCityIds)
+  } else if (locationCityIds && locationExcludeCityIds) {
+    // Include specific cities OR anything not in the known metros
+    query = query.or(
+      `city_id.in.(${locationCityIds.join(",")}),city_id.not.in.(${locationExcludeCityIds.join(",")})`
+    )
+  } else if (locationExcludeCityIds) {
+    query = query.not("city_id", "in", `(${locationExcludeCityIds.join(",")})`)
   }
 
   // Time filter on last_signal_date

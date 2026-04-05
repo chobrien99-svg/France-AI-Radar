@@ -17,12 +17,34 @@ export async function PATCH(
 
   const supabase = await createServiceClient()
 
+  // Resolve city name → city_id
+  let cityId: string | null = null
+  if (fields.city) {
+    const { data: cityRow } = await supabase
+      .from("cities")
+      .select("id")
+      .eq("name", fields.city)
+      .maybeSingle()
+    if (cityRow) {
+      cityId = cityRow.id
+    } else {
+      const citySlug = fields.city.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+      const { data: newCity } = await supabase
+        .from("cities")
+        .insert({ name: fields.city, slug: citySlug, country: fields.country || "France" })
+        .select("id")
+        .single()
+      cityId = newCity?.id ?? null
+    }
+  }
+
   const { data: startup, error } = await supabase
     .from("organizations")
     .update({
       name: fields.name,
       slug: fields.slug,
       country: fields.country || "France",
+      city_id: cityId,
       status: fields.is_active !== false ? "active" : "inactive",
       website: fields.website_url || null,
       linkedin_url: fields.linkedin_url || null,

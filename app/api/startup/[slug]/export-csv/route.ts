@@ -76,6 +76,7 @@ export async function GET(
     .from("organizations")
     .select(`
       *,
+      cities(name),
       organization_tags(tag, strength),
       organization_people(
         people(full_name, role, linkedin_url, has_phd, is_repeat_founder, has_big_tech_background, big_tech_employer, previous_exits)
@@ -108,7 +109,7 @@ export async function GET(
   const headers = [
     "name", "slug", "website", "linkedin_url",
     "email", "phone",
-    "country",
+    "city", "country",
     "founded_date",
     "description",
     "technology_layer",
@@ -121,7 +122,7 @@ export async function GET(
   const humanHeaders: Record<string, string> = {
     name: "Name", slug: "Slug", website: "Website", linkedin_url: "LinkedIn",
     email: "Contact Email", phone: "Contact Phone",
-    country: "Country",
+    city: "City", country: "Country",
     founded_date: "Founded",
     description: "Description",
     technology_layer: "Technology Layer",
@@ -133,6 +134,7 @@ export async function GET(
 
   const values: Record<string, unknown> = {
     ...startup,
+    city: (startup.cities as { name: string } | null)?.name ?? "",
     tags: tags.join("; "),
     founders: founders.join("; "),
   }

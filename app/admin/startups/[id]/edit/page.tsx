@@ -17,7 +17,7 @@ export default async function EditStartupPage({
   const supabase = await createServiceClient()
 
   const [{ data: startup }, { data: linkedRaw }, { data: allFoundersRaw }] = await Promise.all([
-    supabase.from("organizations").select("*, organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
+    supabase.from("organizations").select("*, cities(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
     supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
     supabase.from("people").select("id, full_name, slug, role").order("full_name"),
   ])
@@ -47,7 +47,7 @@ export default async function EditStartupPage({
   const initialValues: Partial<StartupFormValues> = {
     name: startup.name ?? "",
     slug: startup.slug ?? "",
-    city: startup.city ?? "",
+    city: (startup.cities as { name: string } | null)?.name ?? "",
     country: startup.country ?? "France",
     founded_date: startup.founded_date ?? "",
     first_seen_at: startup.first_seen_at ?? "",

@@ -88,7 +88,7 @@ export function StartupCard({
               {venture.name}
             </h3>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
-              {[venture.city, foundedLabel(venture.founded_date)]
+              {[venture.cities?.name, foundedLabel(venture.founded_date)]
                 .filter(Boolean)
                 .join(" · ")}
             </p>

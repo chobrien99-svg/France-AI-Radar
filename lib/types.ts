@@ -45,12 +45,17 @@ export type OrganizationProfile = {
   entity_complexity: string | null
 }
 
+export type City = {
+  id: string
+  name: string
+}
+
 export type Venture = {
   id: string
   name: string
   slug: string
   description: string | null
-  city: string | null
+  city_id: string | null
   country: string
   founded_date: string | null
   first_seen_at: string | null
@@ -74,6 +79,7 @@ export type Venture = {
   last_signal_date: string | null
 
   // Joined relations
+  cities: City | null
   organization_tags: VentureTag[]
   organization_profiles: OrganizationProfile | OrganizationProfile[] | null
 }
@@ -122,9 +128,17 @@ export type Signal = {
   organization_id: string
   signal_date: string
   signal_type: string
-  strength: SignalStrength
+  strength: number
   title: string
   description: string | null
+}
+
+/** Map numeric signal strength to display label */
+export function signalStrengthLabel(strength: number): SignalStrength {
+  if (strength >= 4) return "positive"
+  if (strength >= 3) return "neutral"
+  if (strength <= 1) return "risk"
+  return "warning"
 }
 
 export type VentureEvent = {

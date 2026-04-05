@@ -79,7 +79,7 @@ export default async function AccountPage() {
 
   const { data: savedSearches } = await supabase
     .from("saved_searches")
-    .select("id, name, filters, created_at")
+    .select("id, name, query, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
@@ -287,7 +287,7 @@ export default async function AccountPage() {
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={buildFilterUrl(s.filters as Record<string, unknown>)}>
+                      <Link href={buildFilterUrl(s.query as Record<string, unknown>)}>
                         Open →
                       </Link>
                     </Button>

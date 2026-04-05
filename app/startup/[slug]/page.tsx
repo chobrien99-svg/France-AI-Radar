@@ -3,7 +3,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { canAccessFullProfile, getExportLimit, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
-import { tagStrengthLabel } from "@/lib/types"
+import { tagStrengthLabel, signalStrengthLabel } from "@/lib/types"
 import type { OrganizationProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -102,7 +102,7 @@ export default async function StartupProfilePage({
   // Fetch venture
   const { data: ventureRaw } = await supabase
     .from("organizations")
-    .select("*, organization_tags(id, tag, strength), organization_profiles(*)")
+    .select("*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(*)")
     .eq("slug", slug)
     .eq("organization_type", "startup")
     .eq("status", "active")
@@ -183,7 +183,7 @@ export default async function StartupProfilePage({
             </h1>
             <p className="text-[13px] text-muted-foreground">
               {[
-                venture.city,
+                venture.cities?.name,
                 venture.founded_date
                   ? `Founded ${formatDateShort(venture.founded_date)}`
                   : null,
@@ -300,7 +300,7 @@ type Signal = {
   organization_id: string
   signal_date: string
   signal_type: string
-  strength: string
+  strength: number
   title: string
   description: string | null
 }
@@ -420,7 +420,7 @@ function PremiumContent({
                 <div key={signal.id} className="relative pl-6">
                   {/* Dot */}
                   <div
-                    className={`absolute left-[-4.5px] top-[5px] h-[9px] w-[9px] rounded-full border-2 border-background ${SIGNAL_DOT[signal.strength] ?? SIGNAL_DOT.neutral}`}
+                    className={`absolute left-[-4.5px] top-[5px] h-[9px] w-[9px] rounded-full border-2 border-background ${SIGNAL_DOT[signalStrengthLabel(signal.strength)] ?? SIGNAL_DOT.neutral}`}
                   />
                   <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
                     {formatDate(signal.signal_date)}
