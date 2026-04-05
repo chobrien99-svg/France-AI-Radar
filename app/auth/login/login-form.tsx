@@ -36,7 +36,7 @@ export function LoginForm() {
 
   return (
     <div className="data-card-compact p-6">
-      <h1 className="mb-1 text-lg font-semibold text-foreground">Sign in</h1>
+      <h1 className="mb-1 font-serif text-lg font-semibold text-foreground">Sign in</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Access the French AI investor database.
       </p>
@@ -73,7 +73,7 @@ export function LoginForm() {
         </div>
 
         {error && (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          <p className="border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}

@@ -38,18 +38,18 @@ export async function AppNav({
 
   const navLink = (page: typeof activePage) =>
     activePage === page
-      ? `rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-foreground bg-secondary`
-      : `rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground`
+      ? `px-3.5 py-1.5 text-[13px] font-bold uppercase tracking-wide text-primary border-b-2 border-primary`
+      : `px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground`
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md" style={{ borderBottom: '1px solid rgba(193, 199, 206, 0.25)' }}>
       <div className="page-container flex h-14 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-primary text-[12px] font-extrabold text-primary-foreground">
+          <div className="flex h-7 w-7 items-center justify-center bg-primary text-[12px] font-extrabold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
             AR
           </div>
-          <span className="text-[15px] font-bold tracking-tight text-foreground">
+          <span className="font-serif text-[15px] font-bold tracking-tight text-foreground">
             AI Radar
           </span>
         </Link>
@@ -78,7 +78,7 @@ export async function AppNav({
             <>
               <Link
                 href="/account"
-                className={`${TIER_CLASS[tier] ?? TIER_CLASS.free} hover:opacity-80 transition-opacity`}
+                className={`${TIER_CLASS[tier] ?? TIER_CLASS.free} hover:opacity-80 transition-opacity duration-300`}
               >
                 {TIER_LABEL[tier] ?? tier}
               </Link>

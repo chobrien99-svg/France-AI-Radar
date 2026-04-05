@@ -17,14 +17,14 @@ export default async function AdminFoundersPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Admin</p>
-          <h1 className="mt-0.5 text-[24px] font-bold text-foreground">Founders</h1>
+          <h1 className="mt-0.5 font-serif text-[24px] font-bold text-foreground">Founders</h1>
         </div>
         <Button asChild>
           <Link href="/admin/founders/new">+ Add Founder</Link>
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border">
+      <div className="overflow-hidden border border-border/40">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="border-b border-border bg-secondary/50">

@@ -109,7 +109,7 @@ export default async function AccountPage() {
         {/* Page header */}
         <div className="mb-8">
           <p className="section-kicker">Account</p>
-          <h1 className="section-title mt-1">
+          <h1 className="font-serif section-title mt-1">
             {profile.full_name || profile.email}
           </h1>
           {profile.full_name && (
@@ -119,7 +119,7 @@ export default async function AccountPage() {
 
         {/* Admin shortcut — only visible to admins */}
         {(profile as { is_admin?: boolean }).is_admin && (
-          <div className="mb-8 flex items-center justify-between gap-4 rounded-xl border border-border bg-secondary/40 px-5 py-4">
+          <div className="mb-8 flex items-center justify-between gap-4 border-l-2 border-l-primary bg-secondary/40 px-5 py-4">
             <div>
               <p className="text-[13px] font-semibold text-foreground">Admin Dashboard</p>
               <p className="text-[12px] text-muted-foreground">Manage startups, founders, and site content.</p>
@@ -136,7 +136,7 @@ export default async function AccountPage() {
             <div>
               <p className="metric-label mb-2">Subscription</p>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-[18px] font-bold text-foreground">
+                <h2 className="font-serif text-[18px] font-bold text-foreground">
                   {TIER_LABEL[tier] ?? tier} Plan
                 </h2>
                 <span
@@ -420,7 +420,7 @@ function EmptyState({
   comingSoon?: boolean
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-6 py-12 text-center">
+    <div className="border-l-2 border-l-border bg-card px-6 py-12 text-center">
       {comingSoon && (
         <span className="badge-signal badge-signal-neutral mb-4 inline-block text-[11px]">
           Coming Soon

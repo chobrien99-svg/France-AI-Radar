@@ -1,7 +1,19 @@
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Newsreader } from "next/font/google"
+import { Public_Sans } from "next/font/google"
 import "./globals.css"
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-newsreader",
+  display: "swap",
+})
+
+const publicSans = Public_Sans({
+  subsets: ["latin"],
+  variable: "--font-public-sans",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "French AI Radar",
@@ -12,7 +24,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" className={`${newsreader.variable} ${publicSans.variable}`}>
       <body>{children}</body>
     </html>
   )

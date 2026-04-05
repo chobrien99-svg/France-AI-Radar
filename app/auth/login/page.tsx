@@ -8,14 +8,14 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-primary-foreground">
+            <div className="flex h-8 w-8 items-center justify-center bg-primary text-[13px] font-bold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
               AR
             </div>
-            <span className="text-sm font-semibold text-foreground">AI Radar</span>
+            <span className="font-serif text-sm font-semibold text-foreground">AI Radar</span>
           </Link>
         </div>
 
-        <Suspense fallback={<div className="data-card-compact p-6 h-64 animate-pulse bg-muted rounded-xl" />}>
+        <Suspense fallback={<div className="data-card-compact p-6 h-64 animate-pulse bg-secondary" />}>
           <LoginForm />
         </Suspense>
 

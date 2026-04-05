@@ -33,7 +33,7 @@ export default function DatabaseLoading() {
             style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}
           >
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-xl border bg-card p-5 shadow-xs">
+              <div key={i} className="border-l-2 border-l-primary bg-card p-5">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="space-y-1.5 flex-1">
                     <Skeleton className="h-4 w-3/5" />

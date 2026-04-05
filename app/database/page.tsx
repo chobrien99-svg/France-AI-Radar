@@ -237,7 +237,7 @@ export default async function DatabasePage({
 
           {/* Upgrade gate */}
           {isLimited && (
-            <div className="mt-8 rounded-xl border border-border bg-card px-6 py-8 text-center shadow-xs">
+            <div className="mt-8 border-l-2 border-l-primary bg-card px-6 py-8 text-center">
               <p className="mb-1 text-[15px] font-semibold text-foreground">
                 {total - visible.length} more startup
                 {total - visible.length !== 1 ? "s" : ""} in the database

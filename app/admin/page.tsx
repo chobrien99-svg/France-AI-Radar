@@ -20,7 +20,7 @@ export default async function AdminDashboard() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Admin</p>
-          <h1 className="mt-0.5 text-[24px] font-bold text-foreground">Dashboard</h1>
+          <h1 className="mt-0.5 font-serif text-[24px] font-bold text-foreground">Dashboard</h1>
         </div>
         <Button asChild>
           <Link href="/admin/startups/new">+ Add Startup</Link>
@@ -53,7 +53,7 @@ export default async function AdminDashboard() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="border-l-2 border-l-primary bg-card p-5">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="mt-1 text-[28px] font-bold text-foreground">{value}</p>
     </div>

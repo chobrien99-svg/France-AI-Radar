@@ -32,7 +32,7 @@ const ENTERPRISE_FEATURES = [
 function CheckIcon() {
   return (
     <svg
-      className="h-4 w-4 shrink-0 text-primary"
+      className="h-4 w-4 shrink-0 text-accent-green"
       viewBox="0 0 16 16"
       fill="none"
       stroke="currentColor"
@@ -68,9 +68,9 @@ export function PricingCards() {
       <div className="mb-10 flex items-center justify-center gap-3">
         <button
           onClick={() => setInterval("monthly")}
-          className={`rounded-lg px-4 py-1.5 text-[13px] font-medium transition-colors ${
+          className={`px-4 py-1.5 text-[13px] font-bold uppercase tracking-wide transition-colors duration-300 ${
             interval === "monthly"
-              ? "bg-foreground text-background"
+              ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
@@ -78,14 +78,14 @@ export function PricingCards() {
         </button>
         <button
           onClick={() => setInterval("annual")}
-          className={`flex items-center gap-2 rounded-lg px-4 py-1.5 text-[13px] font-medium transition-colors ${
+          className={`flex items-center gap-2 px-4 py-1.5 text-[13px] font-bold uppercase tracking-wide transition-colors duration-300 ${
             interval === "annual"
-              ? "bg-foreground text-background"
+              ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
           Annual
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+          <span className="border-l-2 border-l-accent-green bg-accent-green/10 px-2 py-0.5 text-[11px] font-bold text-accent-green">
             2 months free
           </span>
         </button>
@@ -97,11 +97,11 @@ export function PricingCards() {
         {/* Explorer */}
         <div className="data-card flex flex-col p-6">
           <div className="mb-6">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
               Explorer
             </p>
             <div className="flex items-end gap-1.5">
-              <span className="text-[32px] font-bold tracking-tight text-foreground">
+              <span className="font-serif text-[32px] font-bold tracking-tight text-foreground">
                 {annual ? "€90" : "€9"}
               </span>
               <span className="mb-1 text-[13px] text-muted-foreground">
@@ -128,20 +128,20 @@ export function PricingCards() {
         </div>
 
         {/* Professional — featured */}
-        <div className="relative flex flex-col rounded-xl border-2 border-primary bg-card p-6 shadow-md">
+        <div className="relative flex flex-col border-l-4 border-l-accent-green bg-card p-6">
           {/* Badge */}
           <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-            <span className="rounded-full bg-primary px-3.5 py-1 text-[11px] font-semibold text-primary-foreground">
+            <span className="bg-accent-green px-3.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
               Founding Member
             </span>
           </div>
 
           <div className="mb-6">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-primary">
-              ⭐ Professional
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-accent-green">
+              Professional
             </p>
             <div className="flex items-end gap-1.5">
-              <span className="text-[32px] font-bold tracking-tight text-foreground">
+              <span className="font-serif text-[32px] font-bold tracking-tight text-foreground">
                 {annual ? "€290" : "€29"}
               </span>
               <span className="mb-1 text-[13px] text-muted-foreground">
@@ -161,7 +161,7 @@ export function PricingCards() {
               {" "}future price
             </p>
 
-            <p className="mt-2.5 text-[12px] font-medium text-primary">
+            <p className="mt-2.5 text-[12px] font-medium text-accent-green">
               Lock in early pricing as we expand the database.
             </p>
 
@@ -184,11 +184,11 @@ export function PricingCards() {
         {/* Enterprise */}
         <div className="data-card flex flex-col p-6">
           <div className="mb-6">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
               Enterprise
             </p>
             <div className="flex items-end gap-1.5">
-              <span className="text-[32px] font-bold tracking-tight text-foreground">
+              <span className="font-serif text-[32px] font-bold tracking-tight text-foreground">
                 Custom
               </span>
             </div>

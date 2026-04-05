@@ -363,13 +363,13 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
             return (
             <div
               key={i}
-              className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 text-[12px]"
+              className="flex items-center gap-1.5 border-l-2 border-l-border bg-secondary px-3 py-1 text-[12px]"
             >
               <span className={`h-2 w-2 rounded-full ${
-                displayStrength === "positive" ? "bg-emerald-500"
-                : displayStrength === "warning" ? "bg-amber-500"
-                : displayStrength === "risk" ? "bg-rose-500"
-                : "bg-zinc-400"
+                displayStrength === "positive" ? "bg-accent-green"
+                : displayStrength === "warning" ? "bg-[#8a6d00]"
+                : displayStrength === "risk" ? "bg-destructive"
+                : "bg-[#72787e]"
               }`} />
               <span className="text-foreground">{tag.tag}</span>
               <button

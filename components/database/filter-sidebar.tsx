@@ -136,11 +136,11 @@ function FilterGroup({
         {options.map((opt) => (
           <label
             key={opt.value}
-            className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            className="flex cursor-pointer items-center gap-2 px-1 py-1 text-[13px] text-muted-foreground transition-colors duration-300 hover:text-foreground"
           >
             <input
               type="checkbox"
-              className="h-[15px] w-[15px] rounded accent-primary"
+              className="h-[15px] w-[15px] accent-primary"
               checked={selected.includes(opt.value)}
               onChange={() => onToggle(opt.value)}
             />

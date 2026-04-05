@@ -6,13 +6,13 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md" style={{ borderBottom: '1px solid rgba(193, 199, 206, 0.25)' }}>
         <div className="page-container flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-primary text-[12px] font-extrabold text-primary-foreground">
+            <div className="flex h-7 w-7 items-center justify-center bg-primary text-[12px] font-extrabold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
               AR
             </div>
-            <span className="text-[15px] font-bold tracking-tight text-foreground">
+            <span className="font-serif text-[15px] font-bold tracking-tight text-foreground">
               AI Radar
             </span>
           </Link>
@@ -20,19 +20,19 @@ export default function PricingPage() {
           <div className="hidden items-center gap-1 md:flex">
             <Link
               href="/"
-              className="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
             >
               Home
             </Link>
             <Link
               href="/database"
-              className="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
             >
               Database
             </Link>
             <Link
               href="/pricing"
-              className="rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-foreground bg-secondary"
+              className="px-3.5 py-1.5 text-[13px] font-bold uppercase tracking-wide text-primary border-b-2 border-primary"
             >
               Pricing
             </Link>
@@ -53,7 +53,7 @@ export default function PricingPage() {
         {/* Header */}
         <div className="mb-12 text-center">
           <p className="section-kicker mb-3">Pricing</p>
-          <h1 className="mb-3 text-[32px] font-bold tracking-tight text-foreground md:text-[40px]">
+          <h1 className="mb-3 font-serif text-[32px] font-bold tracking-tight text-foreground md:text-[40px]">
             Access the French AI Radar
           </h1>
           <p className="mx-auto max-w-[500px] text-[16px] text-muted-foreground">
@@ -68,8 +68,8 @@ export default function PricingPage() {
         <PricingCards />
 
         {/* Early Access Pricing note */}
-        <div className="mx-auto mt-12 max-w-[600px] rounded-xl border border-border bg-secondary/30 px-7 py-6 text-center">
-          <p className="mb-1.5 text-[13px] font-semibold text-foreground">Early Access Pricing</p>
+        <div className="mx-auto mt-12 max-w-[600px] border-l-2 border-l-primary bg-card px-7 py-6 text-center">
+          <p className="mb-1.5 font-serif text-[13px] font-semibold text-foreground">Early Access Pricing</p>
           <p className="text-[13px] leading-relaxed text-muted-foreground">
             We're offering discounted access for early users as we build the most comprehensive
             intelligence layer on the French AI ecosystem. Pricing will increase as the database
@@ -85,7 +85,7 @@ export default function PricingPage() {
             "Secure payments via Stripe",
           ].map((item) => (
             <span key={item} className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-              <svg className="h-3.5 w-3.5 text-primary" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <svg className="h-3.5 w-3.5 text-accent-green" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="2.5 8 6.5 12 13.5 4" />
               </svg>
               {item}
@@ -95,18 +95,18 @@ export default function PricingPage() {
 
         {/* FAQ */}
         <div className="mx-auto mt-20 max-w-[640px]">
-          <h2 className="mb-6 text-center text-[20px] font-bold tracking-tight text-foreground">
+          <h2 className="mb-6 text-center font-serif text-[20px] font-bold tracking-tight text-foreground">
             Frequently Asked Questions
           </h2>
           <div className="space-y-2">
             {FAQ_ITEMS.map((item) => (
               <details
                 key={item.q}
-                className="group rounded-xl border border-border bg-card px-5 py-4"
+                className="group border-l-2 border-l-border bg-card px-5 py-4"
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[14px] font-semibold text-foreground">
                   {item.q}
-                  <span className="shrink-0 text-muted-foreground transition-transform group-open:rotate-45">
+                  <span className="shrink-0 text-muted-foreground transition-transform duration-300 group-open:rotate-45">
                     +
                   </span>
                 </summary>
@@ -120,7 +120,7 @@ export default function PricingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-border py-6 text-center text-[12px] text-muted-foreground">
+      <footer className="py-6 text-center text-[12px] text-muted-foreground" style={{ borderTop: '1px solid rgba(193, 199, 206, 0.25)' }}>
         AI Radar by French Tech Journal · Privacy · Terms · Contact · © 2026
       </footer>
     </div>

@@ -48,9 +48,9 @@ const SAMPLE_CARDS = [
 ]
 
 const signalDotClass: Record<string, string> = {
-  green: "bg-emerald-500",
-  amber: "bg-amber-500",
-  red: "bg-rose-500",
+  green: "bg-accent-green",
+  amber: "bg-[#8a6d00]",
+  red: "bg-destructive",
 }
 
 const badgeClass: Record<string, string> = {
@@ -63,15 +63,15 @@ const badgeClass: Record<string, string> = {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
-      {/* ── NAV ─────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
+      {/* -- NAV -- */}
+      <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md" style={{ borderBottom: '1px solid rgba(193, 199, 206, 0.25)' }}>
         <div className="page-container flex h-14 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-primary text-[12px] font-extrabold text-primary-foreground">
+            <div className="flex h-7 w-7 items-center justify-center bg-primary text-[12px] font-extrabold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
               AR
             </div>
-            <span className="text-[15px] font-bold tracking-tight text-foreground">
+            <span className="font-serif text-[15px] font-bold tracking-tight text-foreground">
               AI Radar
             </span>
           </Link>
@@ -80,19 +80,19 @@ export default function LandingPage() {
           <div className="hidden items-center gap-1 md:flex">
             <Link
               href="/"
-              className="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
             >
               Home
             </Link>
             <Link
               href="/database"
-              className="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
             >
               Database
             </Link>
             <Link
               href="/pricing"
-              className="rounded-lg px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
             >
               Pricing
             </Link>
@@ -111,14 +111,14 @@ export default function LandingPage() {
       </nav>
 
       <div className="page-container">
-        {/* ── HERO ────────────────────────────────────────── */}
+        {/* -- HERO -- */}
         <section className="py-20 text-center md:py-24">
-          {/* Kicker pill */}
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-1.5 text-[12px] font-semibold tracking-[0.04em] text-primary">
-            ◆ Investor Intelligence Platform
+          {/* Kicker */}
+          <div className="mb-6 inline-flex items-center gap-2 border-l-2 border-l-primary bg-primary/10 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-primary">
+            Investor Intelligence Platform
           </div>
 
-          <h1 className="mb-4 text-[clamp(32px,5vw,52px)] font-extrabold leading-[1.1] tracking-[-0.03em] text-foreground">
+          <h1 className="mb-4 font-serif text-[clamp(32px,5vw,52px)] font-bold leading-[1.1] tracking-[-0.02em] text-foreground">
             The French AI Radar
             <br />
             <span className="text-primary">Discover AI startups before the market.</span>
@@ -130,7 +130,7 @@ export default function LandingPage() {
 
           <div className="flex items-center justify-center gap-3">
             <Button size="lg" asChild>
-              <Link href="/database">Explore the Radar →</Link>
+              <Link href="/database">Explore the Radar</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <Link href="/startup/novamind-ai">View Sample Report</Link>
@@ -138,23 +138,23 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── PROOF BAR ────────────────────────────────────── */}
+        {/* -- PROOF BAR -- */}
         <section className="mb-[72px]">
-          <div className="mx-auto grid max-w-[720px] grid-cols-4 overflow-hidden rounded-xl border border-border bg-border gap-px">
+          <div className="mx-auto grid max-w-[720px] grid-cols-4 overflow-hidden bg-card">
             {[
               { num: "6", label: "Startups Tracked" },
               { num: "21", label: "Signals Detected" },
               { num: "48", label: "Sectors Covered" },
               { num: "Weekly", label: "Updated" },
-            ].map((item) => (
+            ].map((item, idx) => (
               <div
                 key={item.label}
-                className="bg-card px-4 py-5 text-center"
+                className={`px-4 py-5 text-center ${idx > 0 ? "border-l border-border/40" : ""}`}
               >
-                <div className="text-[22px] font-bold tracking-tight text-foreground">
+                <div className="font-serif text-[22px] font-bold tracking-tight text-foreground">
                   {item.num}
                 </div>
-                <div className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   {item.label}
                 </div>
               </div>
@@ -162,10 +162,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── VALUE PROPS ──────────────────────────────────── */}
+        {/* -- VALUE PROPS -- */}
         <section className="py-[72px]">
           <p className="section-kicker mb-2 text-center">Why AI Radar</p>
-          <h2 className="mb-2 text-center text-2xl font-bold tracking-[-0.02em] text-foreground">
+          <h2 className="mb-2 text-center font-serif text-2xl font-bold tracking-[-0.02em] text-foreground">
             Intelligence, Not Noise
           </h2>
           <p className="mb-12 text-center text-[15px] text-muted-foreground">
@@ -192,12 +192,12 @@ export default function LandingPage() {
             ].map((card) => (
               <div
                 key={card.title}
-                className="rounded-xl border border-border bg-card p-7 transition-shadow hover:shadow-sm"
+                className="border-l-2 border-l-primary bg-card p-7 transition-colors duration-300 hover:bg-accent"
               >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-[10px] bg-primary/10 text-[18px]">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center bg-primary/10 text-[18px]">
                   {card.icon}
                 </div>
-                <h3 className="mb-2 text-[15px] font-bold tracking-tight text-foreground">
+                <h3 className="mb-2 font-serif text-[15px] font-bold tracking-tight text-foreground">
                   {card.title}
                 </h3>
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
@@ -208,10 +208,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── SAMPLE CARDS ─────────────────────────────────── */}
+        {/* -- SAMPLE CARDS -- */}
         <section className="pb-[72px]">
           <p className="section-kicker mb-2 text-center">Live from the database</p>
-          <h2 className="mb-2 text-center text-xl font-bold tracking-[-0.02em] text-foreground">
+          <h2 className="mb-2 text-center font-serif text-xl font-bold tracking-[-0.02em] text-foreground">
             See What&apos;s Inside
           </h2>
           <p className="mb-8 text-center text-[14px] text-muted-foreground">
@@ -225,7 +225,7 @@ export default function LandingPage() {
                   {/* Header */}
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div>
-                      <div className="text-[15px] font-bold tracking-tight text-foreground">
+                      <div className="font-serif text-[15px] font-bold tracking-tight text-foreground">
                         {card.name}
                       </div>
                       <div className="mt-0.5 text-[12px] text-muted-foreground">
@@ -250,12 +250,12 @@ export default function LandingPage() {
                   <p className="mb-1.5 text-[13px] leading-snug text-foreground">
                     {card.description}
                   </p>
-                  <p className="text-[13px] italic leading-snug text-muted-foreground">
+                  <p className="font-serif text-[13px] italic leading-snug text-muted-foreground">
                     {card.takeaway}
                   </p>
 
                   {/* Signal footer */}
-                  <div className="mt-3 flex items-center gap-2 border-t border-border pt-3 text-[12px] text-muted-foreground">
+                  <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-3 text-[12px] text-muted-foreground">
                     <span
                       className={`h-[7px] w-[7px] shrink-0 rounded-full ${signalDotClass[card.signalDot]}`}
                     />
@@ -267,28 +267,28 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── BOTTOM CTA ───────────────────────────────────── */}
+        {/* -- BOTTOM CTA -- */}
         <section className="pb-20 text-center">
-          <h2 className="mb-3 text-2xl font-extrabold tracking-[-0.02em] text-foreground">
+          <h2 className="mb-3 font-serif text-2xl font-bold tracking-[-0.02em] text-foreground">
             Ready to see the full picture?
           </h2>
           <p className="mb-6 text-[15px] text-muted-foreground">
             Join investors who track the French AI ecosystem with clarity.
           </p>
           <Button size="lg" asChild>
-            <Link href="/pricing">View Pricing →</Link>
+            <Link href="/pricing">View Pricing</Link>
           </Button>
         </section>
       </div>
 
-      {/* ── FOOTER ───────────────────────────────────────── */}
-      <footer className="border-t border-border py-6">
+      {/* -- FOOTER -- */}
+      <footer className="py-6" style={{ borderTop: '1px solid rgba(193, 199, 206, 0.25)' }}>
         <div className="page-container flex flex-col items-center justify-between gap-2 text-[12px] text-muted-foreground md:flex-row">
           <span>AI Radar by French Tech Journal</span>
           <div className="flex items-center gap-4">
-            <Link href="#" className="hover:text-foreground">Privacy</Link>
-            <Link href="#" className="hover:text-foreground">Terms</Link>
-            <Link href="#" className="hover:text-foreground">Contact</Link>
+            <Link href="#" className="hover:text-foreground transition-colors duration-300">Privacy</Link>
+            <Link href="#" className="hover:text-foreground transition-colors duration-300">Terms</Link>
+            <Link href="#" className="hover:text-foreground transition-colors duration-300">Contact</Link>
             <span>© 2026</span>
           </div>
         </div>

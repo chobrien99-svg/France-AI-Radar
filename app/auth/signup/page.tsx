@@ -46,10 +46,10 @@ export default function SignupPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="w-full max-w-sm text-center">
-          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
-            <span className="text-xl">✓</span>
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center bg-accent-green/10">
+            <span className="text-xl text-accent-green">✓</span>
           </div>
-          <h1 className="mb-2 text-lg font-semibold text-foreground">Check your email</h1>
+          <h1 className="mb-2 font-serif text-lg font-semibold text-foreground">Check your email</h1>
           <p className="text-sm text-muted-foreground">
             We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
           </p>
@@ -64,15 +64,15 @@ export default function SignupPage() {
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-primary-foreground">
+            <div className="flex h-8 w-8 items-center justify-center bg-primary text-[13px] font-bold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
               AR
             </div>
-            <span className="text-sm font-semibold text-foreground">AI Radar</span>
+            <span className="font-serif text-sm font-semibold text-foreground">AI Radar</span>
           </Link>
         </div>
 
-        <div className="data-card-compact p-6">
-          <h1 className="mb-1 text-lg font-semibold text-foreground">Create account</h1>
+        <div className="data-card-compact bg-card p-6">
+          <h1 className="mb-1 font-serif text-lg font-semibold text-foreground">Create account</h1>
           <p className="mb-6 text-sm text-muted-foreground">
             Start tracking the French AI ecosystem.
           </p>
@@ -125,7 +125,7 @@ export default function SignupPage() {
             </div>
 
             {error && (
-              <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p className="border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </p>
             )}

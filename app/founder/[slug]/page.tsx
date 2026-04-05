@@ -80,7 +80,7 @@ export default async function FounderProfilePage({
         <div className="mb-6">
           <Link
             href="/database"
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
           >
             ← Back to Database
           </Link>
@@ -89,7 +89,7 @@ export default async function FounderProfilePage({
         {/* Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
-            <h1 className="text-[26px] font-bold tracking-tight text-foreground">
+            <h1 className="font-serif text-[26px] font-bold tracking-tight text-foreground">
               {founder.full_name}
             </h1>
             {founder.role && (
@@ -102,7 +102,7 @@ export default async function FounderProfilePage({
               href={founder.linkedin_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+              className="inline-flex shrink-0 items-center gap-1.5 border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-300 hover:bg-accent"
             >
               LinkedIn ↗
             </a>
@@ -135,8 +135,8 @@ export default async function FounderProfilePage({
 
 function UpgradeGate({ tier }: { tier: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-8 py-10 text-center shadow-xs">
-      <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+    <div className="border-l-2 border-l-primary bg-card px-8 py-10 text-center">
+      <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center bg-primary/10">
         <svg
           className="h-5 w-5 text-primary"
           fill="none"
@@ -151,7 +151,7 @@ function UpgradeGate({ tier }: { tier: string }) {
           />
         </svg>
       </div>
-      <p className="mb-1 text-[15px] font-semibold text-foreground">
+      <p className="mb-1 font-serif text-[15px] font-semibold text-foreground">
         Full founder profile is Professional-only
       </p>
       <p className="mb-5 text-[13px] text-muted-foreground">
@@ -160,7 +160,7 @@ function UpgradeGate({ tier }: { tier: string }) {
           : "Upgrade to Professional for full founder backgrounds, exit history, and pedigree analysis."}
       </p>
       <Button size="sm" asChild>
-        <Link href="/pricing">Upgrade to Professional →</Link>
+        <Link href="/pricing">Upgrade to Professional</Link>
       </Button>
     </div>
   )
@@ -194,7 +194,7 @@ type VentureLink = {
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+    <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
       {label}
     </p>
   )
@@ -222,33 +222,33 @@ function PremiumContent({
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
 
             {founder.big_tech_employer && (
-              <div className="rounded-xl border border-border bg-background p-4">
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="border-l-2 border-l-primary bg-accent p-4">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   Big Tech Background
                 </p>
-                <p className="text-[14px] font-semibold text-foreground">
+                <p className="font-serif text-[14px] font-semibold text-foreground">
                   {founder.big_tech_employer}
                 </p>
               </div>
             )}
 
             {founder.academic_lab && (
-              <div className="rounded-xl border border-border bg-background p-4">
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="border-l-2 border-l-primary bg-accent p-4">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   {founder.has_phd ? "PhD / Academic Lab" : "Academic Lab"}
                 </p>
-                <p className="text-[14px] font-semibold text-foreground">
+                <p className="font-serif text-[14px] font-semibold text-foreground">
                   {founder.academic_lab}
                 </p>
               </div>
             )}
 
             {founder.previous_exits > 0 && (
-              <div className="rounded-xl border border-border bg-background p-4 sm:col-span-2">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="border-l-2 border-l-primary bg-accent p-4 sm:col-span-2">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                   Previous Exits
                 </p>
-                <p className="text-[14px] font-semibold text-foreground">
+                <p className="font-serif text-[14px] font-semibold text-foreground">
                   {founder.previous_exits} exit{founder.previous_exits !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -267,15 +267,12 @@ function PremiumContent({
               <Link
                 key={v.id}
                 href={`/startup/${v.slug}`}
-                className="block rounded-xl border border-border bg-background p-4 transition-colors hover:border-primary/40 hover:bg-muted/40"
+                className="block border-l-2 border-l-border bg-accent p-4 transition-colors duration-300 hover:border-l-primary hover:bg-secondary"
               >
-                <p className="text-[14px] font-bold text-foreground">{v.name}</p>
+                <p className="font-serif text-[14px] font-bold text-foreground">{v.name}</p>
                 {v.role && (
                   <p className="mt-0.5 text-[12px] font-medium text-primary">{v.role}</p>
                 )}
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  {v.role ?? ""}
-                </p>
               </Link>
             ))}
           </div>

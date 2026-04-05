@@ -19,10 +19,10 @@ const BADGE_CLASS: Record<string, string> = {
 }
 
 const DOT_CLASS: Record<string, string> = {
-  positive: "bg-emerald-500",
-  warning: "bg-amber-500",
-  risk: "bg-rose-500",
-  neutral: "bg-zinc-400",
+  positive: "bg-accent-green",
+  warning: "bg-[#8a6d00]",
+  risk: "bg-destructive",
+  neutral: "bg-[#72787e]",
 }
 
 function signalDotStrength(tags: Venture["organization_tags"]): string {
@@ -84,7 +84,7 @@ export function StartupCard({
         {/* Header */}
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-[15px] font-bold tracking-tight text-foreground">
+            <h3 className="truncate font-serif text-[15px] font-bold tracking-tight text-foreground">
               {venture.name}
             </h3>
             <p className="mt-0.5 text-[12px] text-muted-foreground">
@@ -119,15 +119,15 @@ export function StartupCard({
 
         {/* Takeaway */}
         {hint && (
-          <p className="text-[13px] italic leading-snug text-muted-foreground line-clamp-2">
+          <p className="font-serif text-[13px] italic leading-snug text-muted-foreground line-clamp-2">
             {hint}
           </p>
         )}
 
         {/* Founder summary */}
         {founders.length > 0 && (
-          <div className="mt-3 border-t border-border pt-3">
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="mt-3 border-t border-border/40 pt-3">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Founders
             </p>
             <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -155,7 +155,7 @@ export function StartupCard({
 
         {/* Contact row — Professional+ only */}
         {showContact && (venture.website || venture.email || venture.phone) && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border pt-3 text-[12px] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 pt-3 text-[12px] text-muted-foreground">
             {venture.website && (
               <span className="flex items-center gap-1">
                 <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5C8 1.5 5.5 4.5 5.5 8s2.5 6.5 2.5 6.5M8 1.5C8 1.5 10.5 4.5 10.5 8S8 14.5 8 14.5M1.5 8h13"/></svg>
@@ -178,7 +178,7 @@ export function StartupCard({
         )}
 
         {/* Signal footer */}
-        <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3 text-[12px] text-muted-foreground">
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/40 pt-3 text-[12px] text-muted-foreground">
           <div className="flex items-center gap-2">
             <span
               className={`h-[7px] w-[7px] shrink-0 rounded-full ${DOT_CLASS[dotStrength]}`}

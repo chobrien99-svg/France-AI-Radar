@@ -23,10 +23,10 @@ const BADGE_CLASS: Record<string, string> = {
 }
 
 const SIGNAL_DOT: Record<string, string> = {
-  positive: "bg-emerald-500",
-  warning: "bg-amber-500",
-  risk: "bg-rose-500",
-  neutral: "bg-zinc-400",
+  positive: "bg-accent-green",
+  warning: "bg-[#8a6d00]",
+  risk: "bg-destructive",
+  neutral: "bg-[#72787e]",
 }
 
 function formatDate(iso: string | null): string {
@@ -169,7 +169,7 @@ export default async function StartupProfilePage({
         <div className="mb-6">
           <Link
             href="/database"
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
           >
             ← Back to Database
           </Link>
@@ -178,7 +178,7 @@ export default async function StartupProfilePage({
         {/* Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
-            <h1 className="text-[26px] font-bold tracking-tight text-foreground">
+            <h1 className="font-serif text-[26px] font-bold tracking-tight text-foreground">
               {venture.name}
             </h1>
             <p className="text-[13px] text-muted-foreground">
@@ -260,8 +260,8 @@ export default async function StartupProfilePage({
 
 function UpgradeGate({ tier }: { tier: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-8 py-10 text-center shadow-xs">
-      <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+    <div className="border-l-2 border-l-primary bg-card px-8 py-10 text-center">
+      <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center bg-primary/10">
         <svg
           className="h-5 w-5 text-primary"
           fill="none"
@@ -276,7 +276,7 @@ function UpgradeGate({ tier }: { tier: string }) {
           />
         </svg>
       </div>
-      <p className="mb-1 text-[15px] font-semibold text-foreground">
+      <p className="mb-1 font-serif text-[15px] font-semibold text-foreground">
         Full investor brief is Professional-only
       </p>
       <p className="mb-5 text-[13px] text-muted-foreground">
@@ -285,7 +285,7 @@ function UpgradeGate({ tier }: { tier: string }) {
           : "Upgrade to Professional for full signal timelines, founder analysis, and investor briefs."}
       </p>
       <Button size="sm" asChild>
-        <Link href="/pricing">Upgrade to Professional →</Link>
+        <Link href="/pricing">Upgrade to Professional</Link>
       </Button>
     </div>
   )
@@ -395,8 +395,8 @@ function PremiumContent({
             ))}
           </div>
           {profileData.analyst_note && (
-            <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-              <p className="text-[12px] font-semibold uppercase tracking-wide text-primary">
+            <div className="mt-4 border-l-2 border-l-accent-green bg-accent-green/5 px-4 py-3">
+              <p className="text-[12px] font-bold uppercase tracking-wide text-accent-green">
                 Why this matters
               </p>
               <p className="mt-1 text-[13px] leading-relaxed text-foreground">
@@ -413,7 +413,7 @@ function PremiumContent({
           <SectionHeader label="Key Signals" />
           <div className="mt-4 relative pl-4">
             {/* Timeline vertical line */}
-            <div className="absolute left-0 top-2 bottom-2 w-px bg-border" />
+            <div className="absolute left-0 top-2 bottom-2 w-px bg-border/40" />
 
             <div className="space-y-6">
               {signals.map((signal) => (
@@ -422,12 +422,12 @@ function PremiumContent({
                   <div
                     className={`absolute left-[-4.5px] top-[5px] h-[9px] w-[9px] rounded-full border-2 border-background ${SIGNAL_DOT[signal.strength] ?? SIGNAL_DOT.neutral}`}
                   />
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
                     {formatDate(signal.signal_date)}
                     {" · "}
                     {SIGNAL_TYPE_LABELS[signal.signal_type] ?? signal.signal_type}
                   </p>
-                  <p className="mt-0.5 text-[14px] font-semibold text-foreground">
+                  <p className="mt-0.5 font-serif text-[14px] font-semibold text-foreground">
                     {signal.title}
                   </p>
                   {signal.description && (
@@ -450,19 +450,19 @@ function PremiumContent({
             {founders.map((founder) => (
               <div
                 key={founder.id}
-                className="rounded-xl border border-border bg-background p-4"
+                className="border-l-2 border-l-primary bg-accent p-4"
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
                     {founder.slug ? (
                       <Link
                         href={`/founder/${founder.slug}`}
-                        className="text-[14px] font-bold text-foreground underline-offset-2 hover:underline"
+                        className="font-serif text-[14px] font-bold text-foreground underline-offset-2 hover:underline"
                       >
                         {founder.full_name}
                       </Link>
                     ) : (
-                      <p className="text-[14px] font-bold text-foreground">
+                      <p className="font-serif text-[14px] font-bold text-foreground">
                         {founder.full_name}
                       </p>
                     )}
@@ -567,7 +567,7 @@ function PremiumContent({
         profileData?.est_next_raise) && (
         <section>
           <SectionHeader label="Funding" />
-          <div className="mt-4 data-card-compact p-5">
+          <div className="mt-4 data-card-compact bg-card p-5">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="metric-label">Total Raised</p>
@@ -619,11 +619,11 @@ function ContactItem({
       href={href}
       target={href.startsWith("http") ? "_blank" : undefined}
       rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
-      className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-[13px] transition-colors hover:bg-accent"
+      className="flex items-center gap-2 border-l-2 border-l-border bg-card px-4 py-3 text-[13px] transition-colors duration-300 hover:bg-accent"
     >
       <span className="shrink-0 text-muted-foreground">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className="truncate font-medium text-foreground">{display}</p>
       </div>
     </a>
@@ -632,8 +632,8 @@ function ContactItem({
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="border-b border-border pb-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+    <div className="border-b border-border/40 pb-2">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>
     </div>

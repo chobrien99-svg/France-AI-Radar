@@ -88,7 +88,7 @@ export function LinkedFounders({ organizationId, linkedPeople: initial, allPeopl
       {linked.length > 0 ? (
         <div className="mb-4 space-y-2">
           {linked.map((f) => (
-            <div key={f.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+            <div key={f.id} className="flex items-center justify-between gap-3 border-l-2 border-l-border bg-card p-3">
               <div>
                 <p className="text-[13px] font-semibold text-foreground">{f.full_name}</p>
                 {f.role && <p className="text-[11px] text-muted-foreground">{f.role}</p>}
