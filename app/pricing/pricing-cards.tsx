@@ -7,16 +7,17 @@ import { Button } from "@/components/ui/button"
 type Interval = "monthly" | "annual"
 
 const EXPLORER_FEATURES = [
-  "Limited startup access (preview only)",
-  "Basic filters",
-  "Weekly highlights",
+  "Browse the full database",
+  "3 startup profile views per month",
+  "Basic time filters",
+  "Weekly highlights email",
 ]
 
 const PRO_FEATURES = [
-  "Unlimited startup access",
-  "Full investor briefs & timelines",
+  "Unlimited profile views",
+  "Full investor briefs & signal timelines",
   "Advanced filters (sector, founder, signals)",
-  "Save companies & create lists",
+  "Watchlist & custom lists",
   "CSV export",
   "Alerts on new signals",
 ]

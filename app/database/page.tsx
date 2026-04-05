@@ -188,7 +188,7 @@ export default async function DatabasePage({
         {/* Sidebar — hidden on mobile, visible lg+ */}
         <div className="hidden lg:block">
           <Suspense fallback={<SidebarSkeleton />}>
-            <FilterSidebar />
+            <FilterSidebar tier={tier} />
           </Suspense>
         </div>
 

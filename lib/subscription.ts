@@ -1,7 +1,31 @@
-export function canAccessFullProfile(tier: string): boolean {
+// ------------------------------------------------------------------
+// Tier access rules
+// ------------------------------------------------------------------
+
+/** Can view premium fields on startup profiles (investor brief, signals, founders, etc.) */
+export function canAccessPremiumFields(tier: string): boolean {
   return ["professional", "enterprise"].includes(tier)
 }
 
+/** Can view full profiles at all (Explorer has a monthly view limit) */
+export function canAccessFullProfile(tier: string): boolean {
+  return ["explorer", "professional", "enterprise"].includes(tier)
+}
+
+/** Monthly profile view limit. null = unlimited, 0 = no access. */
+export function getProfileViewLimit(tier: string): number | null {
+  switch (tier) {
+    case "explorer":
+      return 3
+    case "professional":
+    case "enterprise":
+      return null
+    default: // free
+      return 0
+  }
+}
+
+/** How many startup cards visible in the database list. null = unlimited. */
 export function getStartupLimit(tier: string): number | null {
   switch (tier) {
     case "free":
@@ -16,6 +40,36 @@ export function getStartupLimit(tier: string): number | null {
       return 10
   }
 }
+
+/** Can use advanced filters (sector, founder signals, signal type). */
+export function canUseAdvancedFilters(tier: string): boolean {
+  return ["professional", "enterprise"].includes(tier)
+}
+
+/** Can save to watchlist and create lists. */
+export function canSaveAndList(tier: string): boolean {
+  return ["professional", "enterprise"].includes(tier)
+}
+
+/** Can set alerts on startups. */
+export function canSetAlerts(tier: string): boolean {
+  return ["professional", "enterprise"].includes(tier)
+}
+
+/** Monthly CSV export limit. null = unlimited, 0 = no access. */
+export function getExportLimit(tier: string): number | null {
+  switch (tier) {
+    case "professional":
+    case "enterprise":
+      return null
+    default: // free + explorer
+      return 0
+  }
+}
+
+// ------------------------------------------------------------------
+// Labels
+// ------------------------------------------------------------------
 
 export const SECTOR_LABELS: Record<string, string> = {
   ai_agents: "AI Agents",
@@ -67,19 +121,6 @@ export const SIGNAL_SOURCE_LABELS: Record<string, string> = {
   accelerator: "Accelerator",
   incubator: "Incubator",
   france_2030_laureat: "France 2030 Lauréat",
-}
-
-/** Monthly CSV export limit. null = unlimited, 0 = no access. */
-export function getExportLimit(tier: string): number | null {
-  switch (tier) {
-    case "explorer":
-      return 5
-    case "professional":
-    case "enterprise":
-      return null
-    default: // free
-      return 0
-  }
 }
 
 export function sectorLabel(sector: string): string {

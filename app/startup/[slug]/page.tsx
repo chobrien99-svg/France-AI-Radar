@@ -2,13 +2,14 @@ import React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { canAccessFullProfile, getExportLimit, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
+import { canAccessFullProfile, canAccessPremiumFields, getProfileViewLimit, getExportLimit, canSaveAndList, canSetAlerts, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
 import { tagStrengthLabel, signalStrengthLabel } from "@/lib/types"
 import type { OrganizationProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SaveButton } from "@/components/startup/save-button"
 import { ExportCsvButton } from "@/components/startup/export-csv-button"
+import { BlurredGate } from "@/components/blurred-gate"
 import type { Venture, Profile } from "@/lib/types"
 
 // ------------------------------------------------------------------
@@ -82,22 +83,12 @@ export default async function StartupProfilePage({
 
   const tier = profile?.subscription_tier ?? "free"
   const canFull = canAccessFullProfile(tier)
+  const canPremium = canAccessPremiumFields(tier)
+  const canSave = canSaveAndList(tier)
+  const canAlert = canSetAlerts(tier)
 
-  // Export quota
-  const exportLimit = getExportLimit(tier)
-  let exportRemaining: number | null = null
-  if (user && exportLimit !== null && exportLimit > 0) {
-    const period = new Date().toISOString().slice(0, 7) // YYYY-MM
-    const { data: usage } = await supabase
-      .from("export_usage")
-      .select("export_count")
-      .eq("user_id", user.id)
-      .eq("period", period)
-      .maybeSingle()
-    exportRemaining = exportLimit - (usage?.export_count ?? 0)
-  } else if (exportLimit === null) {
-    exportRemaining = null // unlimited
-  }
+  // Fetch venture first (needed for view tracking)
+  const period = new Date().toISOString().slice(0, 7) // YYYY-MM
 
   // Fetch venture
   const { data: ventureRaw } = await supabase
@@ -110,6 +101,41 @@ export default async function StartupProfilePage({
 
   if (!ventureRaw) notFound()
   const venture = ventureRaw as Venture
+
+  // Profile view tracking for Explorer tier
+  const viewLimit = getProfileViewLimit(tier)
+  let profileViewsUsed = 0
+  let hasViewAccess = canFull
+
+  if (user && viewLimit !== null && viewLimit > 0) {
+    const { data: viewCount } = await supabase
+      .rpc("record_profile_view", {
+        p_user_id: user.id,
+        p_organization_id: venture.id,
+        p_period: period,
+      })
+    profileViewsUsed = viewCount ?? 0
+    hasViewAccess = profileViewsUsed <= viewLimit
+  } else if (viewLimit === null) {
+    hasViewAccess = true
+  } else {
+    hasViewAccess = false
+  }
+
+  // Export quota
+  const exportLimit = getExportLimit(tier)
+  let exportRemaining: number | null = null
+  if (user && exportLimit !== null && exportLimit > 0) {
+    const { data: usage } = await supabase
+      .from("export_usage")
+      .select("export_count")
+      .eq("user_id", user.id)
+      .eq("period", period)
+      .maybeSingle()
+    exportRemaining = exportLimit - (usage?.export_count ?? 0)
+  } else if (exportLimit === null) {
+    exportRemaining = null
+  }
 
   // Fetch signals (auth-gated at RLS level)
   const { data: signalsRaw } = await supabase
@@ -209,23 +235,33 @@ export default async function StartupProfilePage({
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
-            <ExportCsvButton
-              slug={venture.slug}
-              isLoggedIn={!!user}
-              tier={tier}
-              remaining={exportRemaining}
-            />
-            <SaveButton
-              startupId={venture.id}
-              initialSaved={isBookmarked}
-              isLoggedIn={!!user}
-            />
+            {canSave && (
+              <>
+                <ExportCsvButton
+                  slug={venture.slug}
+                  isLoggedIn={!!user}
+                  tier={tier}
+                  remaining={exportRemaining}
+                />
+                <SaveButton
+                  startupId={venture.id}
+                  initialSaved={isBookmarked}
+                  isLoggedIn={!!user}
+                />
+              </>
+            )}
             <Button variant="outline" size="sm" className="text-[13px]">
               Share
             </Button>
-            <Button size="sm" className="text-[13px]">
-              Set Alert
-            </Button>
+            {canAlert ? (
+              <Button size="sm" className="text-[13px]">
+                Set Alert
+              </Button>
+            ) : (
+              <Button size="sm" className="text-[13px]" asChild>
+                <Link href="/pricing">Set Alert</Link>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -238,10 +274,29 @@ export default async function StartupProfilePage({
           </p>
         )}
 
-        {/* Premium content gate */}
-        {!canFull ? (
+        {/* Explorer view limit exceeded */}
+        {canFull && !hasViewAccess && (
+          <UpgradeGate tier={tier} viewsUsed={profileViewsUsed} viewLimit={viewLimit} />
+        )}
+
+        {/* Free tier — full upgrade gate */}
+        {!canFull && (
           <UpgradeGate tier={tier} />
-        ) : (
+        )}
+
+        {/* Explorer with views remaining — show content with blurred premium fields */}
+        {canFull && hasViewAccess && !canPremium && (
+          <PremiumContent
+            venture={venture}
+            signals={signals}
+            founders={founders}
+            profileData={profileData}
+            blurPremium
+          />
+        )}
+
+        {/* Professional+ — full access */}
+        {canFull && hasViewAccess && canPremium && (
           <PremiumContent
             venture={venture}
             signals={signals}
@@ -258,7 +313,9 @@ export default async function StartupProfilePage({
 // Upgrade gate
 // ------------------------------------------------------------------
 
-function UpgradeGate({ tier }: { tier: string }) {
+function UpgradeGate({ tier, viewsUsed, viewLimit }: { tier: string; viewsUsed?: number; viewLimit?: number | null }) {
+  const isViewLimitHit = viewsUsed !== undefined && viewLimit !== undefined && viewLimit !== null
+
   return (
     <div className="border-l-2 border-l-primary bg-card px-8 py-10 text-center">
       <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center bg-primary/10">
@@ -277,12 +334,16 @@ function UpgradeGate({ tier }: { tier: string }) {
         </svg>
       </div>
       <p className="mb-1 font-serif text-[15px] font-semibold text-foreground">
-        Full investor brief is Professional-only
+        {isViewLimitHit
+          ? `You've viewed ${viewsUsed} of ${viewLimit} profiles this month`
+          : "Full investor brief is Professional-only"}
       </p>
       <p className="mb-5 text-[13px] text-muted-foreground">
-        {tier === "free"
-          ? "Upgrade to Explorer to browse more startups, or Professional for full signal timelines, founder analysis, and investor briefs."
-          : "Upgrade to Professional for full signal timelines, founder analysis, and investor briefs."}
+        {isViewLimitHit
+          ? "Upgrade to Professional for unlimited profile views, full signal timelines, founder analysis, and investor briefs."
+          : tier === "free"
+            ? "Upgrade to Explorer to preview startup profiles, or Professional for full access to all intelligence."
+            : "Upgrade to Professional for full signal timelines, founder analysis, and investor briefs."}
       </p>
       <Button size="sm" asChild>
         <Link href="/pricing">Upgrade to Professional</Link>
@@ -325,11 +386,13 @@ function PremiumContent({
   signals,
   founders,
   profileData,
+  blurPremium = false,
 }: {
   venture: Venture
   signals: Signal[]
   founders: FounderLocal[]
   profileData: OrganizationProfile | null
+  blurPremium?: boolean
 }) {
   const hasContact =
     venture.website || venture.linkedin_url || venture.email || venture.phone
@@ -384,6 +447,9 @@ function PremiumContent({
           </div>
         </section>
       )}
+
+      {/* Premium sections — blurred for Explorer, hidden for Free */}
+      <BlurredGate canAccess={!blurPremium} message="Upgrade to Professional for investor briefs, signals, founder analysis, and more.">
 
       {/* Investor Brief */}
       {profileData?.investor_brief && (
@@ -599,6 +665,8 @@ function PremiumContent({
           </div>
         </section>
       )}
+
+      </BlurredGate>
     </div>
   )
 }

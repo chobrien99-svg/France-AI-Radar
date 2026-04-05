@@ -1,12 +1,11 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useCallback } from "react"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import {
-  SIGNAL_TYPE_LABELS,
-} from "@/lib/subscription"
+import { canUseAdvancedFilters, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
 
 const TIME_OPTIONS = [
   { value: "30d", label: "Last 30 days" },
@@ -28,10 +27,11 @@ function parseParam(value: string | null): string[] {
   return value.split(",").filter(Boolean)
 }
 
-export function FilterSidebar() {
+export function FilterSidebar({ tier = "free" }: { tier?: string }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const advancedAllowed = canUseAdvancedFilters(tier)
 
   const selected = {
     time: parseParam(searchParams.get("time")),
@@ -47,7 +47,6 @@ export function FilterSidebar() {
       } else {
         params.delete(key)
       }
-      // Reset to page 1 on filter change
       params.delete("page")
       router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     },
@@ -73,7 +72,7 @@ export function FilterSidebar() {
       </div>
 
       <div className="space-y-5">
-        {/* Time Period */}
+        {/* Time Period — available to all */}
         <FilterGroup
           label="Time Period"
           options={TIME_OPTIONS}
@@ -83,25 +82,33 @@ export function FilterSidebar() {
 
         <Separator />
 
-        {/* Signal Type */}
-        <FilterGroup
-          label="Signal Type"
-          options={Object.entries(SIGNAL_TYPE_LABELS).map(
-            ([value, label]) => ({ value, label })
-          )}
-          selected={selected.signalType}
-          onToggle={(v) => toggle("signalType", selected.signalType, v)}
-        />
+        {/* Signal Type — Pro only */}
+        {advancedAllowed ? (
+          <FilterGroup
+            label="Signal Type"
+            options={Object.entries(SIGNAL_TYPE_LABELS).map(
+              ([value, label]) => ({ value, label })
+            )}
+            selected={selected.signalType}
+            onToggle={(v) => toggle("signalType", selected.signalType, v)}
+          />
+        ) : (
+          <LockedFilter label="Signal Type" />
+        )}
 
         <Separator />
 
-        {/* Location */}
-        <FilterGroup
-          label="Location"
-          options={LOCATION_OPTIONS}
-          selected={selected.location}
-          onToggle={(v) => toggle("location", selected.location, v)}
-        />
+        {/* Location — Pro only */}
+        {advancedAllowed ? (
+          <FilterGroup
+            label="Location"
+            options={LOCATION_OPTIONS}
+            selected={selected.location}
+            onToggle={(v) => toggle("location", selected.location, v)}
+          />
+        ) : (
+          <LockedFilter label="Location" />
+        )}
       </div>
 
       <div className="mt-5">
@@ -147,6 +154,25 @@ function FilterGroup({
             {opt.label}
           </label>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function LockedFilter({ label }: { label: string }) {
+  return (
+    <div>
+      <p className="metric-label mb-2">{label}</p>
+      <div className="border-l-2 border-l-primary/30 bg-accent px-3 py-2.5">
+        <p className="text-[12px] text-muted-foreground">
+          Professional plan required
+        </p>
+        <Link
+          href="/pricing"
+          className="text-[12px] font-medium text-primary transition-colors duration-300 hover:text-primary-container"
+        >
+          Upgrade to unlock →
+        </Link>
       </div>
     </div>
   )

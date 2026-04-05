@@ -181,20 +181,20 @@ export default async function AccountPage() {
           {/* Feature summary for current tier */}
           <div className="grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
             <FeatureStat
-              label="Startup profiles"
-              value={tier === "free" ? "10" : tier === "explorer" ? "50" : "Unlimited"}
+              label="Profile views"
+              value={tier === "free" ? "Browse only" : tier === "explorer" ? "3 / month" : "Unlimited"}
             />
             <FeatureStat
               label="Investor briefs"
               value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
             />
             <FeatureStat
-              label="Saved searches"
-              value={tier === "professional" || tier === "enterprise" ? "Unlimited" : "—"}
+              label="Advanced filters"
+              value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
             />
             <FeatureStat
-              label="Watchlist & lists"
-              value={tier !== "free" ? "Included" : "—"}
+              label="Watchlist, lists & alerts"
+              value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
             />
           </div>
         </div>
@@ -231,7 +231,17 @@ export default async function AccountPage() {
 
           {/* ── Watchlist ── */}
           <TabsContent value="watchlist">
-            {watchlistItems && watchlistItems.length > 0 ? (
+            {tier !== "professional" && tier !== "enterprise" ? (
+              <EmptyState
+                title="Watchlist is a Professional feature"
+                description="Upgrade to Professional to save startups, build custom lists, and set alerts."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/pricing">Upgrade to Professional</Link>
+                  </Button>
+                }
+              />
+            ) : watchlistItems && watchlistItems.length > 0 ? (
               <div className="space-y-2">
                 {watchlistItems.map((item) => {
                   const s = item.organizations as unknown as {
@@ -273,7 +283,17 @@ export default async function AccountPage() {
 
           {/* ── Saved Searches ── */}
           <TabsContent value="searches">
-            {savedSearches && savedSearches.length > 0 ? (
+            {tier !== "professional" && tier !== "enterprise" ? (
+              <EmptyState
+                title="Saved Searches is a Professional feature"
+                description="Upgrade to Professional to save filter configurations and quickly return to them."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/pricing">Upgrade to Professional</Link>
+                  </Button>
+                }
+              />
+            ) : savedSearches && savedSearches.length > 0 ? (
               <div className="space-y-2">
                 {savedSearches.map((s) => (
                   <div
@@ -309,6 +329,18 @@ export default async function AccountPage() {
 
           {/* ── Lists ── */}
           <TabsContent value="lists">
+            {tier !== "professional" && tier !== "enterprise" ? (
+              <EmptyState
+                title="Lists is a Professional feature"
+                description="Upgrade to Professional to create custom startup lists and organise your deal flow."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/pricing">Upgrade to Professional</Link>
+                  </Button>
+                }
+              />
+            ) : (
+            <>
             <div className="mb-4 flex items-center justify-between">
               <p className="text-[13px] text-muted-foreground">
                 Curate startup lists to organise your deal flow.
@@ -350,11 +382,23 @@ export default async function AccountPage() {
                 description="Create a list to group startups by theme, stage, or deal status."
               />
             )}
+            </>
+            )}
           </TabsContent>
 
           {/* ── Alerts ── */}
           <TabsContent value="alerts">
-            {userAlerts && userAlerts.length > 0 ? (
+            {tier !== "professional" && tier !== "enterprise" ? (
+              <EmptyState
+                title="Alerts is a Professional feature"
+                description="Upgrade to Professional to get notified when tracked startups have new signals."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/pricing">Upgrade to Professional</Link>
+                  </Button>
+                }
+              />
+            ) : userAlerts && userAlerts.length > 0 ? (
               <div className="space-y-2">
                 {userAlerts.map((alert) => {
                   const s = alert.organizations as unknown as {
