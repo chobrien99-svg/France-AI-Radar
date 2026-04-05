@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Navigator | Cluster View: IA Générative</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Public+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary": "#ffffff",
+                        "outline": "#72787e",
+                        "surface-container-high": "#ede8dd",
+                        "primary-fixed-dim": "#9fccef",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#a2d3a2",
+                        "primary-fixed": "#c9e6ff",
+                        "on-secondary-fixed": "#002108",
+                        "on-background": "#1d1c15",
+                        "inverse-surface": "#323029",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#dabbef",
+                        "secondary-container": "#baecba",
+                        "on-tertiary-fixed-variant": "#553d68",
+                        "on-primary-fixed": "#001e2f",
+                        "background": "#fef9ee",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#f2daff",
+                        "tertiary-container": "#684f7c",
+                        "on-secondary-fixed-variant": "#24502b",
+                        "on-primary-fixed-variant": "#194b69",
+                        "surface-variant": "#e7e2d7",
+                        "surface-bright": "#fef9ee",
+                        "on-error": "#ffffff",
+                        "primary-container": "#2f5d7c",
+                        "on-surface-variant": "#41474d",
+                        "surface-container-highest": "#e7e2d7",
+                        "outline-variant": "#c1c7ce",
+                        "on-surface": "#1d1c15",
+                        "on-secondary-container": "#406c44",
+                        "surface-dim": "#dedacf",
+                        "secondary-fixed": "#bdefbd",
+                        "on-tertiary-fixed": "#27113a",
+                        "inverse-on-surface": "#f5f0e5",
+                        "surface-tint": "#356382",
+                        "on-primary-container": "#a8d5f9",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "tertiary": "#503863",
+                        "surface-container-low": "#f8f3e8",
+                        "secondary": "#3c6840",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#f2ede2",
+                        "inverse-primary": "#9fccef",
+                        "surface": "#fef9ee",
+                        "primary": "#114563",
+                        "on-tertiary-container": "#e4c5f9",
+                        "research": "#7C8C9E",
+                        "funding": "#5E8C61",
+                        "graph-links": "#C9C1B3"
+                    },
+                    fontFamily: {
+                        "headline": ["Newsreader", "serif"],
+                        "body": ["Public Sans", "sans-serif"],
+                        "label": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        .node-active {
+            outline: 1px solid #114563;
+            outline-offset: 4px;
+        }
+        .line-trace {
+            stroke: #C9C1B3;
+            stroke-width: 0.5;
+            fill: none;
+        }
+        .glass-panel {
+            background: rgba(254, 249, 238, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body overflow-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-40 bg-[#FEF9EE] dark:bg-slate-950 border-b border-[#C1C7CE]/15 flex justify-between items-center px-8 py-3 w-full">
+<div class="flex items-center gap-8">
+<span class="font-serif italic text-xl text-[#114563] dark:text-blue-200">The Navigator</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="font-serif text-lg tracking-tight text-slate-500 hover:text-[#114563] transition-colors duration-300" href="#">National</a>
+<a class="font-serif text-lg tracking-tight text-slate-500 hover:text-[#114563] transition-colors duration-300" href="#">Regional</a>
+<a class="font-serif text-lg tracking-tight text-[#114563] border-b border-[#114563] pb-1 transition-colors duration-300" href="#">Cluster</a>
+<a class="font-serif text-lg tracking-tight text-slate-500 hover:text-[#114563] transition-colors duration-300" href="#">Entity</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-[#F2EDE2]/50 transition-colors duration-300">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+</button>
+<button class="p-2 hover:bg-[#F2EDE2]/50 transition-colors duration-300">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 bg-surface-container-highest flex items-center justify-center overflow-hidden">
+<img alt="User profile" data-alt="close-up portrait of a professional man in a dark suit with soft natural lighting and a neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3mIppmLkXQI-kieQ4-nGubB14lHmD5-pyfAMaqrMvVEbvnIQA8QAzessKl_Z8ClsHfmJF0JEG6F6PeqBR_pR0HBDoQn34NScZh8LH2kYcazT50-zBjOSVrACUpJ_pqoTthY_zkhQ3gLz2uy3oZDv-lY3uggfs812JkbEep7_jnLVTqjeLciKE8jgO1XLJxclXf_lvhEh45403hfQs78R_OBs_DpGSRCxiGGsWT_yg-gsqgGCkvuidRglcpy1pkZosnRu75l-JNFo"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 border-r border-[#C1C7CE]/15 bg-[#F2EDE2] dark:bg-slate-900 flex flex-col h-full pt-20 pb-8 px-4 z-30">
+<div class="mb-10">
+<div class="flex items-center gap-3 mb-1">
+<div class="w-8 h-10 bg-primary flex items-center justify-center">
+<span class="text-white text-[10px] font-bold text-center leading-tight">RF</span>
+</div>
+<div>
+<h2 class="font-serif font-bold text-[#114563] text-sm uppercase tracking-wider">Intelligence Portal</h2>
+<p class="text-[10px] text-on-surface-variant font-medium">République Française</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-[#F8F3E8] transition-all font-sans text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="layers">layers</span>
+                Map Layers
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-[#F8F3E8] transition-all font-sans text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Intelligence
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-[#F8F3E8] transition-all font-sans text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+                Archives
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 bg-[#FEF9EE] text-[#114563] font-semibold border-l-2 border-[#114563] font-sans text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+                Entities
+            </a>
+</nav>
+<div class="mt-auto space-y-4">
+<button class="w-full bg-primary text-on-primary py-3 font-serif text-sm tracking-wide hover:bg-primary-container transition-colors">
+                New Analysis
+            </button>
+<div class="pt-4 border-t border-outline-variant/30 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-[#F8F3E8] transition-all font-sans text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                    Support
+                </a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-[#F8F3E8] transition-all font-sans text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+                    Documentation
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 pt-16 h-screen relative bg-surface-container-low">
+<!-- Background Map Layer (Mock) -->
+<div class="absolute inset-0 z-0 opacity-40 grayscale pointer-events-none">
+<img class="w-full h-full object-cover" data-alt="detailed topographic map of Paris and Saclay urban cluster with precise technical lines and muted sepia tones" data-location="Paris" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAD0lmK30qEidTl0KxZYHPuIkQl_Wg3RBkU5O7E4JekWVXSAqYKrgIcf88Sswx-zI2lbI1Yir3eeYDooG5RsRsL5g1DQUu2eXxN795-zn19qGN8pHe3F7X_xlq1uG6PpqWxQ_2CYA2Hzcei1-Yy3NaYoICJ7aV0yWaLl51RPDNW2E9kPi1j1HPNcWYFoBVWlTKLZ635m4layiOzY31GoyiVWmL44UFREHrUcWZFtZh5XlFTjMaaWrSoMHunRcxQeDHuZBO856t3NiI"/>
+</div>
+<!-- Sector Map Workspace -->
+<div class="relative z-10 w-full h-full flex flex-col p-12">
+<!-- Header Section -->
+<header class="mb-12">
+<nav class="flex items-center gap-2 text-xs font-medium text-on-surface-variant mb-4">
+<span>Sectors</span>
+<span class="material-symbols-outlined !text-[10px]">chevron_right</span>
+<span>Artificial Intelligence</span>
+<span class="material-symbols-outlined !text-[10px]">chevron_right</span>
+<span class="text-primary">AI Agents</span>
+</nav>
+<h1 class="font-headline text-5xl text-primary font-light">Pôle d'Excellence: <span class="italic font-normal">IA Générative</span></h1>
+<p class="mt-4 text-on-surface-variant max-w-xl text-sm leading-relaxed">
+                    Intelligence mapping of active agents and core technological lineages within the Paris-Saclay innovation corridor.
+                </p>
+</header>
+<!-- Graph Canvas -->
+<div class="flex-1 relative">
+<!-- SVG Trace Lines (Calculated for NovaMind Interaction) -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-0">
+<!-- Line from Inria to NovaMind -->
+<path class="line-trace" d="M 180 320 Q 300 320 400 450" style="stroke-dasharray: 4; stroke: #7C8C9E; opacity: 0.6;"></path>
+<!-- Line from NovaMind to Elaia -->
+<path class="line-trace" d="M 520 450 Q 650 450 780 380" style="stroke: #5E8C61; opacity: 0.6;"></path>
+</svg>
+<!-- Entity Nodes -->
+<!-- Research Node: Inria -->
+<div class="absolute top-[280px] left-[40px] group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 border border-research/30 bg-research/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-research" data-icon="school">school</span>
+</div>
+<div>
+<p class="text-[10px] text-research font-bold uppercase tracking-widest">Research</p>
+<h3 class="font-serif text-lg text-primary">Inria</h3>
+</div>
+</div>
+</div>
+<!-- Central Node: NovaMind AI (Active/Hover state simulated) -->
+<div class="absolute top-[410px] left-[380px] z-20">
+<div class="relative cursor-pointer">
+<!-- Subtle pulse effect -->
+<div class="absolute -inset-4 bg-primary/5 rounded-full scale-125 blur-xl"></div>
+<div class="bg-surface-container-lowest border border-primary/20 p-6 w-48 shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<div class="w-3 h-3 bg-primary"></div>
+<span class="material-symbols-outlined text-primary/40" data-icon="center_focus_weak">center_focus_weak</span>
+</div>
+<h2 class="font-serif text-xl text-primary font-bold leading-tight">NovaMind AI</h2>
+<p class="text-xs text-on-surface-variant mt-2 font-medium">Foundational Models</p>
+<div class="mt-6 flex items-center gap-2">
+<div class="h-[1px] flex-1 bg-outline-variant/30"></div>
+<span class="text-[9px] uppercase tracking-tighter text-outline">Active Node</span>
+<div class="h-[1px] flex-1 bg-outline-variant/30"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Funding Node: Elaia Partners -->
+<div class="absolute top-[340px] left-[780px] group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 border border-funding/30 bg-funding/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-funding" data-icon="payments">payments</span>
+</div>
+<div>
+<p class="text-[10px] text-funding font-bold uppercase tracking-widest">Funding</p>
+<h3 class="font-serif text-lg text-primary">Elaia Partners</h3>
+</div>
+</div>
+</div>
+<!-- Supporting Cluster Nodes (Small) -->
+<div class="absolute top-[150px] left-[550px] opacity-60">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-on-surface-variant"></div>
+<span class="text-xs font-serif italic text-on-surface-variant">Mistral Systems</span>
+</div>
+</div>
+<div class="absolute top-[580px] left-[600px] opacity-60">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-on-surface-variant"></div>
+<span class="text-xs font-serif italic text-on-surface-variant">LightOn Labs</span>
+</div>
+</div>
+<div class="absolute top-[480px] left-[150px] opacity-60">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-on-surface-variant"></div>
+<span class="text-xs font-serif italic text-on-surface-variant">CNRS / LISN</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Detail Sheet (Dossier Preview) -->
+<div class="fixed right-0 top-0 h-full w-[400px] glass-panel border-l border-outline-variant/15 z-50 p-10 transform translate-x-0 transition-transform duration-500 shadow-2xl">
+<div class="flex justify-between items-center mb-12">
+<span class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Dossier Numérique</span>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<div class="space-y-12">
+<section>
+<h2 class="font-headline text-4xl text-primary mb-2">NovaMind AI</h2>
+<p class="text-sm font-medium text-on-surface-variant italic">Next-gen reasoning agents for industrial sovereignty.</p>
+</section>
+<div class="grid grid-cols-2 gap-8">
+<div class="space-y-1">
+<label class="text-[10px] uppercase text-outline font-bold tracking-widest">Sovereignty Score</label>
+<div class="flex items-baseline gap-1">
+<span class="text-4xl font-headline text-primary">85</span>
+<span class="text-sm text-on-surface-variant">/100</span>
+</div>
+</div>
+<div class="space-y-1">
+<label class="text-[10px] uppercase text-outline font-bold tracking-widest">Origin</label>
+<p class="text-lg font-serif text-primary leading-tight">ENS Paris-Saclay</p>
+</div>
+</div>
+<section class="space-y-6">
+<h4 class="text-xs font-bold uppercase tracking-widest text-primary border-b border-outline-variant/20 pb-2">Institutional Lineage</h4>
+<div class="space-y-4">
+<div class="flex gap-4">
+<div class="w-[2px] bg-research"></div>
+<div>
+<p class="text-[10px] font-bold text-research uppercase tracking-tighter">Academic Roots (2019-2022)</p>
+<p class="text-sm text-primary font-serif">Inria Scikit-learn Consortium</p>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-[2px] bg-funding"></div>
+<div>
+<p class="text-[10px] font-bold text-funding uppercase tracking-tighter">Capital Injection (Series A)</p>
+<p class="text-sm text-primary font-serif">Elaia Partners — €12M Lead</p>
+</div>
+</div>
+</div>
+</section>
+<section class="bg-white p-6 border border-outline-variant/10">
+<h4 class="text-xs font-bold uppercase tracking-widest text-primary mb-4">Core Capabilities</h4>
+<ul class="space-y-3">
+<li class="flex items-center gap-3 text-xs text-on-surface-variant">
+<span class="w-1 h-1 bg-primary"></span> Low-Latency Symbolic Reasoning
+                        </li>
+<li class="flex items-center gap-3 text-xs text-on-surface-variant">
+<span class="w-1 h-1 bg-primary"></span> Private Data Enclave Training
+                        </li>
+<li class="flex items-center gap-3 text-xs text-on-surface-variant">
+<span class="w-1 h-1 bg-primary"></span> Multi-Agent Orchestration
+                        </li>
+</ul>
+</section>
+<button class="w-full border border-primary text-primary py-4 text-xs font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-all">
+                    Access Full Intelligence Report
+                </button>
+</div>
+</div>
+<!-- Map Controls -->
+<div class="absolute bottom-10 left-12 flex gap-4 z-20">
+<div class="bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex flex-col">
+<button class="p-3 border-b border-outline-variant/10 hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+</button>
+<button class="p-3 hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="remove">remove</span>
+</button>
+</div>
+<div class="bg-surface-container-lowest shadow-sm border border-outline-variant/20 flex items-center px-4 gap-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-research"></div>
+<span class="text-[10px] font-bold uppercase text-outline">Research</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-funding"></div>
+<span class="text-[10px] font-bold uppercase text-outline">Funding</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-primary"></div>
+<span class="text-[10px] font-bold uppercase text-outline">Corporate</span>
+</div>
+</div>
+</div>
+</main>
+</body></html>

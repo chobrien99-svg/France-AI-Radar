@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Navigator | Sector Intelligence Map</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface-variant": "#43474e",
+              "tertiary-container": "#642413",
+              "surface-variant": "#e5e2db",
+              "primary-fixed": "#d2e4ff",
+              "primary-container": "#1a3a5c",
+              "on-secondary-container": "#546775",
+              "surface-container": "#f1eee7",
+              "on-primary": "#ffffff",
+              "primary": "#002444",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary": "#ffffff",
+              "on-surface": "#1c1c18",
+              "secondary": "#4e616f",
+              "error-container": "#ffdad6",
+              "error": "#ba1a1a",
+              "on-tertiary-container": "#e78971",
+              "surface-container-highest": "#e5e2db",
+              "on-tertiary-fixed-variant": "#77311f",
+              "secondary-fixed": "#d1e5f7",
+              "inverse-primary": "#abc9f2",
+              "tertiary": "#470e02",
+              "on-tertiary-fixed": "#3c0800",
+              "surface": "#fcf9f2",
+              "surface-container-low": "#f6f3ec",
+              "surface-bright": "#fcf9f2",
+              "on-tertiary": "#ffffff",
+              "inverse-on-surface": "#f3f0e9",
+              "on-primary-fixed": "#001c37",
+              "tertiary-fixed": "#ffdbd2",
+              "on-secondary-fixed": "#091d2a",
+              "background": "#fcf9f2",
+              "inverse-surface": "#31312c",
+              "primary-fixed-dim": "#abc9f2",
+              "secondary-fixed-dim": "#b5c9da",
+              "tertiary-fixed-dim": "#ffb4a2",
+              "outline-variant": "#c3c6cf",
+              "on-error-container": "#93000a",
+              "on-secondary-fixed-variant": "#364957",
+              "secondary-container": "#d1e5f7",
+              "on-primary-container": "#87a4cc",
+              "on-error": "#ffffff",
+              "surface-dim": "#dcdad3",
+              "on-primary-fixed-variant": "#2a486b",
+              "surface-tint": "#436084",
+              "outline": "#73777f",
+              "surface-container-high": "#ebe8e1",
+              "on-background": "#1c1c18"
+            },
+            fontFamily: {
+              "headline": ["Newsreader", "serif"],
+              "body": ["Inter", "sans-serif"],
+              "label": ["Inter", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        vertical-align: middle;
+      }
+      .hairline-connect {
+        background-color: #73777f;
+        opacity: 0.15;
+      }
+      .glass-overlay {
+        backdrop-filter: blur(16px);
+        background: rgba(246, 243, 236, 0.8);
+      }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-fixed selection:text-on-primary-fixed">
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-full border-r-0 bg-[#FCF9F2] dark:bg-slate-950 w-64 shrink-0 transition-all duration-200">
+<div class="p-6">
+<h1 class="font-serif italic text-lg text-[#1A3A5C]">The Navigator</h1>
+<p class="font-sans text-[10px] uppercase tracking-widest text-slate-500 mt-1">French Innovation Intelligence</p>
+</div>
+<nav class="flex-1 px-4 space-y-1 mt-4">
+<a class="flex items-center px-4 py-3 bg-[#E5E2DB] dark:bg-slate-800 text-[#1A3A5C] dark:text-white font-bold transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="analytics">analytics</span>
+<span class="font-sans text-xs uppercase tracking-widest">Intelligence</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-[#E5E2DB] dark:hover:bg-slate-800 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="hub">hub</span>
+<span class="font-sans text-xs uppercase tracking-widest">Network</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-[#E5E2DB] dark:hover:bg-slate-800 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="rss_feed">rss_feed</span>
+<span class="font-sans text-xs uppercase tracking-widest">Signals</span>
+</a>
+<a class="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-[#E5E2DB] dark:hover:bg-slate-800 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="inventory_2">inventory_2</span>
+<span class="font-sans text-xs uppercase tracking-widest">Archive</span>
+</a>
+</nav>
+<div class="p-4 border-t border-surface-container-highest space-y-1">
+<button class="w-full flex items-center px-4 py-2 text-slate-600 text-[10px] uppercase tracking-widest hover:bg-[#E5E2DB] transition-colors">
+<span class="material-symbols-outlined mr-3 text-sm" data-icon="picture_as_pdf">picture_as_pdf</span>
+                    Export PDF
+                </button>
+<button class="w-full flex items-center px-4 py-2 text-slate-600 text-[10px] uppercase tracking-widest hover:bg-[#E5E2DB] transition-colors">
+<span class="material-symbols-outlined mr-3 text-sm" data-icon="download">download</span>
+                    Data Download
+                </button>
+</div>
+<div class="p-6 flex items-center gap-3 bg-surface-container-low">
+<div class="w-8 h-8 bg-primary-container flex items-center justify-center text-on-primary-container text-xs font-bold">JD</div>
+<div class="overflow-hidden">
+<p class="text-[10px] font-bold truncate">User Intelligence Profile</p>
+<p class="text-[9px] text-slate-500 uppercase tracking-tighter">Director of Strategy</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+<!-- TopAppBar -->
+<header class="bg-[#FCF9F2] dark:bg-slate-900 flex justify-between items-center w-full px-6 h-14 max-w-[1920px] mx-auto border-none z-10 shrink-0">
+<div class="flex items-center gap-8">
+<div class="flex items-center text-slate-400 text-[11px] font-medium tracking-tight">
+<span>Ecosystem</span>
+<span class="material-symbols-outlined text-xs mx-1" data-icon="chevron_right">chevron_right</span>
+<span>Artificial Intelligence</span>
+<span class="material-symbols-outlined text-xs mx-1" data-icon="chevron_right">chevron_right</span>
+<span class="text-primary font-bold">AI Agents</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-slate-500">
+<a class="text-xs uppercase tracking-widest hover:text-[#1A3A5C] transition-colors" href="#">Ecosystem</a>
+<a class="text-[#1A3A5C] dark:text-blue-400 border-b-2 border-[#1A3A5C] pb-1 text-xs uppercase tracking-widest" href="#">Sector</a>
+<a class="text-xs uppercase tracking-widest hover:text-[#1A3A5C] transition-colors" href="#">Entity</a>
+</div>
+<div class="flex items-center gap-3 pl-6 border-l border-surface-container-highest">
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#E5E2DB]/50 p-1 transition-colors" data-icon="explore">explore</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#E5E2DB]/50 p-1 transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:bg-[#E5E2DB]/50 p-1 transition-colors" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Intelligence Dashboard Area -->
+<div class="flex-1 overflow-y-auto bg-surface-container-low p-8 scroll-smooth">
+<div class="max-w-7xl mx-auto space-y-12">
+<!-- Hero Section & High Level Metrics -->
+<div class="flex flex-col md:flex-row justify-between items-end gap-8 border-b border-outline-variant/20 pb-12">
+<div class="max-w-2xl">
+<h2 class="font-headline text-5xl font-bold tracking-tight text-primary leading-tight">
+                                Autonomous Systems &amp; AI Agents
+                            </h2>
+<p class="font-headline italic text-xl text-secondary mt-4 leading-relaxed">
+                                A specialized report on the French computational landscape, mapping the convergence of large language modeling and autonomous decision engines.
+                            </p>
+</div>
+<div class="flex gap-12 text-right">
+<div>
+<p class="text-[10px] uppercase tracking-[0.2em] text-outline mb-1">Cumulative Funding</p>
+<p class="text-3xl font-headline font-bold text-primary">€1.42B</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-[0.2em] text-outline mb-1">2025 Publications</p>
+<p class="text-3xl font-headline font-bold text-primary">842</p>
+</div>
+<div>
+<p class="text-[10px] uppercase tracking-[0.2em] text-outline mb-1">Active Patents</p>
+<p class="text-3xl font-headline font-bold text-primary">128</p>
+</div>
+</div>
+</div>
+<!-- Main Grid -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Sector DNA Sidebar -->
+<aside class="col-span-12 lg:col-span-3 space-y-8">
+<section>
+<h3 class="font-sans text-[11px] font-bold uppercase tracking-widest text-primary border-b border-primary/10 pb-2 mb-4">Sector DNA</h3>
+<div class="space-y-6">
+<div class="group">
+<p class="font-headline font-bold text-lg mb-1 group-hover:text-tertiary transition-colors">Mathematical Heritage</p>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                                            France’s rigorous preparatory system provides a high concentration of Fields Medal-level expertise in optimization and abstract algebra—critical for agentic architectures.
+                                        </p>
+</div>
+<div class="group">
+<p class="font-headline font-bold text-lg mb-1 group-hover:text-tertiary transition-colors">Public-Private Symbiosis</p>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                                            The transition from CNRS labs to commercial entities is facilitated by the 'CIR' research tax credit, creating a low-risk environment for deep-tech exploration.
+                                        </p>
+</div>
+<div class="group">
+<p class="font-headline font-bold text-lg mb-1 group-hover:text-tertiary transition-colors">Engineering Precision</p>
+<p class="text-sm text-on-surface-variant leading-relaxed">
+                                            French autonomous systems focus heavily on formal verification and safety-critical software, a legacy of the aerospace and nuclear industries.
+                                        </p>
+</div>
+</div>
+</section>
+<section class="bg-primary-container p-6 text-on-primary">
+<h4 class="text-[10px] uppercase tracking-widest font-bold mb-3 opacity-60">Intelligence Update</h4>
+<p class="font-headline italic text-lg mb-4">"The move from static chat to goal-directed agents marks the third era of the French AI strategy."</p>
+<div class="flex items-center gap-2">
+<div class="w-1 h-1 bg-tertiary-fixed-dim"></div>
+<span class="text-[9px] uppercase tracking-widest">Strategic Brief 2025-04</span>
+</div>
+</section>
+</aside>
+<!-- Visual Intelligence Map (Graph/Map) -->
+<div class="col-span-12 lg:col-span-9 space-y-6">
+<div class="bg-surface-container-lowest border-none relative min-h-[600px] flex flex-col overflow-hidden">
+<!-- Top Legend/Header for the map -->
+<div class="p-6 border-b border-surface-container-highest flex justify-between items-center">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="map">map</span>
+<h3 class="font-headline text-xl font-bold">Relational Map: Academic to Market</h3>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 bg-primary"></span>
+<span class="text-[9px] uppercase font-bold text-outline">Champions</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="w-2 h-2 bg-tertiary"></span>
+<span class="text-[9px] uppercase font-bold text-outline">Academic</span>
+</div>
+</div>
+</div>
+<!-- The Interactive Map/Graph Simulation -->
+<div class="flex-1 relative p-12 overflow-hidden">
+<!-- Connection Lines (SVGs or Hairlines) -->
+<div class="absolute inset-0 pointer-events-none opacity-20">
+<svg class="stroke-primary" height="100%" style="stroke-width: 0.5px;" width="100%">
+<line x1="15%" x2="50%" y1="20%" y2="50%"></line>
+<line x1="85%" x2="50%" y1="20%" y2="50%"></line>
+<line x1="50%" x2="50%" y1="50%" y2="85%"></line>
+<line x1="30%" x2="50%" y1="70%" y2="50%"></line>
+<line x1="70%" x2="50%" y1="70%" y2="50%"></line>
+</svg>
+</div>
+<!-- Champions Cluster -->
+<div class="absolute top-[10%] left-[5%] z-10 w-48">
+<div class="bg-primary text-white p-4 space-y-2">
+<span class="text-[9px] uppercase tracking-widest opacity-60">Champion</span>
+<p class="font-headline font-bold text-lg">Mistral AI</p>
+<p class="text-[10px] leading-tight opacity-80">Leading foundational model architecture. Direct roots in Inria/DeepMind.</p>
+<div class="pt-2 border-t border-white/10 flex justify-between text-[9px] font-bold">
+<span>VAL: $6B</span>
+<span class="text-tertiary-fixed-dim">ACTIVE</span>
+</div>
+</div>
+</div>
+<div class="absolute top-[15%] right-[5%] z-10 w-48">
+<div class="bg-primary text-white p-4 space-y-2">
+<span class="text-[9px] uppercase tracking-widest opacity-60">Champion</span>
+<p class="font-headline font-bold text-lg">NovaMind</p>
+<p class="text-[10px] leading-tight opacity-80">Autonomous logic engines for industrial automation. Series B funded.</p>
+<div class="pt-2 border-t border-white/10 flex justify-between text-[9px] font-bold">
+<span>VAL: €450M</span>
+<span class="text-tertiary-fixed-dim">EXPANDING</span>
+</div>
+</div>
+</div>
+<!-- Institutional Hub -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+<div class="bg-surface-container-highest border border-primary/10 w-40 h-40 flex flex-col items-center justify-center text-center p-4">
+<span class="material-symbols-outlined text-tertiary mb-2" data-icon="account_balance">account_balance</span>
+<p class="font-headline font-bold text-sm text-primary uppercase tracking-tighter">Bpifrance Hub</p>
+<p class="text-[10px] text-on-surface-variant mt-1">Capital Catalyst</p>
+<div class="w-full h-px bg-outline/20 my-2"></div>
+<p class="text-[9px] font-bold">€850M ALLOCATED</p>
+</div>
+</div>
+<!-- Academic Roots -->
+<div class="absolute bottom-[10%] left-[20%] z-10">
+<div class="bg-white border-l-4 border-tertiary p-4 w-40">
+<span class="text-[9px] uppercase font-bold text-tertiary tracking-widest">Academic Root</span>
+<p class="font-headline font-bold text-md text-primary mt-1">CNRS Labs</p>
+<p class="text-[10px] text-on-surface-variant leading-tight mt-1">Foundational research in symbolic AI and neuro-symbolic systems.</p>
+</div>
+</div>
+<div class="absolute bottom-[15%] right-[20%] z-10">
+<div class="bg-white border-l-4 border-tertiary p-4 w-40">
+<span class="text-[9px] uppercase font-bold text-tertiary tracking-widest">Academic Root</span>
+<p class="font-headline font-bold text-md text-primary mt-1">Inria Parietal</p>
+<p class="text-[10px] text-on-surface-variant leading-tight mt-1">Scikit-learn origins. Focus on efficient inference in agents.</p>
+</div>
+</div>
+<!-- Emerging Startups -->
+<div class="absolute top-[40%] left-[10%] group">
+<div class="w-3 h-3 bg-secondary mb-1"></div>
+<div class="opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 left-0 bg-white shadow-xl p-2 w-32 z-30">
+<p class="text-[10px] font-bold">AgenticFlow</p>
+<p class="text-[9px] text-slate-500">Seed | Pre-revenue</p>
+</div>
+</div>
+<div class="absolute bottom-[40%] right-[15%] group">
+<div class="w-3 h-3 bg-secondary mb-1"></div>
+<div class="opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-0 bg-white shadow-xl p-2 w-32 z-30">
+<p class="text-[10px] font-bold">KyberLogic</p>
+<p class="text-[9px] text-slate-500">Stealth | CNRS Spin-off</p>
+</div>
+</div>
+<!-- Background Map Texture -->
+<div class="absolute inset-0 z-0 opacity-[0.03]">
+<img class="w-full h-full object-cover grayscale" data-alt="faded minimalist topographical map of Paris and France showing elevation lines and administrative boundaries in monochrome" data-location="France" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCj1JzcMfvU3Pvi5SgWht4J6w0pkre2VJoSPsa2PI_aX0eGcKZ0PRjLhfUvIZUkSP-2P9TEP59H8cRFH54_3tP7XfovlhRBBmIzDAbb6AH_SLW8QTqSyQBJZER9rL0spUZrz4ux7guCkbPEmGExLG_a6jmik-2_zuwFPSleFtvapaXUC1WRk5uY1u8w4WEJbER-TbxorAWlgwT67UOb3rNELum6UUEm8AolTLpdCUUgqpQ7KAbZw9i4L5rDzQX8HC1knhGfIkVOcAY"/>
+</div>
+</div>
+<!-- Map Footer Actions -->
+<div class="bg-surface-container-high p-4 flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-secondary">
+<div class="flex gap-4">
+<button class="flex items-center gap-2 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
+                                            Filter Entities
+                                        </button>
+<button class="flex items-center gap-2 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="layers">layers</span>
+                                            Toggle Layers
+                                        </button>
+</div>
+<span>Last Verified: Oct 2025</span>
+</div>
+</div>
+<!-- Data Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest p-6 space-y-4">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-tertiary" data-icon="trending_up">trending_up</span>
+<span class="text-[10px] font-bold text-outline">Growth Velocity</span>
+</div>
+<p class="font-headline font-bold text-2xl">+28% YoY</p>
+<p class="text-xs text-on-surface-variant">Annual increase in AI-related patent filings within French territory.</p>
+</div>
+<div class="bg-surface-container-lowest p-6 space-y-4">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary" data-icon="school">school</span>
+<span class="text-[10px] font-bold text-outline">Talent Output</span>
+</div>
+<p class="font-headline font-bold text-2xl">4,200+</p>
+<p class="text-xs text-on-surface-variant">PhD graduates in Computer Science &amp; Applied Math per annum.</p>
+</div>
+<div class="bg-surface-container-lowest p-6 space-y-4">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-secondary" data-icon="public">public</span>
+<span class="text-[10px] font-bold text-outline">Global Influence</span>
+</div>
+<p class="font-headline font-bold text-2xl">Rank 4</p>
+<p class="text-xs text-on-surface-variant">France's global position in NeurIPS 2025 contribution metrics.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Sector Analysis Cards -->
+<section class="space-y-6">
+<div class="flex justify-between items-baseline border-b border-outline-variant/20 pb-2">
+<h3 class="font-headline text-2xl font-bold">Deep Intelligence: Emerging Dynamics</h3>
+<a class="text-xs font-bold uppercase tracking-widest text-primary border-b border-primary hover:text-tertiary hover:border-tertiary transition-colors pb-1" href="#">Read Full Whitepaper</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="group flex gap-6 items-start">
+<div class="w-32 h-32 shrink-0 overflow-hidden bg-surface-container-highest">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="macro close-up of a high-tech processor chip with circuit patterns glowing subtly in cool blue light on a dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-kwN6-ndXd1d_P2ovxprF5wwE8_zjIV-1-co4pZ1-wP-_keKHg2JnWXwET3jpgLtVa48bycVWCgwgugy8WyhPDbCBA_1B7N-yQpb1albTKznentCtyk85XuylmrBoyH9WV2_KfAst442oCSDJXDTNYBSjRSGB6hFBUw7YVn_I3UKTx9j3j66f5BFDLsMzVrKfWD6sdWtnrSefJ0Nt0tNMzoxU3eyOBT0uWup3OQbmnFsXOj3w4Vm9dWJf_uSZ4_HLjNeLdX6uJFk"/>
+</div>
+<div class="space-y-2">
+<span class="text-[9px] uppercase tracking-widest font-bold text-tertiary">Hardware Convergence</span>
+<h4 class="font-headline font-bold text-xl">The 'SiPearl' Advantage</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">Analyzing how domestic high-performance computing (HPC) hardware is being optimized for native autonomous agent inference.</p>
+</div>
+</div>
+<div class="group flex gap-6 items-start">
+<div class="w-32 h-32 shrink-0 overflow-hidden bg-surface-container-highest">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="cybersecurity digital grid with flowing green data lines and abstract security padlock symbol in technical 3D style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnJ02tHDerxKmgMYq27rwWRc3CfKfQir_1uUjLsuINRVLH7yKEmf4QdEnufrhNHaVaVQkPBvCHg44FgDPMzCqRaU_v0FNXj_LSVz2fEJLR0R4PVrvQ8coHBwiMLCqCTuitd5pugVZ40ZPeLpbDoqkDP1klPWITb-bYOJU6I8n8Pk3ktwEKf6FDkXaDlzZ4QQhwHfyPFZqt6iVrZYJVki65QJH1CdQwnFzwwFbGg4L7gtbWwuIdbzd7UdatxAhz-d5cd2O_fh4tCow"/>
+</div>
+<div class="space-y-2">
+<span class="text-[9px] uppercase tracking-widest font-bold text-tertiary">Regulatory Fortress</span>
+<h4 class="font-headline font-bold text-xl">EU AI Act Compliance</h4>
+<p class="text-sm text-on-surface-variant leading-relaxed">French entities are leading the development of "Compliant-by-Design" agent architectures, creating a moat against unregulated competitors.</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+<footer class="max-w-7xl mx-auto mt-24 pt-12 border-t border-outline-variant/20 pb-12 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-6">
+<span class="font-serif italic text-2xl text-primary">The Navigator</span>
+<div class="h-8 w-px bg-outline/20"></div>
+<p class="text-[10px] text-on-surface-variant max-w-xs leading-tight uppercase tracking-widest">
+                            Official Intelligence Repository for French Strategic Innovation Sector Analysis
+                        </p>
+</div>
+<div class="flex gap-8 text-[10px] font-bold uppercase tracking-widest text-outline">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Methodology</a>
+<a class="hover:text-primary transition-colors" href="#">Data Partners</a>
+<span class="text-slate-300">© 2025</span>
+</div>
+</footer>
+</div>
+<!-- Bottom Navigation for Mobile (md:hidden) -->
+<nav class="md:hidden bg-[#FCF9F2] border-t-0 flex justify-around items-center h-16 shrink-0 z-20">
+<button class="flex flex-col items-center gap-1 text-[#1A3A5C]">
+<span class="material-symbols-outlined" data-icon="analytics" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Intel</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Net</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined" data-icon="rss_feed">rss_feed</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Signal</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-slate-400">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="text-[10px] font-bold uppercase tracking-tighter">Arch</span>
+</button>
+</nav>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&amp;family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "background": "#fef9ee",
+            "on-primary-fixed": "#001e2f",
+            "tertiary-container": "#684f7c",
+            "on-secondary-container": "#406c44",
+            "on-error-container": "#93000a",
+            "surface-container-lowest": "#ffffff",
+            "secondary-fixed-dim": "#a2d3a2",
+            "outline": "#72787e",
+            "inverse-on-surface": "#f5f0e5",
+            "on-tertiary-fixed-variant": "#553d68",
+            "primary-container": "#2f5d7c",
+            "on-primary-fixed-variant": "#194b69",
+            "primary": "#114563",
+            "error-container": "#ffdad6",
+            "tertiary-fixed-dim": "#dabbef",
+            "surface-variant": "#e7e2d7",
+            "surface-container": "#f2ede2",
+            "secondary": "#3c6840",
+            "on-primary-container": "#a8d5f9",
+            "on-tertiary": "#ffffff",
+            "surface-container-high": "#ede8dd",
+            "on-tertiary-container": "#e4c5f9",
+            "tertiary-fixed": "#f2daff",
+            "on-tertiary-fixed": "#27113a",
+            "on-surface": "#1d1c15",
+            "inverse-primary": "#9fccef",
+            "error": "#ba1a1a",
+            "on-secondary-fixed": "#002108",
+            "on-secondary": "#ffffff",
+            "surface-bright": "#fef9ee",
+            "secondary-container": "#baecba",
+            "primary-fixed": "#c9e6ff",
+            "inverse-surface": "#323029",
+            "surface-tint": "#356382",
+            "on-primary": "#ffffff",
+            "on-background": "#1d1c15",
+            "surface-container-highest": "#e7e2d7",
+            "surface": "#fef9ee",
+            "on-surface-variant": "#41474d",
+            "surface-container-low": "#f8f3e8",
+            "on-secondary-fixed-variant": "#24502b",
+            "secondary-fixed": "#bdefbd",
+            "tertiary": "#503863",
+            "primary-fixed-dim": "#9fccef",
+            "outline-variant": "#c1c7ce",
+            "surface-dim": "#dedacf",
+            "on-error": "#ffffff"
+          },
+          fontFamily: {
+            "headline": ["Newsreader", "serif"],
+            "body": ["Public Sans", "sans-serif"],
+            "label": ["Public Sans", "sans-serif"]
+          },
+          borderRadius: {"DEFAULT": "0rem", "lg": "0rem", "xl": "0rem", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    }
+    body { font-family: 'Public Sans', sans-serif; background-color: #fef9ee; color: #1d1c15; }
+    h1, h2, h3, .serif-font { font-family: 'Newsreader', serif; }
+    .glass-panel {
+      background: rgba(254, 249, 238, 0.8);
+      backdrop-filter: blur(20px);
+    }
+    .thin-line { height: 0.5px; background-color: #c1c7ce; opacity: 0.25; }
+    .vertical-accent { border-left: 2px solid; }
+  </style>
+</head>
+<body class="bg-surface">
+<!-- Side Navigation Bar -->
+<aside class="h-screen w-72 fixed left-0 top-0 border-r-0 bg-[#F2EDE2] dark:bg-stone-900 z-[60] flex flex-col pt-24 space-y-2">
+<div class="px-8 mb-8">
+<h1 class="font-serif italic text-xl text-[#114563]">The Navigator</h1>
+<p class="font-sans text-[0.6875rem] uppercase tracking-widest font-semibold text-[#114563]/60 mt-1">French Innovation Intelligence</p>
+</div>
+<nav class="flex-grow">
+<div class="text-[#72787E] py-4 px-6 border-l-4 border-transparent hover:bg-[#EAE4D5] transition-all duration-300 ease-out cursor-pointer flex items-center gap-3">
+<span class="material-symbols-outlined">map</span>
+<span class="font-sans text-[0.6875rem] uppercase tracking-widest font-semibold">Ecosystem Atlas</span>
+</div>
+<div class="text-[#72787E] py-4 px-6 border-l-4 border-transparent hover:bg-[#EAE4D5] transition-all duration-300 ease-out cursor-pointer flex items-center gap-3">
+<span class="material-symbols-outlined">database</span>
+<span class="font-sans text-[0.6875rem] uppercase tracking-widest font-semibold">Sector Maps</span>
+</div>
+<div class="text-[#114563] border-l-4 border-[#114563] bg-[#FEF9EE]/50 py-4 px-6 ease-out cursor-pointer flex items-center gap-3">
+<span class="material-symbols-outlined">person_search</span>
+<span class="font-sans text-[0.6875rem] uppercase tracking-widest font-semibold">Entity Explorer</span>
+</div>
+<div class="text-[#72787E] py-4 px-6 border-l-4 border-transparent hover:bg-[#EAE4D5] transition-all duration-300 ease-out cursor-pointer flex items-center gap-3">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-sans text-[0.6875rem] uppercase tracking-widest font-semibold">Network Navigator</span>
+</div>
+</nav>
+<div class="p-8 mt-auto">
+<div class="flex items-center gap-3">
+<img alt="French Institutional Seal" class="w-8 h-8 opacity-80" data-alt="Official gold embossed institutional seal of the French Republic on a parchment background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAa1yapc1rgl3vMr2zZNAkCffIvpzEZYF5Errbo66Gk-HCEzEkCj-TmPdCZ8EigSkPUwDtXIWuq4QhpKhhcJevOTkKA-WKUMJIMAm4CV27wKmu8lqllDrN0TrRQwQkfPCZ9ETpOAceeOa4VudqMWTw1ARwjq8zt-r-FvYHhoQhEShif5rdl69e6We9rzFctKPzj3-8t9kqtU50ajI6dxv8yhhgX9xYaXbpvPfyyxXJtAx---Vff2g24B-fSdlZP3gWkCO-I-rtyYZc"/>
+<div class="flex flex-col">
+<span class="text-[0.6rem] font-bold tracking-tighter opacity-40 uppercase">Archival Access</span>
+<span class="text-[0.7rem] font-medium opacity-60">Level IV Intelligence</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Top AppBar -->
+<header class="fixed top-0 left-72 right-0 z-50 bg-[#FEF9EE] flex justify-between items-center px-16 py-4">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-serif italic text-[#114563]">The Navigator</span>
+<div class="h-6 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-6">
+<span class="font-serif text-lg font-medium tracking-tight text-[#114563] font-semibold">Station F Intelligence Dossier</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 text-[#41474D]">
+<span class="material-symbols-outlined text-lg">notifications</span>
+</div>
+<div class="flex items-center gap-2 text-[#41474D]">
+<span class="material-symbols-outlined text-lg">settings</span>
+</div>
+<div class="flex items-center gap-2 text-[#114563]">
+<span class="material-symbols-outlined text-2xl">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-72 pt-24 pb-20 px-16">
+<!-- Institutional Snapshot Header -->
+<section class="mb-12 bg-primary p-8 text-white grid grid-cols-12 gap-8 items-center border border-primary-container">
+<div class="col-span-12 lg:col-span-4 border-r border-white/10 pr-8">
+<h3 class="text-[0.6875rem] uppercase tracking-[0.2em] font-bold text-primary-fixed mb-2">Institutional Snapshot</h3>
+<p class="text-2xl font-serif italic leading-tight">Primary Catalyst for the French Sovereignty Mandate</p>
+</div>
+<div class="col-span-12 lg:col-span-5 border-r border-white/10 px-4">
+<p class="text-[0.65rem] uppercase tracking-widest font-bold text-primary-fixed mb-2">Strategic Role</p>
+<p class="text-sm opacity-90 leading-relaxed font-light">
+      Centralized operational hub designed to consolidate intellectual capital, facilitate corporate-startup technology transfer, and project French innovation capability globally through high-density spatial collaboration.
+    </p>
+</div>
+<div class="col-span-12 lg:col-span-3 flex justify-between px-4">
+<div class="text-center">
+<span class="block text-2xl font-serif font-bold text-primary-fixed">1,000</span>
+<span class="text-[0.6rem] uppercase tracking-tighter opacity-60">Residents</span>
+</div>
+<div class="text-center">
+<span class="block text-2xl font-serif font-bold text-primary-fixed">30+</span>
+<span class="text-[0.6rem] uppercase tracking-tighter opacity-60">Programs</span>
+</div>
+<div class="text-center">
+<span class="block text-2xl font-serif font-bold text-primary-fixed">30+</span>
+<span class="text-[0.6rem] uppercase tracking-tighter opacity-60">Partners</span>
+</div>
+</div>
+</section>
+<!-- Hero Section: Spatial Density -->
+<section class="grid grid-cols-12 gap-12 mb-20">
+<div class="col-span-12 lg:col-span-8">
+<p class="text-secondary font-semibold text-[0.6875rem] uppercase tracking-[0.2em] mb-4">Ecosystem Actor Profile / Hub of Hubs</p>
+<h2 class="text-5xl font-serif font-bold text-primary tracking-tight leading-none mb-6 italic">Station F: The Sovereign Foundry</h2>
+<p class="text-lg text-on-surface-variant max-w-2xl leading-relaxed mb-10">
+          As the world’s largest startup campus, Station F operates as a central nervous system for French innovation. Spanning 34,000 m², it orchestrates the convergence of 1,000+ startups, 30+ international partners, and the entire French Tech institutional apparatus.
+        </p>
+<div class="flex items-baseline gap-12">
+<div>
+<span class="block text-4xl font-serif font-bold text-primary">1,000+</span>
+<span class="text-[0.6875rem] uppercase tracking-widest text-on-surface-variant font-semibold">Startups in Residence</span>
+</div>
+<div>
+<span class="block text-4xl font-serif font-bold text-primary">30+</span>
+<span class="text-[0.6875rem] uppercase tracking-widest text-on-surface-variant font-semibold">Strategic Programs</span>
+</div>
+<div>
+<span class="block text-4xl font-serif font-bold text-primary">600+</span>
+<span class="text-[0.6875rem] uppercase tracking-widest text-on-surface-variant font-semibold">Events Annually</span>
+</div>
+</div>
+</div>
+<div class="col-span-12 lg:col-span-4 relative">
+<div class="aspect-square bg-surface-container-low border border-outline-variant/10 flex items-center justify-center p-8">
+<img class="w-full h-full object-cover grayscale opacity-80" data-alt="Black and white architectural shot of a massive industrial vaulted hall transformed into a modern tech campus with glass partitions" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCmF88x2e-g9u3qf7ZgJRYItpjlsuV80z3FbunW3QfmmauXGoJs1E4JJFiBDpdRO_Vg2-WEOyZ4yrKh78o7Y6GcYAOO2S31hheJaDfzYP3R_kK4AyzNyo1eO80GOh9FN8P9zuFA2lKS_IPCC7yhy9ODZMGnAXFi0A2ZBt5i7uk0UI0sr3XrwhrwNDP2VHkS3kOfu1N-E_V23scKFR8v0hCvN4DWHxIh17OKKyhhEcR6AT47P5jpKoasot_YJffOM4a6Y96SMlxp8c"/>
+<div class="absolute inset-0 bg-primary/5 pointer-events-none"></div>
+</div>
+</div>
+</section>
+<!-- The Network Effect: Mapping Layers -->
+<div class="grid grid-cols-12 gap-12">
+<!-- Left Column: Partners & Domains -->
+<div class="col-span-12 lg:col-span-4 space-y-12">
+<div>
+<h3 class="text-xl font-serif font-bold text-primary mb-6">Partner Taxonomy</h3>
+<div class="space-y-6">
+<!-- Institutional Layer -->
+<div class="p-6 bg-surface-container-low vertical-accent border-tertiary-container">
+<span class="text-[0.6rem] uppercase tracking-widest font-bold text-tertiary-container mb-2 block">Institutional Partners</span>
+<p class="text-sm font-medium mb-4 text-on-surface">The sovereign backbone providing regulatory and capital acceleration.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-tertiary/10 text-tertiary-container text-[0.65rem] font-bold uppercase tracking-tighter">BPIFRANCE</span>
+<span class="px-3 py-1 bg-tertiary/10 text-tertiary-container text-[0.65rem] font-bold uppercase tracking-tighter">La French Tech</span>
+<span class="px-3 py-1 bg-tertiary/10 text-tertiary-container text-[0.65rem] font-bold uppercase tracking-tighter">INRIA</span>
+</div>
+</div>
+<!-- Corporate Layer -->
+<div class="p-6 bg-surface-container-low vertical-accent border-[#8B5E3C]">
+<span class="text-[0.6rem] uppercase tracking-widest font-bold text-[#8B5E3C] mb-2 block">Corporate Partners</span>
+<p class="text-sm font-medium mb-4 text-on-surface">Global industry leaders integrating startups into supply chains.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-[#8B5E3C]/10 text-[#8B5E3C] text-[0.65rem] font-bold uppercase tracking-tighter">LVMH</span>
+<span class="px-3 py-1 bg-[#8B5E3C]/10 text-[#8B5E3C] text-[0.65rem] font-bold uppercase tracking-tighter">TF1 Group</span>
+<span class="px-3 py-1 bg-[#8B5E3C]/10 text-[#8B5E3C] text-[0.65rem] font-bold uppercase tracking-tighter">Thales</span>
+<span class="px-3 py-1 bg-[#8B5E3C]/10 text-[#8B5E3C] text-[0.65rem] font-bold uppercase tracking-tighter">Google</span>
+</div>
+</div>
+<!-- Tech Alpha Layer -->
+<div class="p-6 bg-surface-container-low vertical-accent border-primary">
+<span class="text-[0.6rem] uppercase tracking-widest font-bold text-primary mb-2 block">Tech Alpha Programs</span>
+<p class="text-sm font-medium mb-4 text-on-surface">Cutting-edge technical tracks focused on deep tech and AI.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-primary/10 text-primary text-[0.65rem] font-bold uppercase tracking-tighter">F/AI</span>
+<span class="px-3 py-1 bg-primary/10 text-primary text-[0.65rem] font-bold uppercase tracking-tighter">Cyber @ Station F</span>
+<span class="px-3 py-1 bg-primary/10 text-primary text-[0.65rem] font-bold uppercase tracking-tighter">Web3 Hub</span>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-primary p-8 text-white">
+<h4 class="font-serif italic text-2xl mb-4">Request Intelligence Report</h4>
+<p class="text-sm opacity-70 mb-6">Detailed cross-referencing of startup performance across the LVMH and F/ai tracks.</p>
+<button class="w-full bg-surface-container-lowest text-primary font-bold text-[0.7rem] uppercase tracking-[0.2em] py-4 hover:bg-on-primary-container transition-colors">Generate Dossier</button>
+</div>
+</div>
+<!-- Right Column: Startup Ecosystem Density Map -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low p-12">
+<div class="flex justify-between items-center mb-12">
+<div>
+<h3 class="text-2xl font-serif font-bold text-primary italic">Spatial Intelligence Map</h3>
+<p class="text-sm text-on-surface-variant">Real-time occupancy and network density visualization.</p>
+</div>
+<div class="flex gap-4">
+<span class="flex items-center gap-2 text-[0.6rem] font-bold uppercase tracking-widest"><span class="w-2 h-2 rounded-full bg-primary"></span> High Density</span>
+<span class="flex items-center gap-2 text-[0.6rem] font-bold uppercase tracking-widest"><span class="w-2 h-2 rounded-full bg-outline"></span> Transition Space</span>
+</div>
+</div>
+<div class="relative w-full aspect-[16/10] bg-surface-container overflow-hidden group">
+<!-- Abstract representation of the building's zones -->
+<div class="absolute inset-0 grid grid-cols-3 gap-[1px] bg-outline-variant/20">
+<!-- Zone 1: Share -->
+<div class="p-8 flex flex-col justify-between">
+<span class="text-[0.6rem] font-bold opacity-30 uppercase tracking-widest">Zone A: Share</span>
+<div class="flex flex-wrap gap-1 content-end">
+<!-- Data clusters representation -->
+<div class="w-3 h-3 bg-primary opacity-20"></div><div class="w-3 h-3 bg-primary opacity-40"></div><div class="w-3 h-3 bg-primary opacity-10"></div>
+<div class="w-3 h-3 bg-primary opacity-60"></div><div class="w-3 h-3 bg-primary opacity-30"></div><div class="w-3 h-3 bg-primary opacity-50"></div>
+<div class="w-3 h-3 bg-primary opacity-20"></div><div class="w-3 h-3 bg-primary opacity-40"></div><div class="w-3 h-3 bg-primary opacity-10"></div>
+<div class="w-3 h-3 bg-primary opacity-90"></div><div class="w-3 h-3 bg-primary opacity-30"></div><div class="w-3 h-3 bg-primary opacity-50"></div>
+<div class="w-3 h-3 bg-primary opacity-20"></div><div class="w-3 h-3 bg-primary opacity-40"></div><div class="w-3 h-3 bg-primary opacity-10"></div>
+<div class="w-3 h-3 bg-primary opacity-60"></div><div class="w-3 h-3 bg-primary opacity-30"></div><div class="w-3 h-3 bg-primary opacity-50"></div>
+</div>
+</div>
+<!-- Zone 2: Create -->
+<div class="p-8 flex flex-col justify-between bg-surface-container-high/40">
+<span class="text-[0.6rem] font-bold opacity-30 uppercase tracking-widest">Zone B: Create</span>
+<div class="flex flex-wrap gap-1 content-center">
+<!-- Density clusters -->
+<div class="w-4 h-4 bg-[#8B5E3C] opacity-30"></div><div class="w-4 h-4 bg-[#8B5E3C] opacity-50"></div>
+<div class="w-4 h-4 bg-[#8B5E3C] opacity-80"></div><div class="w-4 h-4 bg-[#8B5E3C] opacity-40"></div>
+<div class="w-4 h-4 bg-[#8B5E3C] opacity-20"></div><div class="w-4 h-4 bg-[#8B5E3C] opacity-60"></div>
+<div class="w-4 h-4 bg-[#8B5E3C] opacity-40"></div><div class="w-4 h-4 bg-[#8B5E3C] opacity-70"></div>
+</div>
+</div>
+<!-- Zone 3: Live -->
+<div class="p-8 flex flex-col justify-between">
+<span class="text-[0.6rem] font-bold opacity-30 uppercase tracking-widest">Zone C: Live</span>
+<div class="flex flex-wrap gap-1 content-start">
+<div class="w-2 h-2 bg-tertiary-container opacity-20"></div><div class="w-2 h-2 bg-tertiary-container opacity-20"></div>
+<div class="w-2 h-2 bg-tertiary-container opacity-20"></div><div class="w-2 h-2 bg-tertiary-container opacity-20"></div>
+</div>
+</div>
+</div>
+<!-- Image Overlay with Mask -->
+<img class="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-20 grayscale" data-alt="High-angle geometric view of modern office workstations arranged in clean repetitive rows inside a concrete industrial hall" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfehSDCh3X0_wpLCgkhocwJt9dUqJiXOnPNfHHqD8CrgdmDCi1_OzgroEbcAQygF37o3TEa6kRbl2QBDGoNKq5Q8azwWvrmNyuwO3NH-WXbtDk4LhwdU-lm5R5TiZtUoOMy44hD4CuB1sNJ-KXzru4fau2P1i4mK2XBF7HrKRrb9GgNbc2yKhnZw4ikig-cWcm3PBt1lh-zXuGzbCCc_9n9eR-hHDuVIi1L9eRmIEEDh1m9Gy_vjU56-zHuLjMnb5ytbw1Ib_RkwI"/>
+<!-- Focal Interaction Label -->
+<div class="absolute bottom-12 right-12 glass-panel p-6 border border-outline-variant/30 max-w-xs shadow-sm">
+<h5 class="text-primary font-serif font-bold italic mb-2">Network Nexus: 48°50'02"N</h5>
+<p class="text-[0.7rem] text-on-surface-variant leading-relaxed">Cluster identified at 12% above average density. Principal intersection of Fintech and AI founders detected.</p>
+</div>
+</div>
+<div class="mt-12 grid grid-cols-3 gap-8">
+<div>
+<span class="block text-2xl font-serif text-primary">3,000+</span>
+<p class="text-[0.65rem] font-bold text-on-surface-variant uppercase tracking-widest">Daily Desks</p>
+</div>
+<div>
+<span class="block text-2xl font-serif text-primary">8</span>
+<p class="text-[0.65rem] font-bold text-on-surface-variant uppercase tracking-widest">Event Stages</p>
+</div>
+<div>
+<span class="block text-2xl font-serif text-primary">100+</span>
+<p class="text-[0.65rem] font-bold text-on-surface-variant uppercase tracking-widest">Meeting Spaces</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Data Transparency / Archival List Section -->
+<section class="mt-20">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h3 class="text-3xl font-serif font-bold text-primary">Ecosystem Records</h3>
+<p class="text-on-surface-variant">Active Entity Registry — Updated T-0</p>
+</div>
+<div class="flex gap-4">
+<button class="text-[0.65rem] font-bold uppercase tracking-widest border-b border-primary text-primary pb-1">All Sectors</button>
+<button class="text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant pb-1 opacity-50">Fintech</button>
+<button class="text-[0.65rem] font-bold uppercase tracking-widest text-on-surface-variant pb-1 opacity-50">GreenTech</button>
+</div>
+</div>
+<div class="bg-surface-container-low">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/30">
+<th class="py-6 px-8 text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Startup Entity</th>
+<th class="py-6 px-8 text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Primary Track</th>
+<th class="py-6 px-8 text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Partner Alignment</th>
+<th class="py-6 px-8 text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Funding Tier</th>
+<th class="py-6 px-8 text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-container-high/50 transition-colors cursor-pointer group">
+<td class="py-6 px-8">
+<div class="flex flex-col">
+<span class="font-serif font-bold text-primary">NeuraLink France</span>
+<span class="text-[0.65rem] text-on-surface-variant uppercase tracking-tighter mt-1">Founders Program</span>
+</div>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium py-1 px-3 bg-primary/10 text-primary border-l-2 border-primary">Artifical Intelligence</span>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium py-1 px-3 bg-[#8B5E3C]/10 text-[#8B5E3C] border-l-2 border-[#8B5E3C]">LVMH</span>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium">Series A</span>
+</td>
+<td class="py-6 px-8 text-right">
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high/50 transition-colors cursor-pointer group">
+<td class="py-6 px-8">
+<div class="flex flex-col">
+<span class="font-serif font-bold text-primary">Sovereign Data Solutions</span>
+<span class="text-[0.65rem] text-on-surface-variant uppercase tracking-tighter mt-1">Cyber @ Station F</span>
+</div>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium py-1 px-3 bg-primary/10 text-primary border-l-2 border-primary">Cybersecurity</span>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium py-1 px-3 bg-tertiary/10 text-tertiary-container border-l-2 border-tertiary-container">Thales / BPI</span>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium">Seed</span>
+</td>
+<td class="py-6 px-8 text-right">
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-high/50 transition-colors cursor-pointer group">
+<td class="py-6 px-8">
+<div class="flex flex-col">
+<span class="font-serif font-bold text-primary">LuxEthos</span>
+<span class="text-[0.65rem] text-on-surface-variant uppercase tracking-tighter mt-1">Maison des Startups</span>
+</div>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium py-1 px-3 bg-primary/10 text-primary border-l-2 border-primary">RetailTech</span>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium py-1 px-3 bg-[#8B5E3C]/10 text-[#8B5E3C] border-l-2 border-[#8B5E3C]">LVMH</span>
+</td>
+<td class="py-6 px-8">
+<span class="text-[0.7rem] font-medium">Post-Series B</span>
+</td>
+<td class="py-6 px-8 text-right">
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+<!-- Global Status Indicator Footer -->
+<footer class="fixed bottom-0 left-72 right-0 bg-[#F2EDE2] border-t border-outline-variant/10 px-16 py-3 flex justify-between items-center z-50">
+<div class="flex items-center gap-6">
+<span class="text-[0.6rem] font-bold uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span> Network Status: Nominal
+      </span>
+<div class="h-4 w-[1px] bg-outline-variant/30"></div>
+<span class="text-[0.6rem] font-medium text-on-surface-variant opacity-60 italic">Displaying 1,042 of 1,042 Actively Tracked Entities</span>
+</div>
+<div class="flex gap-4">
+<span class="text-[0.6rem] font-bold uppercase tracking-widest text-primary hover:underline cursor-pointer">Export Ledger (PDF)</span>
+<span class="text-[0.6rem] font-bold uppercase tracking-widest text-primary hover:underline cursor-pointer">API Documentation</span>
+</div>
+</footer>
+</body></html>

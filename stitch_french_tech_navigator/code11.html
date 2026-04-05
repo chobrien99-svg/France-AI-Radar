@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Public+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "background": "#fef9ee",
+            "on-primary-fixed": "#001e2f",
+            "tertiary-container": "#684f7c",
+            "on-secondary-container": "#406c44",
+            "on-error-container": "#93000a",
+            "surface-container-lowest": "#ffffff",
+            "secondary-fixed-dim": "#a2d3a2",
+            "outline": "#72787e",
+            "inverse-on-surface": "#f5f0e5",
+            "on-tertiary-fixed-variant": "#553d68",
+            "primary-container": "#2f5d7c",
+            "on-primary-fixed-variant": "#194b69",
+            "primary": "#114563",
+            "error-container": "#ffdad6",
+            "tertiary-fixed-dim": "#dabbef",
+            "surface-variant": "#e7e2d7",
+            "surface-container": "#f2ede2",
+            "secondary": "#3c6840",
+            "on-primary-container": "#a8d5f9",
+            "on-tertiary": "#ffffff",
+            "surface-container-high": "#ede8dd",
+            "on-tertiary-container": "#e4c5f9",
+            "tertiary-fixed": "#f2daff",
+            "on-tertiary-fixed": "#27113a",
+            "on-surface": "#1d1c15",
+            "inverse-primary": "#9fccef",
+            "error": "#ba1a1a",
+            "on-secondary-fixed": "#002108",
+            "on-secondary": "#ffffff",
+            "surface-bright": "#fef9ee",
+            "secondary-container": "#baecba",
+            "primary-fixed": "#c9e6ff",
+            "inverse-surface": "#323029",
+            "surface-tint": "#356382",
+            "on-primary": "#ffffff",
+            "on-background": "#1d1c15",
+            "surface-container-highest": "#e7e2d7",
+            "surface": "#fef9ee",
+            "on-surface-variant": "#41474d",
+            "surface-container-low": "#f8f3e8",
+            "on-secondary-fixed-variant": "#24502b",
+            "secondary-fixed": "#bdefbd",
+            "tertiary": "#503863",
+            "primary-fixed-dim": "#9fccef",
+            "outline-variant": "#c1c7ce",
+            "surface-dim": "#dedacf",
+            "on-error": "#ffffff"
+          },
+          fontFamily: {
+            "headline": ["Newsreader", "serif"],
+            "body": ["Public Sans", "sans-serif"],
+            "label": ["Public Sans", "sans-serif"]
+          },
+          borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    }
+    body {
+      background-color: #f6f1e6;
+      font-family: 'Public Sans', sans-serif;
+    }
+    .institutional-gradient {
+      background: linear-gradient(135deg, #114563 0%, #2f5d7c 100%);
+    }
+    .domain-research { border-left: 2px solid #7c8c9e; background-color: rgba(124, 140, 158, 0.08); }
+    .domain-corporate { border-left: 2px solid #503863; background-color: rgba(80, 56, 99, 0.08); }
+    .domain-funding { border-left: 2px solid #3c6840; background-color: rgba(60, 104, 64, 0.08); }
+  </style>
+</head>
+<body class="text-on-surface">
+<!-- Side Navigation Shell -->
+<aside class="h-screen w-72 fixed left-0 top-0 border-r-0 bg-[#F2EDE2] flex flex-col pt-24 space-y-2 z-40">
+<div class="px-8 mb-12">
+<h1 class="font-serif italic text-xl text-[#114563]">The Navigator</h1>
+<p class="font-sans text-[0.6875rem] uppercase tracking-widest font-semibold text-on-surface-variant mt-1">French Innovation Intelligence</p>
+</div>
+<nav class="flex flex-col space-y-1">
+<a class="text-[#72787E] py-4 px-6 border-l-4 border-transparent font-sans text-[0.6875rem] uppercase tracking-widest font-semibold hover:bg-[#EAE4D5] transition-all duration-300 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+        Ecosystem Atlas
+      </a>
+<a class="text-[#72787E] py-4 px-6 border-l-4 border-transparent font-sans text-[0.6875rem] uppercase tracking-widest font-semibold hover:bg-[#EAE4D5] transition-all duration-300 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+        Sector Maps
+      </a>
+<a class="text-[#114563] border-l-4 border-[#114563] bg-[#FEF9EE]/50 py-4 px-6 font-sans text-[0.6875rem] uppercase tracking-widest font-semibold flex items-center gap-4" href="#">
+<span class="material-symbols-outlined" data-icon="person_search">person_search</span>
+        Entity Explorer
+      </a>
+<a class="text-[#72787E] py-4 px-6 border-l-4 border-transparent font-sans text-[0.6875rem] uppercase tracking-widest font-semibold hover:bg-[#EAE4D5] transition-all duration-300 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+        Network Navigator
+      </a>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-72 min-h-screen">
+<!-- Top Bar Navigation -->
+<header class="flex justify-between items-center w-full px-16 py-4 sticky top-0 z-50 bg-[#FEF9EE]/80 backdrop-blur-xl">
+<div class="flex items-center gap-8">
+<div class="font-serif text-lg font-medium tracking-tight text-[#114563]">
+          Dossier / <span class="italic font-bold">Adrien Morel</span>
+</div>
+</div>
+<div class="flex items-center space-x-6 text-[#41474D]">
+<button class="hover:text-[#2F5D7C] transition-colors duration-300 flex items-center gap-2">
+<span class="material-symbols-outlined text-xl" data-icon="notifications">notifications</span>
+</button>
+<button class="hover:text-[#2F5D7C] transition-colors duration-300 flex items-center gap-2">
+<span class="material-symbols-outlined text-xl" data-icon="settings">settings</span>
+</button>
+<button class="hover:text-[#2F5D7C] transition-colors duration-300 flex items-center gap-2">
+<span class="material-symbols-outlined text-2xl" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<div class="px-16 py-12 max-w-7xl mx-auto">
+<!-- Profile Header Hero -->
+<section class="flex flex-col md:flex-row gap-16 items-start mb-24">
+<div class="w-64 h-80 grayscale overflow-hidden flex-shrink-0 bg-surface-container border border-outline-variant/20">
+<img class="w-full h-full object-cover" data-alt="portrait of a professional man with intense focused expression in minimalist architectural studio setting with soft directional window light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJELNnS1asPqR48L45DAjoesN4ULd8UOVL_jnsen-58ruEcwCj48K30VOtnige0f62CbDg0VWTLxWIrWf3VXmdXeGrGGJ65whjWqLGu9Plq9BtXZuqtD-kpr-zLiVR2rbzKVtrS3KlLbcehDv8aXzjA4rgFOf4T_iDyPgeQLow-9EDBOhxHsaouX5dOtZCz2MJUefvOJl5NLHJJHW_z3KyDiLc983PBxmCQjbnBalbt63ucJ8_IgvWR0TQUmOBW6jgcyEnotRwwOM"/>
+</div>
+<div class="flex-grow pt-4">
+<div class="flex items-center gap-4 mb-4">
+<span class="domain-funding px-3 py-1 text-[10px] font-bold tracking-[0.2em] uppercase text-secondary">Founder &amp; CEO</span>
+<span class="text-outline-variant text-xs font-light">— NovaMind AI</span>
+</div>
+<h2 class="font-headline text-[3.5rem] leading-[1.1] mb-6 text-primary italic">Adrien Morel</h2>
+<p class="font-headline text-xl leading-relaxed text-on-surface-variant max-w-2xl">
+            A central figure in the sovereign French AI ecosystem, pioneering the convergence of neuro-symbolic reasoning and industrial-scale machine learning.
+          </p>
+<div class="mt-12 grid grid-cols-3 gap-12 border-t border-outline-variant/10 pt-8">
+<div>
+<p class="font-label text-[0.6875rem] uppercase tracking-widest text-outline mb-1">Affiliation</p>
+<p class="font-body text-sm font-semibold">NovaMind AI (Paris)</p>
+</div>
+<div>
+<p class="font-label text-[0.6875rem] uppercase tracking-widest text-outline mb-1">Strategic Domain</p>
+<p class="font-body text-sm font-semibold">Sovereign Intelligence</p>
+</div>
+<div>
+<p class="font-label text-[0.6875rem] uppercase tracking-widest text-outline mb-1">Influence Score</p>
+<p class="font-headline text-2xl text-primary">A-01 <span class="text-xs font-sans tracking-normal opacity-50 italic">Top Tier</span></p>
+</div>
+</div>
+</div>
+</section>
+<!-- The Lineage of Expertise -->
+<section class="mb-32">
+<h3 class="font-headline text-2xl mb-12 border-b border-outline-variant/15 pb-4 italic">The Lineage of Expertise</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-px bg-outline-variant/10">
+<!-- Academic Roots -->
+<div class="bg-surface p-10 domain-research">
+<span class="font-label text-[0.6rem] uppercase tracking-[0.3em] text-[#7C8C9E] mb-6 block">Academic Foundations</span>
+<div class="mb-8">
+<h4 class="font-headline text-lg mb-2">PhD in Mathematical Physics</h4>
+<p class="font-label text-xs text-on-surface-variant">ENS Paris-Saclay, 2012</p>
+</div>
+<p class="font-body text-xs text-on-surface-variant leading-relaxed">
+              Research focused on high-dimensional probability and neural manifold theory under the supervision of Professor Jean-Pierre Serre.
+            </p>
+</div>
+<!-- DeepMind Lead -->
+<div class="bg-surface p-10 domain-corporate">
+<span class="font-label text-[0.6rem] uppercase tracking-[0.3em] text-[#503863] mb-6 block">Industrial Evolution</span>
+<div class="mb-8">
+<h4 class="font-headline text-lg mb-2">Research Lead, DeepMind</h4>
+<p class="font-label text-xs text-on-surface-variant">London / Paris, 2016-2022</p>
+</div>
+<p class="font-body text-xs text-on-surface-variant leading-relaxed">
+              Directed the 'Cognitive Architectures' unit, focusing on transformer efficiency and ethical alignment frameworks for European markets.
+            </p>
+</div>
+<!-- Current Venture -->
+<div class="bg-surface p-10 domain-funding">
+<span class="font-label text-[0.6rem] uppercase tracking-[0.3em] text-secondary mb-6 block">Sovereign Action</span>
+<div class="mb-8">
+<h4 class="font-headline text-lg mb-2">Founder &amp; CEO, NovaMind</h4>
+<p class="font-label text-xs text-on-surface-variant">Paris, 2023 - Present</p>
+</div>
+<p class="font-body text-xs text-on-surface-variant leading-relaxed">
+              Leading a €450M Series A backed initiative to build a localized, high-performance LLM infrastructure for European industry.
+            </p>
+</div>
+</div>
+</section>
+<!-- Intelligence Timeline & Network Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-24">
+<!-- Timeline -->
+<div class="lg:col-span-5">
+<h3 class="font-headline text-2xl mb-12 italic">Intelligence Timeline</h3>
+<div class="space-y-12 relative">
+<div class="absolute left-[3px] top-0 bottom-0 w-[1px] bg-outline-variant/30"></div>
+<div class="relative pl-10">
+<div class="absolute left-0 top-2 w-2 h-2 bg-primary"></div>
+<p class="font-label text-[10px] tracking-widest text-outline mb-2">Q1 2024</p>
+<h5 class="font-body font-bold text-sm mb-2">NovaMind v2 Launch</h5>
+<p class="font-body text-xs text-on-surface-variant">Deployment of first sovereign models for French nuclear and medical sectors.</p>
+</div>
+<div class="relative pl-10">
+<div class="absolute left-0 top-2 w-2 h-2 bg-outline-variant"></div>
+<p class="font-label text-[10px] tracking-widest text-outline mb-2">Q3 2023</p>
+<h5 class="font-body font-bold text-sm mb-2">Mistral Cooperation Accord</h5>
+<p class="font-body text-xs text-on-surface-variant">Strategic alignment on data privacy standards with the wider French AI ecosystem.</p>
+</div>
+<div class="relative pl-10">
+<div class="absolute left-0 top-2 w-2 h-2 bg-outline-variant"></div>
+<p class="font-label text-[10px] tracking-widest text-outline mb-2">2021</p>
+<h5 class="font-body font-bold text-sm mb-2">Knight of the National Order of Merit</h5>
+<p class="font-body text-xs text-on-surface-variant">Awarded for significant contributions to the digital sovereignty of the French Republic.</p>
+</div>
+</div>
+</div>
+<!-- Network -->
+<div class="lg:col-span-7">
+<h3 class="font-headline text-2xl mb-12 italic">Co-Founder &amp; Strategic Network</h3>
+<div class="grid grid-cols-2 gap-8">
+<!-- Person 1 -->
+<div class="flex gap-4 items-center group cursor-pointer">
+<div class="w-16 h-16 grayscale bg-surface-container-high overflow-hidden border border-outline-variant/10">
+<img class="w-full h-full object-cover" data-alt="headshot of a female executive with minimalist glasses and neutral expression against a beige background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRulrK7inaAUyy6ZzLS-ZzPjUhS0AsvYRpVpfX2F2Fq7dQZiMUsXSo6v2tEYvm6aVXH6jz8FU8sWMJGNjtSQtt0iFtwGE5padqAwMhQax11R6JsiUzB0fmx0luKJMRRXj6weBCGiIUYzLtPB9nRdonELrzF4uH9D0yTtznYmTlmyMKJqRbvqWsPrrWvlCFXiX-v36fhYGQkktIKqSbjmVNGwra_CaYYMcJyy4a8GkP8Yg7S8e6e2-8I2wU_4RvbRt13jeQKvv6iQQ"/>
+</div>
+<div>
+<h6 class="font-body font-bold text-sm group-hover:text-primary transition-colors">Clara Lefèvre</h6>
+<p class="font-label text-[10px] text-outline uppercase tracking-wider">CTO, NovaMind AI</p>
+<div class="flex gap-2 mt-1">
+<div class="w-1 h-1 rounded-full bg-secondary"></div>
+<div class="w-1 h-1 rounded-full bg-primary opacity-30"></div>
+</div>
+</div>
+</div>
+<!-- Person 2 -->
+<div class="flex gap-4 items-center group cursor-pointer">
+<div class="w-16 h-16 grayscale bg-surface-container-high overflow-hidden border border-outline-variant/10">
+<img class="w-full h-full object-cover" data-alt="portrait of a middle aged man in a tailored dark suit looking directly into the camera with intellectual confidence" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBP6HbnC56xERa_AV1Ged4j88b27hnmRbLv3kXpbXOYn4ER8o7yUA8cnThhOBXm2e3ruUPvEt8slYO4p8wZTCjt2s4w6q97pR-1aFXqJfhAzL0oGqVZCCTQOxCZhfRR8wahXchRziSet2eNnRfpp-sZOnUu10fYceuTq3AdmubFLCzoOOLAHMp1UqtvnVoNiYhLcjp2U_lzxcH-N7RS_buSL3KkEwTN64FnE5mmJ5PvWPljo6_neFP_YLfiQ3uHPZqihu57IPJu-D8"/>
+</div>
+<div>
+<h6 class="font-body font-bold text-sm group-hover:text-primary transition-colors">Dr. Henri Dupont</h6>
+<p class="font-label text-[10px] text-outline uppercase tracking-wider">Board Director, INRIA</p>
+<div class="flex gap-2 mt-1">
+<div class="w-1 h-1 rounded-full bg-[#7C8C9E]"></div>
+</div>
+</div>
+</div>
+<!-- Person 3 -->
+<div class="flex gap-4 items-center group cursor-pointer">
+<div class="w-16 h-16 grayscale bg-surface-container-high overflow-hidden border border-outline-variant/10">
+<img class="w-full h-full object-cover" data-alt="woman in a high collar shirt with short hair professional pose in a bright minimalist gallery setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjdw25zYUFqO3kiqUaoV8p0RLBKsu_MmkrLvhq-pEjsq_QXgb5Dwn_Tlaaw_6xUrfP2KsACz271WK6nZc_2lgoTcrONUYh6Vg8aXzsOQWgK264ssAH5Vm0Co-5JX3NxDWVHep-XhLS7tD2QEYddcb8hA_fTBq2rU4YDjZ8n1yxd40iB5a9qRxCl_Z-MVaCTZChlkLVycbWyi4-ZLUNhCbmZL_xlVH6NOl0vKRujTIA4iu_CaUVDsFKoUICXQgc2QX1wXaZgM8pcvA"/>
+</div>
+<div>
+<h6 class="font-body font-bold text-sm group-hover:text-primary transition-colors">Sophie Valois</h6>
+<p class="font-label text-[10px] text-outline uppercase tracking-wider">Partner, Eurazeo</p>
+<div class="flex gap-2 mt-1">
+<div class="w-1 h-1 rounded-full bg-secondary"></div>
+</div>
+</div>
+</div>
+<!-- Person 4 -->
+<div class="flex gap-4 items-center group cursor-pointer">
+<div class="w-16 h-16 grayscale bg-surface-container-high overflow-hidden border border-outline-variant/10">
+<img class="w-full h-full object-cover" data-alt="man with beard in a simple white t-shirt and dark jacket minimal studio portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUuSu6-RMKHNMInjDe-0GymVOqop1vBZV4yEsVQk0S_V69YgbvXDxZzs7X7FEqgAFPE-CoHk-C5ZlXflq8xcLLbYdXuiSUv85ce8YnCPG6A9oGHxYQGSIrreX3By8jgmYkJrPjOHi9oThgAewpQMdIuXvCah7XJqxkSRKiZEY0R1Lc8O-KKm5WSpFZZEYhdjdGN8ut6PKPnACopWi2fvEZ0pyBpMiV43IH5lppd-WRrFTzoHDAHz5UUkEM7x47ZzbypvqI6lNWnu4"/>
+</div>
+<div>
+<h6 class="font-body font-bold text-sm group-hover:text-primary transition-colors">Julien Masson</h6>
+<p class="font-label text-[10px] text-outline uppercase tracking-wider">DeepMind Research Lead</p>
+<div class="flex gap-2 mt-1">
+<div class="w-1 h-1 rounded-full bg-[#503863]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Action -->
+<footer class="mt-40 pt-12 border-t border-outline-variant/20 flex justify-between items-end">
+<div>
+<p class="font-label text-[10px] tracking-widest text-outline mb-2">Last Updated</p>
+<p class="font-body text-xs font-semibold">14 October 2024</p>
+</div>
+<div class="flex gap-4">
+<button class="bg-surface-container-highest text-primary px-8 py-3 text-[10px] font-bold tracking-[0.2em] uppercase hover:bg-surface-variant transition-colors">
+            Request Full Intel
+          </button>
+<button class="institutional-gradient text-on-primary px-8 py-3 text-[10px] font-bold tracking-[0.2em] uppercase">
+            Initiate Contact
+          </button>
+</div>
+</footer>
+</div>
+</main>
+<!-- Navigation Shell Logic for Responsive -->
+<div class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-container flex items-center justify-around z-50 shadow-2xl">
+<span class="material-symbols-outlined text-[#72787E]" data-icon="map">map</span>
+<span class="material-symbols-outlined text-[#72787E]" data-icon="database">database</span>
+<span class="material-symbols-outlined text-[#114563]" data-icon="person_search" style="font-variation-settings: 'FILL' 1;">person_search</span>
+<span class="material-symbols-outlined text-[#72787E]" data-icon="hub">hub</span>
+</div>
+</body></html>

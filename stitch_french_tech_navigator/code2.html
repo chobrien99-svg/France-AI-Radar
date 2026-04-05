@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Company Dossier | NovaMind AI</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&amp;family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "background": "#fef9ee",
+              "on-primary-fixed": "#001e2f",
+              "tertiary-container": "#684f7c",
+              "on-secondary-container": "#406c44",
+              "on-error-container": "#93000a",
+              "surface-container-lowest": "#ffffff",
+              "secondary-fixed-dim": "#a2d3a2",
+              "outline": "#72787e",
+              "inverse-on-surface": "#f5f0e5",
+              "on-tertiary-fixed-variant": "#553d68",
+              "primary-container": "#2f5d7c",
+              "on-primary-fixed-variant": "#194b69",
+              "primary": "#114563",
+              "error-container": "#ffdad6",
+              "tertiary-fixed-dim": "#dabbef",
+              "surface-variant": "#e7e2d7",
+              "surface-container": "#f2ede2",
+              "secondary": "#3c6840",
+              "on-primary-container": "#a8d5f9",
+              "on-tertiary": "#ffffff",
+              "surface-container-high": "#ede8dd",
+              "on-tertiary-container": "#e4c5f9",
+              "tertiary-fixed": "#f2daff",
+              "on-tertiary-fixed": "#27113a",
+              "on-surface": "#1d1c15",
+              "inverse-primary": "#9fccef",
+              "error": "#ba1a1a",
+              "on-secondary-fixed": "#002108",
+              "on-secondary": "#ffffff",
+              "surface-bright": "#fef9ee",
+              "secondary-container": "#baecba",
+              "primary-fixed": "#c9e6ff",
+              "inverse-surface": "#323029",
+              "surface-tint": "#356382",
+              "on-primary": "#ffffff",
+              "on-background": "#1d1c15",
+              "surface-container-highest": "#e7e2d7",
+              "surface": "#fef9ee",
+              "on-surface-variant": "#41474d",
+              "surface-container-low": "#f8f3e8",
+              "on-secondary-fixed-variant": "#24502b",
+              "secondary-fixed": "#bdefbd",
+              "tertiary": "#503863",
+              "primary-fixed-dim": "#9fccef",
+              "outline-variant": "#c1c7ce",
+              "surface-dim": "#dedacf",
+              "on-error": "#ffffff",
+              "graph-links": "#C9C1B3"
+            },
+            fontFamily: {
+              "headline": ["Newsreader", "serif"],
+              "body": ["Public Sans", "sans-serif"],
+              "label": ["Public Sans", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+      .institutional-gradient { background: linear-gradient(135deg, #114563 0%, #2f5d7c 100%); }
+      .ghost-border-bottom { border-bottom: 1px solid rgba(193, 199, 206, 0.25); }
+      .asymmetric-canvas { padding-left: 4rem; padding-right: 2rem; }
+      @media (min-width: 768px) { .asymmetric-canvas { padding-left: 20rem; padding-right: 4rem; } }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container">
+<!-- Side Navigation Shell -->
+<nav class="h-screen w-72 fixed left-0 top-0 border-r-0 bg-[#F2EDE2] flex flex-col pt-24 space-y-2 z-40 hidden md:flex">
+<div class="px-8 mb-12">
+<h1 class="font-headline italic text-xl text-[#114563]">The Navigator</h1>
+<p class="font-body text-[0.6875rem] uppercase tracking-widest font-semibold text-on-surface-variant mt-1">French Innovation Intelligence</p>
+</div>
+<a class="text-[#72787E] py-4 px-6 border-l-4 border-transparent hover:bg-[#EAE4D5] transition-all duration-300 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span class="font-label text-[0.6875rem] uppercase tracking-widest font-semibold">Ecosystem Atlas</span>
+</a>
+<a class="text-[#114563] border-l-4 border-[#114563] bg-[#FEF9EE]/50 py-4 px-6 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+<span class="font-label text-[0.6875rem] uppercase tracking-widest font-semibold">Sector Maps</span>
+</a>
+<a class="text-[#72787E] py-4 px-6 border-l-4 border-transparent hover:bg-[#EAE4D5] transition-all duration-300 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined" data-icon="person_search">person_search</span>
+<span class="font-label text-[0.6875rem] uppercase tracking-widest font-semibold">Entity Explorer</span>
+</a>
+<a class="text-[#72787E] py-4 px-6 border-l-4 border-transparent hover:bg-[#EAE4D5] transition-all duration-300 flex items-center gap-4" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+<span class="font-label text-[0.6875rem] uppercase tracking-widest font-semibold">Network Navigator</span>
+</a>
+</nav>
+<!-- Top AppBar Shell -->
+<header class="fixed top-0 right-0 left-0 md:left-72 z-50 bg-[#FEF9EE] flex justify-between items-center px-8 md:px-16 py-4">
+<div class="flex items-center gap-8">
+<span class="font-headline text-lg font-medium tracking-tight text-primary">Dossier: NM_AI_2024</span>
+<div class="h-4 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="history">history</span>
+<span class="text-[0.6875rem] uppercase tracking-widest font-semibold">Last Updated: 14 Oct 2024</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-primary cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-primary cursor-pointer" data-icon="settings">settings</span>
+<div class="w-8 h-8 institutional-gradient rounded-full flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-sm" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="asymmetric-canvas pt-32 pb-24 min-h-screen">
+<!-- Hero Header -->
+<section class="mb-12">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-8">
+<div>
+<h2 class="font-headline text-5xl font-bold text-primary mb-4">NovaMind AI</h2>
+<p class="font-headline italic text-xl text-on-surface-variant max-w-2xl">
+                        Advanced Neural Architectures for Sovereignty-First Industrial Intelligence.
+                    </p>
+</div>
+<div class="flex flex-col items-end">
+<span class="font-label text-[0.6875rem] uppercase tracking-widest text-on-surface-variant mb-2">Corporate Status</span>
+<div class="flex gap-2">
+<div class="px-3 py-1 bg-surface-container-highest flex items-center gap-2">
+<div class="w-1 h-3 bg-primary"></div>
+<span class="text-xs font-semibold uppercase tracking-wider">Société Anonyme (SA)</span>
+</div>
+<div class="px-3 py-1 bg-surface-container-highest flex items-center gap-2">
+<div class="w-1 h-3 bg-secondary"></div>
+<span class="text-xs font-semibold uppercase tracking-wider">Growth Stage</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Company Vitality (Official Brief Summary) -->
+<section class="mb-16">
+<div class="bg-surface-container px-8 py-6 border-y border-outline-variant/30">
+<div class="flex items-center gap-4 mb-8">
+<span class="material-symbols-outlined text-primary" data-icon="analytics">analytics</span>
+<h3 class="font-headline text-lg font-bold uppercase tracking-tight text-primary">Company Vitality Summary</h3>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-5 gap-y-8 gap-x-12">
+<div class="flex flex-col">
+<span class="font-label text-[0.6rem] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-2">Current Status</span>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-headline text-lg font-semibold">Seed / Active</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-label text-[0.6rem] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-2">Core Tech Track</span>
+<span class="font-headline text-lg font-semibold">Industrial Neural Ops</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label text-[0.6rem] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-2">Total Funding</span>
+<span class="font-headline text-lg font-semibold">€6.2M</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label text-[0.6rem] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-2">Workforce Size</span>
+<span class="font-headline text-lg font-semibold">84 FTE</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label text-[0.6rem] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-2">Sovereignty Score</span>
+<div class="flex items-baseline gap-1">
+<span class="font-headline text-lg font-semibold text-primary">98/100</span>
+<span class="text-[0.6rem] font-bold text-secondary uppercase tracking-widest">A+</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+<!-- Executive Intelligence -->
+<div class="lg:col-span-4 space-y-12">
+<div>
+<h3 class="font-headline text-lg font-semibold border-b border-outline-variant/20 pb-2 mb-6">Executive Summary</h3>
+<div class="space-y-8">
+<div>
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-label text-[0.6875rem] uppercase tracking-widest font-semibold text-on-surface-variant">Innovation Confidence Index</span>
+<span class="font-headline text-2xl font-bold text-primary">0.94</span>
+</div>
+<div class="w-full bg-surface-container h-1">
+<div class="bg-primary h-full w-[94%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-label text-[0.6875rem] uppercase tracking-widest font-semibold text-on-surface-variant">Sovereignty Compliance</span>
+<span class="font-headline text-2xl font-bold text-primary">A+</span>
+</div>
+<div class="w-full bg-surface-container h-1">
+<div class="bg-primary h-full w-[98%]"></div>
+</div>
+</div>
+<p class="text-sm text-on-surface-variant leading-relaxed italic">
+                            "NovaMind AI represents a strategic pivot in French neural research, transitioning from a pure-play lab collective to a high-capacity SA structure aimed at securing critical infrastructure automation."
+                        </p>
+</div>
+</div>
+<div>
+<h3 class="font-headline text-lg font-semibold border-b border-outline-variant/20 pb-2 mb-6">Structural DNA</h3>
+<ul class="space-y-6">
+<li class="flex gap-4">
+<span class="material-symbols-outlined text-outline" data-icon="corporate_fare">corporate_fare</span>
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Legal Evolution</p>
+<p class="text-sm font-medium">SAS <span class="mx-2 text-outline-variant">→</span> SA Conversion (Q1 2024)</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="material-symbols-outlined text-outline" data-icon="location_on">location_on</span>
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Headquarters</p>
+<p class="text-sm font-medium">Station F, Paris / Plateau de Saclay R&amp;D</p>
+</div>
+</li>
+<li class="flex gap-4">
+<span class="material-symbols-outlined text-outline" data-icon="groups">groups</span>
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Workforce Intelligence</p>
+<p class="text-sm font-medium">84 FTE (42% PhD concentration)</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<!-- Funding Lineage & Network -->
+<div class="lg:col-span-8 space-y-12">
+<!-- Network Map (Spatial Cartography) -->
+<div class="bg-surface-container-low p-8 border border-outline-variant/10 relative overflow-hidden h-[400px]">
+<div class="absolute top-6 left-8 z-10">
+<h3 class="font-headline text-lg font-semibold">Network Navigator</h3>
+<p class="font-label text-[0.6875rem] uppercase tracking-widest text-on-surface-variant">Institutional Affiliations</p>
+</div>
+<!-- SVG Graph Layer -->
+<svg class="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
+<!-- Connecting Lines -->
+<line stroke="#C9C1B3" stroke-width="0.5" x1="50%" x2="20%" y1="50%" y2="30%"></line>
+<line stroke="#C9C1B3" stroke-width="0.5" x1="50%" x2="80%" y1="50%" y2="25%"></line>
+<line stroke="#C9C1B3" stroke-width="0.5" x1="50%" x2="75%" y1="50%" y2="70%"></line>
+<line stroke="#C9C1B3" stroke-width="0.5" x1="50%" x2="25%" y1="50%" y2="75%"></line>
+<!-- Center Node -->
+<circle cx="50%" cy="50%" fill="#114563" r="6"></circle>
+<text fill="#114563" font-family="Newsreader" font-size="14" font-style="italic" x="51%" y="53%">NovaMind Core</text>
+</svg>
+<!-- HTML Nodes for better styling -->
+<div class="absolute top-[25%] left-[15%] flex flex-col items-center">
+<div class="w-3 h-3 bg-tertiary-container"></div>
+<span class="mt-2 font-label text-[0.6rem] uppercase tracking-widest text-tertiary">INRIA Lab</span>
+</div>
+<div class="absolute top-[20%] right-[15%] flex flex-col items-center">
+<div class="w-3 h-3 bg-secondary"></div>
+<span class="mt-2 font-label text-[0.6rem] uppercase tracking-widest text-secondary">Elaia Partners</span>
+</div>
+<div class="absolute bottom-[25%] right-[20%] flex flex-col items-center">
+<div class="w-3 h-3 bg-primary-container"></div>
+<span class="mt-2 font-label text-[0.6rem] uppercase tracking-widest text-primary-container">Bpifrance</span>
+</div>
+<div class="absolute bottom-[20%] left-[20%] flex flex-col items-center">
+<div class="w-3 h-3 bg-outline"></div>
+<span class="mt-2 font-label text-[0.6rem] uppercase tracking-widest text-on-surface-variant">Agoranov</span>
+</div>
+</div>
+<!-- Funding Lineage -->
+<div>
+<h3 class="font-headline text-lg font-semibold border-b border-outline-variant/20 pb-2 mb-6">Funding Lineage</h3>
+<div class="space-y-4">
+<!-- i-Nov Grant -->
+<div class="bg-surface-container-lowest p-6 flex flex-col md:flex-row md:items-center justify-between group hover:bg-surface-container transition-colors duration-300">
+<div class="flex items-center gap-6">
+<div class="w-1 h-12 bg-tertiary-container"></div>
+<div>
+<h4 class="font-headline text-xl">Bpifrance i-Nov Grant</h4>
+<p class="text-sm text-on-surface-variant italic">Innovation Sovereignty Fund</p>
+</div>
+</div>
+<div class="mt-4 md:mt-0 flex items-center gap-8 text-right">
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Amount</p>
+<p class="font-headline text-lg">€1.2M</p>
+</div>
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Date</p>
+<p class="font-headline text-lg">Oct 2023</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant opacity-0 group-hover:opacity-100 transition-opacity" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Seed Round -->
+<div class="bg-surface-container-lowest p-6 flex flex-col md:flex-row md:items-center justify-between group hover:bg-surface-container transition-colors duration-300">
+<div class="flex items-center gap-6">
+<div class="w-1 h-12 bg-secondary"></div>
+<div>
+<h4 class="font-headline text-xl">Seed Round: Elaia Partners</h4>
+<p class="text-sm text-on-surface-variant italic">Lead: Anne-Sophie Carrese</p>
+</div>
+</div>
+<div class="mt-4 md:mt-0 flex items-center gap-8 text-right">
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Amount</p>
+<p class="font-headline text-lg">€4.5M</p>
+</div>
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Date</p>
+<p class="font-headline text-lg">Feb 2024</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant opacity-0 group-hover:opacity-100 transition-opacity" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Early Research Grant -->
+<div class="bg-surface-container-lowest p-6 flex flex-col md:flex-row md:items-center justify-between group hover:bg-surface-container transition-colors duration-300">
+<div class="flex items-center gap-6">
+<div class="w-1 h-12 bg-primary"></div>
+<div>
+<h4 class="font-headline text-xl">French Tech Seed</h4>
+<p class="text-sm text-on-surface-variant italic">Initial R&amp;D Validation</p>
+</div>
+</div>
+<div class="mt-4 md:mt-0 flex items-center gap-8 text-right">
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Amount</p>
+<p class="font-headline text-lg">€500K</p>
+</div>
+<div>
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-on-surface-variant">Date</p>
+<p class="font-headline text-lg">May 2022</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant opacity-0 group-hover:opacity-100 transition-opacity" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Narrative Intelligence Section -->
+<section class="mt-24">
+<h3 class="font-headline text-lg font-semibold border-b border-outline-variant/20 pb-2 mb-12 text-center">Institutional Context</h3>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+<div class="space-y-4">
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-secondary">Strategic Domain</p>
+<h4 class="font-headline text-2xl">Industrial Autonomy</h4>
+<p class="text-sm leading-relaxed text-on-surface-variant">
+                        Applying transformer-based logic to manufacturing cycles, reducing latency in decision-making by 40% compared to traditional cloud-compute AI.
+                    </p>
+</div>
+<div class="space-y-4">
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-tertiary">Academic Pedigree</p>
+<h4 class="font-headline text-2xl">Saclay Ecosystem</h4>
+<p class="text-sm leading-relaxed text-on-surface-variant">
+                        Spin-off from the High-Performance Computing cluster at Paris-Saclay, maintaining active IP sharing with CNRS for base architecture.
+                    </p>
+</div>
+<div class="space-y-4">
+<p class="text-[0.6875rem] uppercase tracking-widest font-bold text-primary">Sovereignty Role</p>
+<h4 class="font-headline text-2xl">Defense Tier 2</h4>
+<p class="text-sm leading-relaxed text-on-surface-variant">
+                        Identified as a critical technology provider for the 2030 Sovereign AI initiative, focusing on on-premise hardware-agnostic deployments.
+                    </p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Shell (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 right-0 bg-[#FEF9EE] h-16 flex md:hidden items-center justify-around z-50 shadow-lg border-t border-outline-variant/10">
+<span class="material-symbols-outlined text-primary" data-icon="map">map</span>
+<span class="material-symbols-outlined text-primary" data-icon="database" style="font-variation-settings: 'FILL' 1;">database</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="person_search">person_search</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="hub">hub</span>
+</nav>
+</body></html>

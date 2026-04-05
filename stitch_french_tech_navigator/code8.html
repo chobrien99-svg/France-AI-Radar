@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Navigator | Sector Map: AI Agents</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;0,700;1,400&amp;family=Public+Sans:wght@300;400;500;600&amp;family=Source+Sans+3:wght@300;400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-container": "#a8d5f9",
+              "secondary-fixed": "#bdefbd",
+              "on-surface-variant": "#41474d",
+              "surface-variant": "#e7e2d7",
+              "on-primary-fixed": "#001e2f",
+              "on-primary": "#ffffff",
+              "surface-bright": "#fef9ee",
+              "surface-dim": "#dedacf",
+              "tertiary": "#503863",
+              "outline-variant": "#c1c7ce",
+              "on-error": "#ffffff",
+              "primary-container": "#2f5d7c",
+              "on-error-container": "#93000a",
+              "on-tertiary-fixed-variant": "#553d68",
+              "on-primary-fixed-variant": "#194b69",
+              "secondary-fixed-dim": "#a2d3a2",
+              "inverse-primary": "#9fccef",
+              "primary": "#114563",
+              "on-secondary-fixed": "#002108",
+              "on-tertiary": "#ffffff",
+              "surface-container-high": "#ede8dd",
+              "surface-container": "#f2ede2",
+              "on-secondary": "#ffffff",
+              "surface-tint": "#356382",
+              "surface-container-highest": "#e7e2d7",
+              "surface-container-lowest": "#ffffff",
+              "background": "#fef9ee",
+              "outline": "#72787e",
+              "primary-fixed": "#c9e6ff",
+              "surface-container-low": "#f8f3e8",
+              "inverse-on-surface": "#f5f0e5",
+              "on-background": "#1d1c15",
+              "on-tertiary-fixed": "#27113a",
+              "tertiary-container": "#684f7c",
+              "tertiary-fixed-dim": "#dabbef",
+              "on-secondary-container": "#406c44",
+              "surface": "#fef9ee",
+              "on-surface": "#1d1c15",
+              "inverse-surface": "#323029",
+              "tertiary-fixed": "#f2daff",
+              "secondary": "#3c6840",
+              "on-tertiary-container": "#e4c5f9",
+              "primary-fixed-dim": "#9fccef",
+              "error": "#ba1a1a",
+              "on-secondary-fixed-variant": "#24502b",
+              "secondary-container": "#baecba",
+              "error-container": "#ffdad6",
+              "graph-links": "#C9C1B3"
+            },
+            fontFamily: {
+              "headline": ["Newsreader", "serif"],
+              "body": ["Public Sans", "sans-serif"],
+              "label": ["Public Sans", "sans-serif"],
+              "serif": ["Newsreader", "serif"],
+              "sans": ["Source Sans 3", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .graph-line {
+            stroke: #C9C1B3;
+            stroke-width: 0.5px;
+            fill: none;
+        }
+        .node-pulse {
+            animation: soft-pulse 4s infinite ease-in-out;
+        }
+        @keyframes soft-pulse {
+            0%, 100% { opacity: 0.1; transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(1.1); }
+        }
+        .asymmetric-canvas {
+            margin-left: 2rem;
+            margin-right: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary-fixed select-none">
+<div class="flex h-screen overflow-hidden">
+<!-- SideNavBar Component (JSON Linked) -->
+<aside class="flex flex-col h-screen py-6 px-4 border-r border-graph-links/15 bg-surface-container w-64 shrink-0">
+<div class="mb-10 px-2">
+<h1 class="font-serif text-lg font-bold text-primary">The Navigator</h1>
+<p class="text-[0.6875rem] uppercase tracking-widest text-on-surface-variant opacity-70">Institutional Intelligence</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-bright hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">map</span>
+<span class="font-sans text-[0.875rem] tracking-tight">Ecosystem Atlas</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-primary font-bold bg-surface-bright/50 transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">category</span>
+<span class="font-sans text-[0.875rem] tracking-tight">Sector Maps</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-bright hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">database</span>
+<span class="font-sans text-[0.875rem] tracking-tight">Entity Explorer</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant hover:bg-surface-bright hover:text-primary transition-all group" href="#">
+<span class="material-symbols-outlined text-lg">hub</span>
+<span class="font-sans text-[0.875rem] tracking-tight">Network Navigator</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1 pt-6 border-t border-graph-links/10">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">download</span>
+<span class="font-sans text-[0.875rem]">Export</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">settings</span>
+<span class="font-sans text-[0.875rem]">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">help</span>
+<span class="font-sans text-[0.875rem]">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="flex-1 flex flex-col relative bg-surface overflow-hidden">
+<!-- TopNavBar Component (Partial/Header) -->
+<header class="flex justify-between items-center w-full px-8 h-16 shrink-0 z-10">
+<div class="flex items-center gap-8">
+<div class="flex gap-6">
+<a class="text-on-surface-variant text-[0.8125rem] font-sans hover:text-primary transition-colors" href="#">Ecosystem</a>
+<a class="text-primary font-semibold border-b border-primary text-[0.8125rem] font-sans" href="#">AI Agents</a>
+<a class="text-on-surface-variant text-[0.8125rem] font-sans hover:text-primary transition-colors" href="#">NovaMind AI</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">account_circle</button>
+</div>
+</header>
+<!-- Cartographic Canvas -->
+<div class="flex-1 relative overflow-hidden flex">
+<div class="flex-1 relative p-12 asymmetric-canvas">
+<div class="mb-12">
+<h2 class="font-serif text-[2.25rem] leading-tight text-primary">Sector Map: Autonomous Systems &amp; AI Agents</h2>
+<div class="flex items-center gap-2 mt-2">
+<span class="h-px w-8 bg-graph-links"></span>
+<p class="text-on-surface-variant italic font-serif text-sm">Mapping the sovereign intelligence landscape of the Euro-zone.</p>
+</div>
+</div>
+<!-- Graph Container -->
+<div class="relative w-full h-[calc(100%-120px)] bg-surface-container-low border border-graph-links/5">
+<!-- SVG Layer for connections -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none">
+<path class="graph-line" d="M 400 300 L 250 150"></path>
+<path class="graph-line" d="M 400 300 L 550 150"></path>
+<path class="graph-line" d="M 400 300 L 600 450"></path>
+<path class="graph-line" d="M 400 300 L 200 450"></path>
+<path class="graph-line" d="M 250 150 L 100 80"></path>
+<path class="graph-line" d="M 250 150 L 350 50"></path>
+<path class="graph-line" d="M 550 150 L 700 80"></path>
+<path class="graph-line" d="M 200 450 L 50 550"></path>
+<path class="graph-line" d="M 600 450 L 750 550"></path>
+</svg>
+<!-- Nodes Layer -->
+<!-- Central Hubs -->
+<div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+<div class="w-24 h-24 rounded-full border border-primary/20 flex items-center justify-center bg-surface-container-lowest relative">
+<div class="absolute inset-0 rounded-full bg-primary/5 node-pulse"></div>
+<span class="text-xs font-bold text-primary tracking-tighter text-center px-2">GENERATIVE SYSTEMS</span>
+</div>
+</div>
+<!-- Entity Nodes: Research (Muted Blue) -->
+<div class="absolute left-[20%] top-[15%] group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 bg-[#7C8C9E] flex-shrink-0"></div>
+<div>
+<p class="text-[0.6875rem] font-bold text-primary uppercase">Research Node</p>
+<p class="font-serif text-lg leading-none">Inria Sophia</p>
+</div>
+</div>
+</div>
+<div class="absolute left-[65%] top-[15%] group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 bg-[#7C8C9E] flex-shrink-0"></div>
+<div>
+<p class="text-[0.6875rem] font-bold text-primary uppercase">Research Node</p>
+<p class="font-serif text-lg leading-none">CNRS Lab</p>
+</div>
+</div>
+</div>
+<!-- Entity Nodes: Champions (Primary Color) -->
+<div class="absolute left-[45%] top-[65%] group cursor-pointer">
+<div class="p-4 bg-surface-container-lowest border-l-2 border-primary shadow-sm hover:translate-y-[-2px] transition-transform">
+<p class="text-[0.625rem] font-bold text-on-surface-variant tracking-widest uppercase mb-1">Sector Champion</p>
+<p class="font-serif text-xl text-primary font-bold">NovaMind AI</p>
+<p class="text-[0.75rem] text-on-surface-variant mt-1 italic">Autonomous Reasoning Engine</p>
+</div>
+</div>
+<div class="absolute left-[15%] top-[60%] group cursor-pointer">
+<div class="p-4 bg-surface-container-lowest border-l-2 border-primary shadow-sm hover:translate-y-[-2px] transition-transform">
+<p class="text-[0.625rem] font-bold text-on-surface-variant tracking-widest uppercase mb-1">Sector Champion</p>
+<p class="font-serif text-xl text-primary font-bold">Mistral AI</p>
+<p class="text-[0.75rem] text-on-surface-variant mt-1 italic">Efficient LLM Architecture</p>
+</div>
+</div>
+<!-- Entity Nodes: Funding/Public (Muted Green/Purple) -->
+<div class="absolute left-[5%] top-[80%] group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 bg-[#5E8C61] flex-shrink-0"></div>
+<div>
+<p class="text-[0.6875rem] font-bold text-secondary uppercase">Funding</p>
+<p class="font-serif text-md">Bpifrance</p>
+</div>
+</div>
+</div>
+<div class="absolute left-[80%] top-[80%] group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 bg-[#8A6F9E] flex-shrink-0"></div>
+<div>
+<p class="text-[0.6875rem] font-bold text-tertiary uppercase">Gov. Initiative</p>
+<p class="font-serif text-md">France 2030</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Legend -->
+<div class="mt-8 flex gap-8">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-primary"></div>
+<span class="text-[0.6875rem] uppercase tracking-wider text-on-surface-variant">Strategic Champions</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-[#7C8C9E]"></div>
+<span class="text-[0.6875rem] uppercase tracking-wider text-on-surface-variant">Academic Root</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 bg-[#5E8C61]"></div>
+<span class="text-[0.6875rem] uppercase tracking-wider text-on-surface-variant">Sovereign Funding</span>
+</div>
+</div>
+</div>
+<!-- Detail Panel (Progressive Disclosure) -->
+<aside class="w-[400px] bg-surface-container h-full border-l border-graph-links/15 flex flex-col p-8 z-20">
+<div class="flex justify-between items-start mb-10">
+<div>
+<span class="text-[0.625rem] font-bold text-primary tracking-[0.2em] uppercase">Intelligence Node</span>
+<h3 class="font-serif text-3xl text-primary mt-1">NovaMind AI</h3>
+</div>
+<button class="material-symbols-outlined text-outline">close</button>
+</div>
+<div class="space-y-12">
+<section>
+<h4 class="text-[0.6875rem] font-bold text-on-surface-variant uppercase tracking-widest mb-4 border-b border-graph-links/10 pb-2">Institutional Profile</h4>
+<div class="space-y-4">
+<div>
+<p class="text-xs text-on-surface-variant/60 uppercase">Founded</p>
+<p class="text-sm font-medium">Paris, 2023</p>
+</div>
+<div>
+<p class="text-xs text-on-surface-variant/60 uppercase">Primary Focus</p>
+<p class="text-sm font-medium">Neuro-symbolic autonomous agents for industrial logistics.</p>
+</div>
+<div>
+<p class="text-xs text-on-surface-variant/60 uppercase">Sovereignty Score</p>
+<div class="flex items-center gap-2 mt-1">
+<div class="flex-1 h-1 bg-surface-variant">
+<div class="h-full bg-secondary w-[85%]"></div>
+</div>
+<span class="text-[0.625rem] font-bold text-secondary">85/100</span>
+</div>
+</div>
+</div>
+</section>
+<section>
+<h4 class="text-[0.6875rem] font-bold text-on-surface-variant uppercase tracking-widest mb-4 border-b border-graph-links/10 pb-2">Network Relations</h4>
+<div class="space-y-3">
+<div class="flex items-start gap-4 p-3 bg-surface-bright/40">
+<span class="material-symbols-outlined text-lg text-outline">school</span>
+<div>
+<p class="text-xs font-bold text-primary">Academic Anchor</p>
+<p class="text-sm">Derived from Inria research on reinforcement learning.</p>
+</div>
+</div>
+<div class="flex items-start gap-4 p-3 bg-surface-bright/40">
+<span class="material-symbols-outlined text-lg text-outline">payments</span>
+<div>
+<p class="text-xs font-bold text-secondary">Public Backing</p>
+<p class="text-sm">€15M Seed led by Bpifrance (Deeptech fund).</p>
+</div>
+</div>
+</div>
+</section>
+<section class="mt-auto">
+<div class="p-6 bg-primary text-on-primary">
+<p class="font-serif italic text-lg mb-4">"The logic of autonomous systems must reside within sovereign borders to ensure strategic endurance."</p>
+<button class="w-full py-3 text-center text-[0.6875rem] font-bold tracking-widest uppercase border border-white/20 hover:bg-white/10 transition-colors">
+                                    Request Deep Intelligence Report
+                                </button>
+</div>
+</section>
+</div>
+</aside>
+</div>
+</main>
+</div>
+<!-- Background texture simulation -->
+<div class="fixed inset-0 pointer-events-none opacity-[0.03]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAQN5Yc_MpGwEbKZ3aNiYn7cFHCI-X9JyFx4IFzc0h8gD-43X-QBnzt0RZwbHZDZ1E3QNfel5AnjgPJhpQAqqIdpBfoeuGQAbrDTqnlvzinXziNSx0VCjETvgMQme29G0i9ekPeqMKwnXFpPkkmizq8_qpKUfrPrMW9_NnRAnDMVcQ3xjkd3kOdqCGu2LPyOieVsmxx9biIE9RTH9fe7dFsQ7bKHVjvYc2LodT-bXt4CtbCOCRym-EmdUObow7U-ya-uTs0lp1K0Zk'); z-index: 100;"></div>
+</body></html>

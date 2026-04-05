@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="light" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Navigator - L'Atlas National</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,600;0,700;1,400&amp;family=Public+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary": "#ffffff",
+                        "outline": "#72787e",
+                        "surface-container-high": "#ede8dd",
+                        "primary-fixed-dim": "#9fccef",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#a2d3a2",
+                        "primary-fixed": "#c9e6ff",
+                        "on-secondary-fixed": "#002108",
+                        "on-background": "#1d1c15",
+                        "inverse-surface": "#323029",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#dabbef",
+                        "secondary-container": "#baecba",
+                        "on-tertiary-fixed-variant": "#553d68",
+                        "on-primary-fixed": "#001e2f",
+                        "background": "#fef9ee",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#f2daff",
+                        "tertiary-container": "#684f7c",
+                        "on-secondary-fixed-variant": "#24502b",
+                        "on-primary-fixed-variant": "#194b69",
+                        "surface-variant": "#e7e2d7",
+                        "surface-bright": "#fef9ee",
+                        "on-error": "#ffffff",
+                        "primary-container": "#2f5d7c",
+                        "on-surface-variant": "#41474d",
+                        "surface-container-highest": "#e7e2d7",
+                        "outline-variant": "#c1c7ce",
+                        "on-surface": "#1d1c15",
+                        "on-secondary-container": "#406c44",
+                        "surface-dim": "#dedacf",
+                        "secondary-fixed": "#bdefbd",
+                        "on-tertiary-fixed": "#27113a",
+                        "inverse-on-surface": "#f5f0e5",
+                        "surface-tint": "#356382",
+                        "on-primary-container": "#a8d5f9",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "tertiary": "#503863",
+                        "surface-container-low": "#f8f3e8",
+                        "secondary": "#3c6840",
+                        "error-container": "#ffdad6",
+                        "surface-container": "#f2ede2",
+                        "inverse-primary": "#9fccef",
+                        "surface": "#fef9ee",
+                        "primary": "#114563",
+                        "on-tertiary-container": "#e4c5f9"
+                    },
+                    fontFamily: {
+                        "headline": ["Newsreader", "serif"],
+                        "body": ["Public Sans", "sans-serif"],
+                        "label": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; background-color: #FEF9EE; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+        .map-canvas { background-image: radial-gradient(#C1C7CE 0.5px, transparent 0.5px); background-size: 24px 24px; }
+        .line-connection { stroke: #C9C1B3; stroke-width: 0.5px; fill: none; }
+    </style>
+</head>
+<body class="text-on-surface select-none overflow-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-40 bg-[#FEF9EE] dark:bg-slate-950 border-b border-[#C1C7CE]/15 flex justify-between items-center px-8 py-3 w-full">
+<div class="flex items-center gap-8">
+<span class="font-serif italic text-xl text-[#114563] dark:text-blue-200">The Navigator</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="font-serif text-lg tracking-tight text-[#114563] border-b border-[#114563] pb-1" href="#">National</a>
+<a class="font-serif text-lg tracking-tight text-slate-500 hover:text-[#114563] hover:bg-[#F2EDE2]/50 transition-colors duration-300" href="#">Regional</a>
+<a class="font-serif text-lg tracking-tight text-slate-500 hover:text-[#114563] hover:bg-[#F2EDE2]/50 transition-colors duration-300" href="#">Cluster</a>
+<a class="font-serif text-lg tracking-tight text-slate-500 hover:text-[#114563] hover:bg-[#F2EDE2]/50 transition-colors duration-300" href="#">Entity</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-[#114563] p-2 hover:bg-[#F2EDE2]/50 transition-colors duration-300" data-icon="account_balance">account_balance</button>
+<button class="material-symbols-outlined text-[#114563] p-2 hover:bg-[#F2EDE2]/50 transition-colors duration-300" data-icon="settings">settings</button>
+<div class="w-8 h-8 bg-surface-variant overflow-hidden">
+<img alt="User profile" data-alt="close-up portrait of a professional woman in a dark blazer against a minimalist light grey background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKHYo1X1H24W9SOzruS0gIOXytTnB8EJPXT1tdTrpB68eE47jyLx2tw7cld1BVAnzNLLU9VcH9CWaWL4S-Zx8hvEWsADT8PpoDGOPZJSsmwYt7tX8R2-soLpn5-JA3z52-8dWgfrPukSgPrfs8D3hM__e5zf-s1Garlu_aSxCox1iy9kqF0B3x4UglzfrRkqsNla_qZ6OZVUx0pP5lkckPFbtMIzQajAiS_EDlq-iwMIV8CiiNQlOpDHJPRqtHax5TZZ2cvNDfl3o"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar (Institutional Portal) -->
+<aside class="fixed left-0 top-0 h-full w-64 border-r border-[#C1C7CE]/15 bg-[#F2EDE2] dark:bg-slate-900 z-30 flex flex-col h-full pt-20 pb-8 px-4">
+<div class="mb-8 px-2">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 border border-primary/20 flex items-center justify-center bg-white">
+<img alt="Institutional Seal" data-alt="minimalist graphic of the French Republic official seal emblem in navy blue and white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2LSonOTVOtoJhvPWq3DZSrDnM_hN2Xxeu6P3FiLXjXeNfcJWPYTyc7dzA5vne_46urzSEIz74Fwkl3nhDx12gefOJO_tI9L22-7uTw_A3v4ZyakYWCbwPP0YAzoN4B5vpYGKP8Mgd4s-_C0aonLpMWjZqJAoofGrB5YKSPqdNb-FXV-E00CseQwS-BM9BLwTlkpFgSBR509KcLGlIGUb2WVDTSPP3m_zuSIvuBu1nM1PXrumago0wbeUlTFDc6aBh2VN2xix3-Oc"/>
+</div>
+<div>
+<h2 class="font-serif font-bold text-[#114563] text-sm uppercase tracking-wider">Intelligence Portal</h2>
+<p class="text-[10px] text-on-surface-variant/80 italic">République Française</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<button class="w-full flex items-center gap-3 px-3 py-2 bg-[#FEF9EE] text-[#114563] font-semibold border-l-2 border-[#114563] transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="layers">layers</span>
+<span class="font-sans text-sm font-medium">Map Layers</span>
+</button>
+<button class="w-full flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-[#F8F3E8] transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="analytics">analytics</span>
+<span class="font-sans text-sm font-medium">Intelligence</span>
+</button>
+<button class="w-full flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-[#F8F3E8] transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="history">history</span>
+<span class="font-sans text-sm font-medium">Archives</span>
+</button>
+<button class="w-full flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-[#F8F3E8] transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="account_tree">account_tree</span>
+<span class="font-sans text-sm font-medium">Entities</span>
+</button>
+</nav>
+<div class="mt-8">
+<button class="w-full bg-primary text-on-primary py-2.5 text-xs font-semibold uppercase tracking-widest hover:brightness-110 transition-all">
+                New Analysis
+            </button>
+</div>
+<div class="mt-auto space-y-1 pt-4 border-t border-[#C1C7CE]/15">
+<button class="w-full flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-[#F8F3E8] transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="help">help</span>
+<span class="font-sans text-xs font-medium">Support</span>
+</button>
+<button class="w-full flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-[#F8F3E8] transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="description">description</span>
+<span class="font-sans text-xs font-medium">Documentation</span>
+</button>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 pt-16 h-screen relative bg-[#fef9ee] map-canvas overflow-hidden">
+<!-- Spatial Map Layers -->
+<div class="absolute inset-0 z-0 opacity-40 mix-blend-multiply pointer-events-none">
+<img class="w-full h-full object-cover" data-alt="high-detail stylized map of France with topographical outlines on a vintage parchment paper texture background" data-location="France" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGUrDLtmdNJcVqMrw1btbUNS8XJ6ci2k7w76c_mnRjc4Ti9DMsvfZnu4hQLirEEPifs8c_9ODHTQAc_W2xkc7SFvu-faWtHFsz7mG_PjUJa0Z2hJcU3RljnEW9Ph_bU3luMpRcYOoue6qxVJBSqFPteut_9xsffC3UrHL15JwO9yu-uoDL08Bb3kPc_4DCXWXdEOUw4PYjQ8DtLBA0KGhSn_ZTsglsg4gD34jqcojkFVW_LCwsSHG_lGiHX6GmmXMRiA1UqcZNNYM"/>
+</div>
+<!-- Connection SVGs -->
+<svg class="absolute inset-0 w-full h-full z-10 pointer-events-none">
+<!-- Paris to Lyon -->
+<path class="line-connection" d="M 600 250 Q 650 350, 700 450"></path>
+<!-- Paris to Grenoble -->
+<path class="line-connection" d="M 600 250 Q 750 350, 750 500"></path>
+<!-- Paris to Nantes -->
+<path class="line-connection" d="M 600 250 Q 400 300, 300 350"></path>
+<!-- Lyon to Grenoble -->
+<path class="line-connection" d="M 700 450 L 750 500" stroke-dasharray="2 2"></path>
+</svg>
+<!-- Nodes -->
+<div class="absolute z-20 pointer-events-none" style="left: 600px; top: 250px;">
+<div class="pointer-events-auto group cursor-pointer flex flex-col items-center">
+<div class="w-3 h-3 bg-primary ring-4 ring-primary/10"></div>
+<div class="mt-2 bg-white/90 backdrop-blur-md px-3 py-1 border-l-2 border-primary">
+<span class="text-[10px] font-bold tracking-tighter uppercase text-primary">Paris / Île-de-France</span>
+</div>
+</div>
+</div>
+<div class="absolute z-20 pointer-events-none" style="left: 700px; top: 450px;">
+<div class="pointer-events-auto group cursor-pointer flex flex-col items-center">
+<div class="w-2.5 h-2.5 bg-secondary ring-4 ring-secondary/10"></div>
+<div class="mt-2 bg-white/90 backdrop-blur-md px-3 py-1 border-l-2 border-secondary">
+<span class="text-[10px] font-bold tracking-tighter uppercase text-secondary">Lyon Cluster</span>
+</div>
+</div>
+</div>
+<div class="absolute z-20 pointer-events-none" style="left: 750px; top: 500px;">
+<div class="pointer-events-auto group cursor-pointer flex flex-col items-center">
+<div class="w-2 h-2 bg-tertiary ring-4 ring-tertiary/10"></div>
+<div class="mt-2 bg-white/90 backdrop-blur-md px-3 py-1 border-l-2 border-tertiary">
+<span class="text-[10px] font-bold tracking-tighter uppercase text-tertiary">Grenoble Tech</span>
+</div>
+</div>
+</div>
+<!-- Overlay: Title & Context -->
+<div class="absolute top-12 left-12 z-30 max-w-md pointer-events-none">
+<h1 class="font-headline text-5xl text-primary tracking-tight mb-2">L'Atlas National</h1>
+<p class="text-on-surface-variant font-body text-sm leading-relaxed max-w-xs">
+                A spatial overview of sovereign innovation clusters, representing the vital nexus of capital, talent, and institutional research.
+            </p>
+</div>
+<!-- Overlay: Data Sidebar (Right) -->
+<div class="absolute top-12 right-12 z-30 w-80 space-y-6">
+<!-- Stats Group -->
+<div class="space-y-8">
+<div>
+<span class="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-[0.2em] block mb-2">Capital Flow (Q3)</span>
+<div class="font-headline text-4xl text-primary">€14.2B</div>
+<div class="mt-2 flex items-center gap-2">
+<div class="h-[2px] bg-secondary w-12"></div>
+<span class="text-[11px] font-medium text-secondary">+12.4% vs LY</span>
+</div>
+</div>
+<div>
+<span class="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-[0.2em] block mb-2">Active Patents</span>
+<div class="font-headline text-4xl text-primary">8.4K</div>
+<div class="mt-2 flex items-center gap-2">
+<div class="h-[2px] bg-tertiary w-12"></div>
+<span class="text-[11px] font-medium text-tertiary">Core DeepTech</span>
+</div>
+</div>
+</div>
+<!-- Key/Legend Section -->
+<div class="pt-8 space-y-4 border-t border-outline-variant/15">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 bg-secondary/20 border-l-2 border-secondary"></div>
+<span class="text-xs font-medium text-on-surface-variant">Funding Hubs</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 bg-tertiary/20 border-l-2 border-tertiary"></div>
+<span class="text-xs font-medium text-on-surface-variant">Research Centers</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 bg-primary/20 border-l-2 border-primary"></div>
+<span class="text-xs font-medium text-on-surface-variant">Policy Clusters</span>
+</div>
+</div>
+<!-- Intelligence Snippet -->
+<div class="bg-surface-container-low p-5 space-y-3">
+<span class="text-[10px] font-bold text-primary uppercase">Cluster Intelligence</span>
+<p class="text-xs italic text-on-surface-variant leading-relaxed">
+                    "High-density talent migration observed between Paris and Grenoble, primarily driven by Quantum Computing initiatives (Plan Quantique)."
+                </p>
+<a class="text-[10px] font-bold text-primary border-b border-primary/20 inline-block" href="#">Review Analysis</a>
+</div>
+</div>
+<!-- Zoom Control (Bottom Right) -->
+<div class="absolute bottom-12 right-12 z-30 flex flex-col bg-white border border-outline-variant/15">
+<button class="p-3 bg-primary text-on-primary">
+<span class="text-[10px] font-bold tracking-widest uppercase">National</span>
+</button>
+<button class="p-3 text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="text-[10px] font-bold tracking-widest uppercase">Regional</span>
+</button>
+<button class="p-3 text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="text-[10px] font-bold tracking-widest uppercase">Cluster</span>
+</button>
+<div class="border-t border-outline-variant/15 p-2 flex justify-between gap-4">
+<button class="material-symbols-outlined text-sm text-outline" data-icon="add">add</button>
+<button class="material-symbols-outlined text-sm text-outline" data-icon="remove">remove</button>
+</div>
+</div>
+<!-- Floating UI Layer Info (Bottom Left) -->
+<div class="absolute bottom-12 left-12 z-30 flex items-end gap-6 pointer-events-none">
+<div class="pointer-events-auto bg-white/80 backdrop-blur-md p-4 border border-outline-variant/10 min-w-[200px]">
+<span class="text-[9px] font-bold text-on-surface-variant/50 uppercase tracking-widest block mb-3">Atlas Metadata</span>
+<div class="flex justify-between items-baseline mb-1">
+<span class="text-[10px] text-on-surface-variant">Last Update</span>
+<span class="text-[10px] font-mono text-primary">12.10.23:09:42</span>
+</div>
+<div class="flex justify-between items-baseline mb-1">
+<span class="text-[10px] text-on-surface-variant">Accuracy</span>
+<span class="text-[10px] font-mono text-primary">99.2%</span>
+</div>
+<div class="flex justify-between items-baseline">
+<span class="text-[10px] text-on-surface-variant">Projection</span>
+<span class="text-[10px] font-mono text-primary">Lambert-93</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Visual Texture Overlay -->
+<div class="fixed inset-0 pointer-events-none z-[100] opacity-[0.03] mix-blend-overlay">
+<div class="w-full h-full bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
+</div>
+</body></html>
