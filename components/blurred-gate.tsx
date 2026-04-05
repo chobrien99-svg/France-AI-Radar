@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
+/** Wraps a large section — shows blurred content with an overlay upgrade prompt */
 export function BlurredGate({
   children,
   canAccess,
@@ -28,5 +29,22 @@ export function BlurredGate({
         </div>
       </div>
     </div>
+  )
+}
+
+/** Blurs inline text content — shows the structure but obscures the value */
+export function BlurredText({
+  children,
+  blur,
+}: {
+  children: React.ReactNode
+  blur: boolean
+}) {
+  if (!blur) return <>{children}</>
+
+  return (
+    <span className="pointer-events-none select-none blur-[5px]" aria-hidden="true">
+      {children}
+    </span>
   )
 }

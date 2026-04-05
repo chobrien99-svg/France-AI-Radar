@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SaveButton } from "@/components/startup/save-button"
 import { ExportCsvButton } from "@/components/startup/export-csv-button"
-import { BlurredGate } from "@/components/blurred-gate"
+import { BlurredGate, BlurredText } from "@/components/blurred-gate"
 import type { Venture, Profile } from "@/lib/types"
 
 // ------------------------------------------------------------------
@@ -412,6 +412,7 @@ function PremiumContent({
                 label="Website"
                 href={venture.website}
                 display={venture.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                blur={blurPremium}
               />
             )}
             {venture.linkedin_url && (
@@ -422,6 +423,7 @@ function PremiumContent({
                 label="LinkedIn"
                 href={venture.linkedin_url}
                 display="View profile"
+                blur={blurPremium}
               />
             )}
             {venture.email && (
@@ -432,6 +434,7 @@ function PremiumContent({
                 label="Email"
                 href={`mailto:${venture.email}`}
                 display={venture.email}
+                blur={blurPremium}
               />
             )}
             {venture.phone && (
@@ -442,14 +445,12 @@ function PremiumContent({
                 label="Phone"
                 href={`tel:${venture.phone}`}
                 display={venture.phone}
+                blur={blurPremium}
               />
             )}
           </div>
         </section>
       )}
-
-      {/* Premium sections — blurred for Explorer, hidden for Free */}
-      <BlurredGate canAccess={!blurPremium} message="Upgrade to Professional for investor briefs, signals, founder analysis, and more.">
 
       {/* Investor Brief */}
       {profileData?.investor_brief && (
@@ -457,7 +458,7 @@ function PremiumContent({
           <SectionHeader label="Investor Brief" />
           <div className="mt-4 space-y-3 text-[14px] leading-relaxed text-foreground">
             {profileData.investor_brief.split(/\n\n+/).map((para, i) => (
-              <p key={i}>{para}</p>
+              <p key={i}><BlurredText blur={blurPremium}>{para}</BlurredText></p>
             ))}
           </div>
           {profileData.analyst_note && (
@@ -466,7 +467,7 @@ function PremiumContent({
                 Why this matters
               </p>
               <p className="mt-1 text-[13px] leading-relaxed text-foreground">
-                {profileData.analyst_note}
+                <BlurredText blur={blurPremium}>{profileData.analyst_note}</BlurredText>
               </p>
             </div>
           )}
@@ -494,11 +495,11 @@ function PremiumContent({
                     {SIGNAL_TYPE_LABELS[signal.signal_type] ?? signal.signal_type}
                   </p>
                   <p className="mt-0.5 font-serif text-[14px] font-semibold text-foreground">
-                    {signal.title}
+                    <BlurredText blur={blurPremium}>{signal.title}</BlurredText>
                   </p>
                   {signal.description && (
                     <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-                      {signal.description}
+                      <BlurredText blur={blurPremium}>{signal.description}</BlurredText>
                     </p>
                   )}
                 </div>
@@ -520,25 +521,16 @@ function PremiumContent({
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
-                    {founder.slug ? (
-                      <Link
-                        href={`/founder/${founder.slug}`}
-                        className="font-serif text-[14px] font-bold text-foreground underline-offset-2 hover:underline"
-                      >
-                        {founder.full_name}
-                      </Link>
-                    ) : (
-                      <p className="font-serif text-[14px] font-bold text-foreground">
-                        {founder.full_name}
-                      </p>
-                    )}
+                    <p className="font-serif text-[14px] font-bold text-foreground">
+                      <BlurredText blur={blurPremium}>{founder.full_name}</BlurredText>
+                    </p>
                     {founder.role && (
                       <p className="text-[12px] font-medium text-primary">
-                        {founder.role}
+                        <BlurredText blur={blurPremium}>{founder.role}</BlurredText>
                       </p>
                     )}
                   </div>
-                  {founder.linkedin_url && (
+                  {founder.linkedin_url && !blurPremium && (
                     <a
                       href={founder.linkedin_url}
                       target="_blank"
@@ -552,7 +544,7 @@ function PremiumContent({
 
                 {founder.bio && (
                   <p className="text-[13px] leading-snug text-muted-foreground">
-                    {founder.bio}
+                    <BlurredText blur={blurPremium}>{founder.bio}</BlurredText>
                   </p>
                 )}
 
@@ -561,7 +553,7 @@ function PremiumContent({
                   {founder.big_tech_employer && (
                     <p className="text-[12px] text-muted-foreground">
                       <span className="font-medium text-foreground">Big Tech: </span>
-                      {founder.big_tech_employer}
+                      <BlurredText blur={blurPremium}>{founder.big_tech_employer}</BlurredText>
                     </p>
                   )}
                   {founder.academic_lab && (
@@ -569,13 +561,13 @@ function PremiumContent({
                       <span className="font-medium text-foreground">
                         {founder.has_phd ? "PhD: " : "Lab: "}
                       </span>
-                      {founder.academic_lab}
+                      <BlurredText blur={blurPremium}>{founder.academic_lab}</BlurredText>
                     </p>
                   )}
                   {founder.previous_exits > 0 && (
                     <p className="text-[12px] text-muted-foreground">
                       <span className="font-medium text-foreground">Exits: </span>
-                      {founder.previous_exits}
+                      <BlurredText blur={blurPremium}>{founder.previous_exits}</BlurredText>
                     </p>
                   )}
                 </div>
@@ -599,7 +591,7 @@ function PremiumContent({
                   What they&apos;re building:{" "}
                 </strong>
                 <span className="text-muted-foreground">
-                  {profileData.product_description}
+                  <BlurredText blur={blurPremium}>{profileData.product_description}</BlurredText>
                 </span>
               </p>
             )}
@@ -609,7 +601,7 @@ function PremiumContent({
                   Target market:{" "}
                 </strong>
                 <span className="text-muted-foreground">
-                  {profileData.target_market}
+                  <BlurredText blur={blurPremium}>{profileData.target_market}</BlurredText>
                 </span>
               </p>
             )}
@@ -619,7 +611,7 @@ function PremiumContent({
                   Competitive landscape:{" "}
                 </strong>
                 <span className="text-muted-foreground">
-                  {profileData.competitive_landscape}
+                  <BlurredText blur={blurPremium}>{profileData.competitive_landscape}</BlurredText>
                 </span>
               </p>
             )}
@@ -638,19 +630,19 @@ function PremiumContent({
               <div>
                 <p className="metric-label">Total Raised</p>
                 <p className="metric-value mt-1 text-base">
-                  {formatEur(venture.total_raised_eur)}
+                  <BlurredText blur={blurPremium}>{formatEur(venture.total_raised_eur)}</BlurredText>
                 </p>
               </div>
               <div>
                 <p className="metric-label">Last Round</p>
                 <p className="metric-value mt-1 text-base">
-                  {venture.last_round ?? "—"}
+                  <BlurredText blur={blurPremium}>{venture.last_round ?? "—"}</BlurredText>
                 </p>
               </div>
               <div>
                 <p className="metric-label">Est. Next Raise</p>
                 <p className="metric-value mt-1 text-base">
-                  {profileData?.est_next_raise ?? "—"}
+                  <BlurredText blur={blurPremium}>{profileData?.est_next_raise ?? "—"}</BlurredText>
                 </p>
               </div>
             </div>
@@ -658,7 +650,7 @@ function PremiumContent({
               <>
                 <Separator className="my-4" />
                 <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  {profileData.fundraising_signal_summary}
+                  <BlurredText blur={blurPremium}>{profileData.fundraising_signal_summary}</BlurredText>
                 </p>
               </>
             )}
@@ -666,7 +658,20 @@ function PremiumContent({
         </section>
       )}
 
-      </BlurredGate>
+      {/* Upgrade banner for Explorer */}
+      {blurPremium && (
+        <div className="mt-6 border-l-2 border-l-primary bg-card px-6 py-5 text-center">
+          <p className="mb-1 font-serif text-[14px] font-semibold text-foreground">
+            Unlock the full intelligence brief
+          </p>
+          <p className="mb-3 text-[13px] text-muted-foreground">
+            Upgrade to Professional for unblurred investor briefs, signal timelines, founder analysis, and contact details.
+          </p>
+          <Button size="sm" asChild>
+            <Link href="/pricing">Upgrade to Professional</Link>
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -676,25 +681,36 @@ function ContactItem({
   label,
   href,
   display,
+  blur = false,
 }: {
   icon: React.ReactNode
   label: string
   href: string
   display: string
+  blur?: boolean
 }) {
+  const Wrapper = blur ? "div" : "a"
+  const wrapperProps = blur
+    ? {}
+    : {
+        href,
+        target: href.startsWith("http") ? "_blank" as const : undefined,
+        rel: href.startsWith("http") ? "noopener noreferrer" : undefined,
+      }
+
   return (
-    <a
-      href={href}
-      target={href.startsWith("http") ? "_blank" : undefined}
-      rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+    <Wrapper
+      {...wrapperProps}
       className="flex items-center gap-2 border-l-2 border-l-border bg-card px-4 py-3 text-[13px] transition-colors duration-300 hover:bg-accent"
     >
       <span className="shrink-0 text-muted-foreground">{icon}</span>
       <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="truncate font-medium text-foreground">{display}</p>
+        <p className="truncate font-medium text-foreground">
+          <BlurredText blur={blur}>{display}</BlurredText>
+        </p>
       </div>
-    </a>
+    </Wrapper>
   )
 }
 
