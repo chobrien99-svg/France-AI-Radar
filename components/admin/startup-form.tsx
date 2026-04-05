@@ -95,6 +95,45 @@ interface Props {
 // Component
 // ------------------------------------------------------------------
 
+// ------------------------------------------------------------------
+// Render helpers (must be outside the component to avoid remounting)
+// ------------------------------------------------------------------
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string
+  required?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-[12px] font-semibold text-muted-foreground">
+        {label}
+        {required && <span className="ml-0.5 text-destructive">*</span>}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-4">
+      <Separator className="mb-4" />
+      <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        {children}
+      </p>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------
+// Component
+// ------------------------------------------------------------------
+
 export function StartupForm({ initialValues, initialTags = [], startupId }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<StartupFormValues>({ ...DEFAULTS, ...initialValues })
@@ -167,41 +206,6 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
     const data = await res.json()
     router.push(`/admin/startups/${data.id}/edit`)
     router.refresh()
-  }
-
-  // ------------------------------------------------------------------
-  // Render helpers
-  // ------------------------------------------------------------------
-
-  function Field({
-    label,
-    required,
-    children,
-  }: {
-    label: string
-    required?: boolean
-    children: React.ReactNode
-  }) {
-    return (
-      <div>
-        <label className="mb-1.5 block text-[12px] font-semibold text-muted-foreground">
-          {label}
-          {required && <span className="ml-0.5 text-destructive">*</span>}
-        </label>
-        {children}
-      </div>
-    )
-  }
-
-  function SectionTitle({ children }: { children: React.ReactNode }) {
-    return (
-      <div className="mb-4">
-        <Separator className="mb-4" />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          {children}
-        </p>
-      </div>
-    )
   }
 
   const inputClass = "text-[13px]"
