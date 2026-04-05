@@ -204,8 +204,15 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
     }
 
     const data = await res.json()
-    router.push(`/admin/startups/${data.id}/edit`)
-    router.refresh()
+    setSaving(false)
+
+    if (startupId) {
+      // Editing — stay on the same page, just refresh data
+      router.refresh()
+    } else {
+      // Creating — navigate to the new startup's edit page
+      router.push(`/admin/startups/${data.id}/edit`)
+    }
   }
 
   const inputClass = "text-[13px]"

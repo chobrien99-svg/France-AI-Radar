@@ -119,8 +119,13 @@ export function FounderForm({ initialValues, founderId }: Props) {
     }
 
     const data = await res.json()
-    router.push(`/admin/founders/${data.id}/edit`)
-    router.refresh()
+    setSaving(false)
+
+    if (founderId) {
+      router.refresh()
+    } else {
+      router.push(`/admin/founders/${data.id}/edit`)
+    }
   }
 
   const inputClass = "text-[13px]"
