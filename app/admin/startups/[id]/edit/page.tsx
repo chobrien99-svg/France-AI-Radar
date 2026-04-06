@@ -70,17 +70,23 @@ export default async function EditStartupPage({
     source_name: string | null; notes: string | null; is_estimated: boolean
   }>
 
-  const programLinks = (programLinksRaw ?? []).map((row: {
-    id: string; membership_role: string | null;
-    program_editions: { name: string | null; cohort_label: string | null; year: number | null; programs: { name: string; program_type: string } | null } | null
-  }) => ({
-    id: row.id,
-    program_name: row.program_editions?.programs?.name ?? "Unknown",
-    program_type: row.program_editions?.programs?.program_type ?? "other",
-    edition_label: row.program_editions?.cohort_label ?? row.program_editions?.name ?? null,
-    year: row.program_editions?.year ?? null,
-    membership_role: row.membership_role,
-  }))
+  const programLinks = (programLinksRaw ?? []).map((row: Record<string, unknown>) => {
+    // program_editions may come as object or array depending on Supabase inference
+    const ed = Array.isArray(row.program_editions)
+      ? (row.program_editions as Record<string, unknown>[])[0]
+      : (row.program_editions as Record<string, unknown> | null)
+    const prog = ed
+      ? (Array.isArray(ed.programs) ? (ed.programs as Record<string, unknown>[])[0] : ed.programs as Record<string, unknown> | null)
+      : null
+    return {
+      id: row.id as string,
+      program_name: (prog?.name as string) ?? "Unknown",
+      program_type: (prog?.program_type as string) ?? "other",
+      edition_label: (ed?.cohort_label as string) ?? (ed?.name as string) ?? null,
+      year: (ed?.year as number) ?? null,
+      membership_role: row.membership_role as string | null,
+    }
+  })
 
   const legalEntities = (legalEntitiesRaw ?? []) as Array<{
     id: string; legal_name: string; legal_form: string | null;
