@@ -91,14 +91,18 @@ export default async function StartupProfilePage({
   // Fetch venture first (needed for view tracking)
   const period = new Date().toISOString().slice(0, 7) // YYYY-MM
 
-  // Fetch venture
-  const { data: ventureRaw } = await supabase
+  // Fetch venture — admins can see any status, others only active
+  let ventureQuery = supabase
     .from("organizations")
     .select("*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(*)")
     .eq("slug", slug)
     .eq("organization_type", "startup")
-    .eq("status", "active")
-    .single()
+
+  if (!isAdmin) {
+    ventureQuery = ventureQuery.eq("status", "active")
+  }
+
+  const { data: ventureRaw } = await ventureQuery.single()
 
   if (!ventureRaw) notFound()
   const venture = ventureRaw as Venture

@@ -149,8 +149,13 @@ export default async function EditStartupPage({
           </p>
           <h1 className="mt-0.5 font-serif text-[24px] font-bold text-foreground">{startup.name}</h1>
           <div className="mt-2 flex items-center gap-3">
-            <span className={`badge-signal ${startup.status === "active" ? "badge-signal-positive" : "badge-signal-neutral"}`}>
-              {startup.status === "active" ? "Active" : "Hidden"}
+            <span className={`badge-signal ${
+              startup.status === "active" ? "badge-signal-positive"
+              : startup.status === "draft" ? "badge-signal-warning"
+              : startup.status === "archived" ? "badge-signal-risk"
+              : "badge-signal-neutral"
+            }`}>
+              {startup.status === "active" ? "Published" : startup.status === "draft" ? "Draft" : startup.status === "archived" ? "Archived" : "Inactive"}
             </span>
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/startup/${startup.slug}`} target="_blank">

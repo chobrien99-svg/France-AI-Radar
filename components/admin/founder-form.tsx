@@ -18,6 +18,10 @@ export type FounderFormValues = {
   linkedin_url: string
   twitter_url: string
   photo_url: string
+  google_scholar_url: string
+  github_url: string
+  personal_website_url: string
+  notable_publications: string
   big_tech_employer: string
   academic_lab: string
   has_phd: boolean
@@ -30,6 +34,7 @@ const DEFAULTS: FounderFormValues = {
   full_name: "", first_name: "", last_name: "",
   slug: "", role: "", bio: "",
   email: "", linkedin_url: "", twitter_url: "", photo_url: "",
+  google_scholar_url: "", github_url: "", personal_website_url: "", notable_publications: "",
   big_tech_employer: "", academic_lab: "",
   has_phd: false, is_repeat_founder: false, has_big_tech_background: false,
   previous_exits: "",
@@ -195,6 +200,23 @@ export function FounderForm({ initialValues, founderId }: Props) {
       <SectionTitle>Biography</SectionTitle>
       <Field label="Bio">
         <Textarea className="min-h-[100px] text-[13px]" value={form.bio} onChange={(e) => set("bio", e.target.value)} placeholder="Public biography shown on the founder profile page…" />
+      </Field>
+
+      {/* -- Academic & Research -- */}
+      <SectionTitle>Academic & Research</SectionTitle>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Google Scholar URL">
+          <Input className={inputClass} value={form.google_scholar_url} onChange={(e) => set("google_scholar_url", e.target.value)} placeholder="https://scholar.google.com/citations?user=..." />
+        </Field>
+        <Field label="GitHub URL">
+          <Input className={inputClass} value={form.github_url} onChange={(e) => set("github_url", e.target.value)} placeholder="https://github.com/..." />
+        </Field>
+      </div>
+      <Field label="Personal website">
+        <Input className={inputClass} value={form.personal_website_url} onChange={(e) => set("personal_website_url", e.target.value)} placeholder="https://..." />
+      </Field>
+      <Field label="Notable publications">
+        <Textarea className="min-h-[80px] text-[13px]" value={form.notable_publications} onChange={(e) => set("notable_publications", e.target.value)} placeholder="Key papers, patents, or research contributions..." />
       </Field>
 
       {/* -- Pedigree -- */}

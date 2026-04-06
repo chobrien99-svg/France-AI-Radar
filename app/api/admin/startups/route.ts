@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       slug: fields.slug,
       country: fields.country || "France",
       city_id: cityId,
-      status: fields.is_active !== false ? "active" : "inactive",
+      status: fields.status || "draft",
       website: fields.website || fields.website_url || null,
       linkedin_url: fields.linkedin_url || null,
       email: fields.email || fields.contact_email || null,

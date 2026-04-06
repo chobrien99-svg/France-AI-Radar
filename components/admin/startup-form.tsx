@@ -61,7 +61,7 @@ export type StartupFormValues = {
 const DEFAULTS: StartupFormValues = {
   name: "", slug: "", city: "", country: "France",
   founded_date: "", first_seen_at: "",
-  status: "active",
+  status: "draft",
   website: "", linkedin_url: "", email: "", phone: "",
   description: "",
   product_description: "", target_market: "", competitive_landscape: "",
@@ -264,8 +264,10 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
         </Field>
         <Field label="Status">
           <Select value={form.status} onChange={(e) => set("status", e.target.value)}>
-            <option value="active">Active (published)</option>
-            <option value="inactive">Hidden (draft)</option>
+            <option value="draft">Draft (not visible)</option>
+            <option value="active">Published (live)</option>
+            <option value="inactive">Inactive (hidden)</option>
+            <option value="archived">Archived</option>
           </Select>
         </Field>
       </div>
