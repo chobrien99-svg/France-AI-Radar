@@ -18,12 +18,13 @@ export async function PATCH(
   const supabase = await createServiceClient()
 
   // Resolve city name → city_id
-  let cityId: string | null = null
+  let cityId: string | undefined = undefined
   if (fields.city) {
     const { data: cityRow } = await supabase
       .from("cities")
       .select("id")
       .eq("name", fields.city)
+      .limit(1)
       .maybeSingle()
     if (cityRow) {
       cityId = cityRow.id
@@ -34,35 +35,39 @@ export async function PATCH(
         .insert({ name: fields.city, slug: citySlug, country: fields.country || "France" })
         .select("id")
         .single()
-      cityId = newCity?.id ?? null
+      cityId = newCity?.id ?? undefined
     }
   }
 
+  // Build update object — only include city_id if we resolved one
+  const updateFields: Record<string, unknown> = {
+    name: fields.name,
+    slug: fields.slug,
+    country: fields.country || "France",
+    status: fields.is_active !== false ? "active" : "inactive",
+    website: fields.website || fields.website_url || null,
+    linkedin_url: fields.linkedin_url || null,
+    email: fields.email || fields.contact_email || null,
+    phone: fields.phone || fields.contact_phone || null,
+    description: fields.description || null,
+    technology_layer: fields.technology_layer || null,
+    total_raised_eur: fields.total_raised_eur ?? null,
+    last_round: fields.last_round || null,
+    fundraising_status: fields.fundraising_status || "unknown",
+    founded_date: fields.founded_date || null,
+    updated_at: new Date().toISOString(),
+  }
+  if (cityId !== undefined) updateFields.city_id = cityId
+
   const { data: startup, error } = await supabase
     .from("organizations")
-    .update({
-      name: fields.name,
-      slug: fields.slug,
-      country: fields.country || "France",
-      city_id: cityId,
-      status: fields.is_active !== false ? "active" : "inactive",
-      website: fields.website || fields.website_url || null,
-      linkedin_url: fields.linkedin_url || null,
-      email: fields.email || fields.contact_email || null,
-      phone: fields.phone || fields.contact_phone || null,
-      description: fields.description || null,
-      technology_layer: fields.technology_layer || null,
-      total_raised_eur: fields.total_raised_eur ?? null,
-      last_round: fields.last_round || null,
-      fundraising_status: fields.fundraising_status || "unknown",
-      founded_date: fields.founded_date || null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateFields)
     .eq("id", id)
     .select("id, slug")
-    .single()
+    .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!startup) return NextResponse.json({ error: "Startup not found" }, { status: 404 })
 
   // Upsert profile fields to organization_profiles
   const profileFields = {
