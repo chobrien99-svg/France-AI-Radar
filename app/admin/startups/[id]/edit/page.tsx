@@ -6,6 +6,10 @@ import { StartupForm, type StartupFormValues, type TagRow } from "@/components/a
 import { Button } from "@/components/ui/button"
 import { DeleteStartupButton } from "@/components/admin/delete-startup-button"
 import { LinkedFounders } from "@/components/admin/linked-founders"
+import { LinkedGrants } from "@/components/admin/linked-grants"
+import { LinkedFundingRounds } from "@/components/admin/linked-funding-rounds"
+import { LinkedPrograms } from "@/components/admin/linked-programs"
+import { LinkedLegalEntities } from "@/components/admin/linked-legal-entities"
 
 export default async function EditStartupPage({
   params,
@@ -16,10 +20,22 @@ export default async function EditStartupPage({
   const { id } = await params
   const supabase = await createServiceClient()
 
-  const [{ data: startup }, { data: linkedRaw }, { data: allFoundersRaw }] = await Promise.all([
+  const [
+    { data: startup },
+    { data: linkedRaw },
+    { data: allFoundersRaw },
+    { data: grantsRaw },
+    { data: fundingRoundsRaw },
+    { data: programLinksRaw },
+    { data: legalEntitiesRaw },
+  ] = await Promise.all([
     supabase.from("organizations").select("*, cities(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
     supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
     supabase.from("people").select("id, full_name, slug, role").order("full_name"),
+    supabase.from("grants").select("*").eq("organization_id", id).order("awarded_date", { ascending: false }),
+    supabase.from("funding_rounds").select("*").eq("organization_id", id).order("announced_date", { ascending: false }),
+    supabase.from("program_organizations").select("id, membership_role, program_editions(name, cohort_label, year, programs(name, program_type))").eq("organization_id", id),
+    supabase.from("legal_entities").select("*").eq("organization_id", id),
   ])
 
   if (!startup) notFound()
@@ -34,11 +50,39 @@ export default async function EditStartupPage({
   }))
 
   const tags: TagRow[] = (startup.organization_tags ?? []).map(
-    (t: { tag: string; strength: number }) => ({
-      tag: t.tag,
-      strength: t.strength,
-    })
+    (t: { tag: string; strength: number }) => ({ tag: t.tag, strength: t.strength })
   )
+
+  const grants = (grantsRaw ?? []) as Array<{
+    id: string; grant_name: string; granting_body: string | null;
+    amount_eur: number | null; awarded_date: string | null;
+    program: string | null; description: string | null; source_url: string | null
+  }>
+
+  const fundingRounds = (fundingRoundsRaw ?? []) as Array<{
+    id: string; stage: string; amount_eur: number | null;
+    announced_date: string | null; source_url: string | null;
+    source_name: string | null; notes: string | null; is_estimated: boolean
+  }>
+
+  const programLinks = (programLinksRaw ?? []).map((row: {
+    id: string; membership_role: string | null;
+    program_editions: { name: string | null; cohort_label: string | null; year: number | null; programs: { name: string; program_type: string } | null } | null
+  }) => ({
+    id: row.id,
+    program_name: row.program_editions?.programs?.name ?? "Unknown",
+    program_type: row.program_editions?.programs?.program_type ?? "other",
+    edition_label: row.program_editions?.cohort_label ?? row.program_editions?.name ?? null,
+    year: row.program_editions?.year ?? null,
+    membership_role: row.membership_role,
+  }))
+
+  const legalEntities = (legalEntitiesRaw ?? []) as Array<{
+    id: string; legal_name: string; legal_form: string | null;
+    siren: string | null; siret: string | null; capital_eur: number | null;
+    incorporation_date: string | null; registered_city: string | null;
+    naf_code: string | null; naf_label: string | null
+  }>
 
   const profile = Array.isArray(startup.organization_profiles)
     ? startup.organization_profiles[0]
@@ -79,7 +123,7 @@ export default async function EditStartupPage({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Admin › Startups
           </p>
-          <h1 className="mt-0.5 text-[24px] font-bold text-foreground">{startup.name}</h1>
+          <h1 className="mt-0.5 font-serif text-[24px] font-bold text-foreground">{startup.name}</h1>
           <div className="mt-2 flex items-center gap-3">
             <span className={`badge-signal ${startup.status === "active" ? "badge-signal-positive" : "badge-signal-neutral"}`}>
               {startup.status === "active" ? "Active" : "Hidden"}
@@ -104,6 +148,26 @@ export default async function EditStartupPage({
         organizationId={id}
         linkedPeople={linkedFounders}
         allPeople={allFounders}
+      />
+
+      <LinkedGrants
+        organizationId={id}
+        grants={grants}
+      />
+
+      <LinkedFundingRounds
+        organizationId={id}
+        rounds={fundingRounds}
+      />
+
+      <LinkedPrograms
+        organizationId={id}
+        programs={programLinks}
+      />
+
+      <LinkedLegalEntities
+        organizationId={id}
+        entities={legalEntities}
       />
     </div>
   )

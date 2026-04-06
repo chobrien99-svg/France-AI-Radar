@@ -38,17 +38,21 @@ export async function POST(request: NextRequest) {
   const { data: founder, error } = await supabase
     .from("people")
     .insert({
-      full_name: body.name,
+      full_name: body.full_name || body.name,
+      first_name: body.first_name || null,
+      last_name: body.last_name || null,
       slug,
-      role: body.role || null,
       bio: body.bio || null,
+      email: body.email || null,
       linkedin_url: body.linkedin_url || null,
+      twitter_url: body.twitter_url || null,
+      photo_url: body.photo_url || null,
       big_tech_employer: body.big_tech_employer || null,
       academic_lab: body.academic_lab || null,
       has_phd: !!body.has_phd,
       is_repeat_founder: !!body.is_repeat_founder,
       has_big_tech_background: !!body.has_big_tech_background,
-      previous_exits: body.previous_exits?.length ?? 0,
+      previous_exits: body.previous_exits ? Number(body.previous_exits) : 0,
     })
     .select("id, slug")
     .single()

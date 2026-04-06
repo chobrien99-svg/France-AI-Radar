@@ -25,10 +25,15 @@ export default async function EditFounderPage({
 
   const initialValues: Partial<FounderFormValues> = {
     full_name: founder.full_name ?? "",
+    first_name: founder.first_name ?? "",
+    last_name: founder.last_name ?? "",
     slug: founder.slug ?? "",
     role: founder.role ?? "",
     bio: founder.bio ?? "",
+    email: founder.email ?? "",
     linkedin_url: founder.linkedin_url ?? "",
+    twitter_url: founder.twitter_url ?? "",
+    photo_url: founder.photo_url ?? "",
     big_tech_employer: founder.big_tech_employer ?? "",
     academic_lab: founder.academic_lab ?? "",
     has_phd: founder.has_phd ?? false,

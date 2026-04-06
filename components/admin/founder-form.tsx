@@ -9,21 +9,27 @@ import { Separator } from "@/components/ui/separator"
 
 export type FounderFormValues = {
   full_name: string
+  first_name: string
+  last_name: string
   slug: string
   role: string
   bio: string
+  email: string
   linkedin_url: string
+  twitter_url: string
+  photo_url: string
   big_tech_employer: string
   academic_lab: string
   has_phd: boolean
   is_repeat_founder: boolean
   has_big_tech_background: boolean
-  // Number of previous exits
   previous_exits: string
 }
 
 const DEFAULTS: FounderFormValues = {
-  full_name: "", slug: "", role: "", bio: "", linkedin_url: "",
+  full_name: "", first_name: "", last_name: "",
+  slug: "", role: "", bio: "",
+  email: "", linkedin_url: "", twitter_url: "", photo_url: "",
   big_tech_employer: "", academic_lab: "",
   has_phd: false, is_repeat_founder: false, has_big_tech_background: false,
   previous_exits: "",
@@ -156,14 +162,37 @@ export function FounderForm({ initialValues, founderId }: Props) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Default role / title">
-          <Input className={inputClass} value={form.role} onChange={(e) => set("role", e.target.value)} placeholder="CEO & Co-founder" />
+        <Field label="First name">
+          <Input className={inputClass} value={form.first_name} onChange={(e) => set("first_name", e.target.value)} placeholder="Marie" />
         </Field>
-        <Field label="LinkedIn URL">
-          <Input className={inputClass} value={form.linkedin_url} onChange={(e) => set("linkedin_url", e.target.value)} placeholder="https://linkedin.com/in/..." />
+        <Field label="Last name">
+          <Input className={inputClass} value={form.last_name} onChange={(e) => set("last_name", e.target.value)} placeholder="Dupont" />
         </Field>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Default role / title">
+          <Input className={inputClass} value={form.role} onChange={(e) => set("role", e.target.value)} placeholder="CEO & Co-founder" />
+        </Field>
+        <Field label="Email">
+          <Input type="email" className={inputClass} value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="marie@example.com" />
+        </Field>
+      </div>
+
+      <SectionTitle>Web Presence</SectionTitle>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="LinkedIn URL">
+          <Input className={inputClass} value={form.linkedin_url} onChange={(e) => set("linkedin_url", e.target.value)} placeholder="https://linkedin.com/in/..." />
+        </Field>
+        <Field label="Twitter / X URL">
+          <Input className={inputClass} value={form.twitter_url} onChange={(e) => set("twitter_url", e.target.value)} placeholder="https://x.com/..." />
+        </Field>
+      </div>
+      <Field label="Photo URL">
+        <Input className={inputClass} value={form.photo_url} onChange={(e) => set("photo_url", e.target.value)} placeholder="https://..." />
+      </Field>
+
+      <SectionTitle>Biography</SectionTitle>
       <Field label="Bio">
         <Textarea className="min-h-[100px] text-[13px]" value={form.bio} onChange={(e) => set("bio", e.target.value)} placeholder="Public biography shown on the founder profile page…" />
       </Field>
