@@ -80,7 +80,7 @@ export function LinkedFounders({ organizationId, linkedPeople: initial, allPeopl
           Linked People
         </p>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/people/new">+ Create new person</Link>
+          <Link href="/admin/founders/new">+ Create new person</Link>
         </Button>
       </div>
 
@@ -96,7 +96,7 @@ export function LinkedFounders({ organizationId, linkedPeople: initial, allPeopl
               <div className="flex items-center gap-2">
                 {f.slug && (
                   <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/admin/people/${f.id}/edit`}>Edit person</Link>
+                    <Link href={`/admin/founders/${f.id}/edit`}>Edit person</Link>
                   </Button>
                 )}
                 <Button

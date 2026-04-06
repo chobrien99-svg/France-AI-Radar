@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   const supabase = await createServiceClient()
 
   // Generate a unique slug from the name
-  const baseSlug = generateSlug(body.name)
+  const baseSlug = generateSlug(body.full_name || body.name)
   let slug = baseSlug
   let attempt = 0
   while (true) {

@@ -46,10 +46,10 @@ export async function PATCH(
       country: fields.country || "France",
       city_id: cityId,
       status: fields.is_active !== false ? "active" : "inactive",
-      website: fields.website_url || null,
+      website: fields.website || fields.website_url || null,
       linkedin_url: fields.linkedin_url || null,
-      email: fields.contact_email || null,
-      phone: fields.contact_phone || null,
+      email: fields.email || fields.contact_email || null,
+      phone: fields.phone || fields.contact_phone || null,
       description: fields.description || null,
       technology_layer: fields.technology_layer || null,
       total_raised_eur: fields.total_raised_eur ?? null,
@@ -88,10 +88,10 @@ export async function PATCH(
   await supabase.from("organization_tags").delete().eq("organization_id", id)
   if (tags.length > 0) {
     await supabase.from("organization_tags").insert(
-      tags.map((t: { label: string; strength: string }) => ({
+      tags.map((t: { tag?: string; label?: string; strength: number | string }) => ({
         organization_id: id,
-        tag: t.label,
-        strength: t.strength === "strong" ? 5 : t.strength === "moderate" ? 3 : t.strength === "weak" ? 1 : 2,
+        tag: t.tag || t.label || "",
+        strength: typeof t.strength === "number" ? t.strength : t.strength === "strong" ? 5 : t.strength === "moderate" ? 3 : t.strength === "weak" ? 1 : 2,
       }))
     )
   }
