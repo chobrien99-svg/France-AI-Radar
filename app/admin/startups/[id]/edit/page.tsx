@@ -10,6 +10,7 @@ import { LinkedGrants } from "@/components/admin/linked-grants"
 import { LinkedFundingRounds } from "@/components/admin/linked-funding-rounds"
 import { LinkedPrograms } from "@/components/admin/linked-programs"
 import { LinkedLegalEntities } from "@/components/admin/linked-legal-entities"
+import { LinkedSectors } from "@/components/admin/linked-sectors"
 
 export default async function EditStartupPage({
   params,
@@ -28,6 +29,8 @@ export default async function EditStartupPage({
     { data: fundingRoundsRaw },
     { data: programLinksRaw },
     { data: legalEntitiesRaw },
+    { data: sectorLinksRaw },
+    { data: allSectorsRaw },
   ] = await Promise.all([
     supabase.from("organizations").select("*, cities(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
     supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
@@ -36,6 +39,8 @@ export default async function EditStartupPage({
     supabase.from("funding_rounds").select("*").eq("organization_id", id).order("announced_date", { ascending: false }),
     supabase.from("program_organizations").select("id, membership_role, program_editions(name, cohort_label, year, programs(name, program_type))").eq("organization_id", id),
     supabase.from("legal_entities").select("*").eq("organization_id", id),
+    supabase.from("organization_sectors").select("id, is_primary, sectors(name)").eq("organization_id", id),
+    supabase.from("sectors").select("id, name").order("name"),
   ])
 
   if (!startup) notFound()
@@ -83,6 +88,16 @@ export default async function EditStartupPage({
     incorporation_date: string | null; registered_city: string | null;
     naf_code: string | null; naf_label: string | null
   }>
+
+  const sectorLinks = (sectorLinksRaw ?? []).map((row: {
+    id: string; is_primary: boolean; sectors: { name: string } | null
+  }) => ({
+    id: row.id,
+    sector_name: row.sectors?.name ?? "Unknown",
+    is_primary: row.is_primary,
+  }))
+
+  const allSectors = (allSectorsRaw ?? []) as Array<{ id: string; name: string }>
 
   const profile = Array.isArray(startup.organization_profiles)
     ? startup.organization_profiles[0]
@@ -168,6 +183,12 @@ export default async function EditStartupPage({
       <LinkedLegalEntities
         organizationId={id}
         entities={legalEntities}
+      />
+
+      <LinkedSectors
+        organizationId={id}
+        sectors={sectorLinks}
+        allSectors={allSectors}
       />
     </div>
   )
