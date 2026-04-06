@@ -75,13 +75,14 @@ export default async function StartupProfilePage({
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end")
+      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, is_admin")
       .eq("id", user.id)
       .single()
     profile = data
   }
 
   const tier = profile?.subscription_tier ?? "explorer"
+  const isAdmin = !!(profile as Record<string, unknown> | null)?.is_admin
   const canFull = canAccessFullProfile(tier)
   const canPremium = canAccessPremiumFields(tier)
   const canSave = canSaveAndList(tier)
@@ -235,6 +236,11 @@ export default async function StartupProfilePage({
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
+            {isAdmin && (
+              <Button variant="outline" size="sm" className="text-[13px] border-primary text-primary" asChild>
+                <Link href={`/admin/startups/${venture.id}/edit`}>Edit</Link>
+              </Button>
+            )}
             {canSave && (
               <>
                 <ExportCsvButton
