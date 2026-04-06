@@ -95,13 +95,16 @@ export default async function EditStartupPage({
     naf_code: string | null; naf_label: string | null
   }>
 
-  const sectorLinks = (sectorLinksRaw ?? []).map((row: {
-    id: string; is_primary: boolean; sectors: { name: string } | null
-  }) => ({
-    id: row.id,
-    sector_name: row.sectors?.name ?? "Unknown",
-    is_primary: row.is_primary,
-  }))
+  const sectorLinks = (sectorLinksRaw ?? []).map((row: Record<string, unknown>) => {
+    const sec = Array.isArray(row.sectors)
+      ? (row.sectors as Record<string, unknown>[])[0]
+      : (row.sectors as Record<string, unknown> | null)
+    return {
+      id: row.id as string,
+      sector_name: (sec?.name as string) ?? "Unknown",
+      is_primary: row.is_primary as boolean,
+    }
+  })
 
   const allSectors = (allSectorsRaw ?? []) as Array<{ id: string; name: string }>
 
