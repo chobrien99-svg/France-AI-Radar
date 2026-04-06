@@ -13,12 +13,17 @@ const STAGE_OPTIONS = [
   { value: "series_a", label: "Series A" },
   { value: "series_b", label: "Series B" },
   { value: "series_c", label: "Series C" },
-  { value: "series_d_plus", label: "Series D+" },
+  { value: "series_d", label: "Series D" },
+  { value: "series_e", label: "Series E" },
+  { value: "series_f", label: "Series F" },
+  { value: "growth", label: "Growth" },
   { value: "bridge", label: "Bridge" },
-  { value: "grant", label: "Grant" },
   { value: "debt", label: "Debt" },
-  { value: "convertible_note", label: "Convertible Note" },
-  { value: "unknown", label: "Unknown" },
+  { value: "grant", label: "Grant" },
+  { value: "ipo", label: "IPO" },
+  { value: "secondary", label: "Secondary" },
+  { value: "undisclosed", label: "Undisclosed" },
+  { value: "other", label: "Other" },
 ]
 
 type FundingRound = {
