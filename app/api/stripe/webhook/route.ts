@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         await supabase
           .from("profiles")
           .update({
-            subscription_tier: "free",
+            subscription_tier: "explorer",
             subscription_status: "canceled",
           })
           .eq("id", userId)

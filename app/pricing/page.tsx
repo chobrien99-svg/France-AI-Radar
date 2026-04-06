@@ -142,7 +142,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Is there a free trial?",
-    a: "There's no time-limited trial, but the free tier gives you access to a preview of startup profiles so you can evaluate the product before upgrading.",
+    a: "There's no free trial, but Explorer at €9/month gives you access to browse the database and preview up to 3 startup profiles per month — enough to evaluate the intelligence before upgrading to Professional.",
   },
   {
     q: "How is AI Radar different from Crunchbase or Dealroom?",

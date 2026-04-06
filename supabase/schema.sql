@@ -17,6 +17,8 @@ CREATE TYPE organization_status AS ENUM ('active', 'inactive', 'draft', 'archive
 CREATE TYPE fundraising_status_type AS ENUM ('preparing_for_fundraising', 'likely_raising_within_12_months', 'not_currently_raising', 'unknown');
 CREATE TYPE technology_layer_type AS ENUM ('perception', 'robotics', 'agent_platform', 'orchestration', 'vertical_ai', 'infrastructure', 'other');
 CREATE TYPE subscription_tier AS ENUM ('free', 'explorer', 'professional', 'enterprise');
+-- Note: 'free' is retained in the enum for backward compatibility but is not used.
+-- All new accounts default to 'explorer'. The app treats unknown tiers as 'explorer'.
 CREATE TYPE signal_type AS ENUM ('fundraising', 'key_hire', 'restructuring', 'patent_ip', 'pivot', 'product_launch', 'partnership', 'founder_departure', 'advisory_formation', 'incorporation');
 CREATE TYPE source_type AS ENUM ('stealth', 'incorporated', 'accelerator', 'incubator', 'france_2030_laureat');
 CREATE TYPE verification_status AS ENUM ('unverified', 'verified', 'rejected');
@@ -310,7 +312,7 @@ CREATE TABLE profiles (
   avatar_url TEXT,
   role TEXT DEFAULT 'user',
   is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-  subscription_tier subscription_tier DEFAULT 'free',
+  subscription_tier subscription_tier DEFAULT 'explorer',
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
   subscription_status TEXT DEFAULT 'inactive',

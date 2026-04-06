@@ -3,14 +3,12 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
 
 const TIER_LABEL: Record<string, string> = {
-  free: "Free",
   explorer: "Explorer",
   professional: "Pro",
   enterprise: "Enterprise",
 }
 
 const TIER_CLASS: Record<string, string> = {
-  free: "badge-signal badge-signal-neutral",
   explorer: "badge-signal badge-signal-neutral",
   professional: "badge-signal badge-signal-positive",
   enterprise: "badge-signal badge-signal-positive",

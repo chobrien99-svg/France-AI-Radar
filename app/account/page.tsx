@@ -10,14 +10,12 @@ import { CreateListDialog } from "@/components/account/create-list-dialog"
 import { DeleteListButton } from "@/components/account/delete-list-button"
 
 const TIER_LABEL: Record<string, string> = {
-  free: "Free",
   explorer: "Explorer",
   professional: "Professional",
   enterprise: "Enterprise",
 }
 
 const TIER_CLASS: Record<string, string> = {
-  free: "badge-signal badge-signal-neutral",
   explorer: "badge-signal badge-signal-neutral",
   professional: "badge-signal badge-signal-positive",
   enterprise: "badge-signal badge-signal-positive",
@@ -72,9 +70,8 @@ export default async function AccountPage() {
 
   if (!profile) redirect("/auth/login")
 
-  const tier = profile.subscription_tier ?? "free"
-  const isPaid = tier !== "free"
-  const canUpgrade = tier === "free" || tier === "explorer"
+  const tier = profile.subscription_tier ?? "explorer"
+  const canUpgrade = tier === "explorer"
   const canManageBilling = !!profile.stripe_customer_id
 
   const { data: savedSearches } = await supabase
@@ -148,14 +145,14 @@ export default async function AccountPage() {
                   {profile.subscription_status ?? "inactive"}
                 </span>
               </div>
-              {profile.subscription_period_end && isPaid && (
+              {profile.subscription_period_end && (
                 <p className="mt-1.5 text-[13px] text-muted-foreground">
                   Renews {formatDate(profile.subscription_period_end)}
                 </p>
               )}
-              {!isPaid && (
+              {canUpgrade && (
                 <p className="mt-1.5 text-[13px] text-muted-foreground">
-                  Upgrade for full database access, investor briefs, saved searches, and more.
+                  Upgrade to Professional for full database access, investor briefs, saved searches, and more.
                 </p>
               )}
             </div>
@@ -182,7 +179,7 @@ export default async function AccountPage() {
           <div className="grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
             <FeatureStat
               label="Profile views"
-              value={tier === "free" ? "Browse only" : tier === "explorer" ? "3 / month" : "Unlimited"}
+              value={tier === "explorer" ? "3 / month" : "Unlimited"}
             />
             <FeatureStat
               label="Investor briefs"

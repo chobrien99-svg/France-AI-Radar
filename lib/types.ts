@@ -178,7 +178,7 @@ export type Profile = {
   id: string
   email: string | null
   full_name: string | null
-  subscription_tier: "free" | "explorer" | "professional" | "enterprise"
+  subscription_tier: "explorer" | "professional" | "enterprise"
   subscription_status: string
   stripe_customer_id: string | null
   subscription_period_end: string | null

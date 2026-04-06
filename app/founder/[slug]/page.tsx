@@ -33,7 +33,7 @@ export default async function FounderProfilePage({
     profile = data
   }
 
-  const tier = profile?.subscription_tier ?? "free"
+  const tier = profile?.subscription_tier ?? "explorer"
   const canFull = canAccessFullProfile(tier)
 
   // Fetch founder by slug
@@ -155,9 +155,7 @@ function UpgradeGate({ tier }: { tier: string }) {
         Full founder profile is Professional-only
       </p>
       <p className="mb-5 text-[13px] text-muted-foreground">
-        {tier === "free"
-          ? "Upgrade to Explorer to browse more startups, or Professional for full founder backgrounds, exit history, and pedigree analysis."
-          : "Upgrade to Professional for full founder backgrounds, exit history, and pedigree analysis."}
+        Upgrade to Professional for full founder backgrounds, exit history, and pedigree analysis.
       </p>
       <Button size="sm" asChild>
         <Link href="/pricing">Upgrade to Professional</Link>

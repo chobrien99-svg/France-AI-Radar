@@ -1,5 +1,6 @@
 // ------------------------------------------------------------------
-// Tier access rules
+// Tier structure: Explorer (€9) | Professional (€29) | Enterprise
+// No free tier — unauthenticated users are redirected to signup.
 // ------------------------------------------------------------------
 
 /** Can view premium fields on startup profiles (investor brief, signals, founders, etc.) */
@@ -7,12 +8,12 @@ export function canAccessPremiumFields(tier: string): boolean {
   return ["professional", "enterprise"].includes(tier)
 }
 
-/** Can view full profiles at all (Explorer has a monthly view limit) */
+/** Can view full profiles (Explorer has a monthly view limit) */
 export function canAccessFullProfile(tier: string): boolean {
   return ["explorer", "professional", "enterprise"].includes(tier)
 }
 
-/** Monthly profile view limit. null = unlimited, 0 = no access. */
+/** Monthly profile view limit. null = unlimited. */
 export function getProfileViewLimit(tier: string): number | null {
   switch (tier) {
     case "explorer":
@@ -20,7 +21,7 @@ export function getProfileViewLimit(tier: string): number | null {
     case "professional":
     case "enterprise":
       return null
-    default: // free
+    default:
       return 0
   }
 }
@@ -28,16 +29,13 @@ export function getProfileViewLimit(tier: string): number | null {
 /** How many startup cards visible in the database list. null = unlimited. */
 export function getStartupLimit(tier: string): number | null {
   switch (tier) {
-    case "free":
-      return 10
     case "explorer":
       return 50
     case "professional":
-      return null
     case "enterprise":
       return null
     default:
-      return 10
+      return 0
   }
 }
 
@@ -62,7 +60,7 @@ export function getExportLimit(tier: string): number | null {
     case "professional":
     case "enterprise":
       return null
-    default: // free + explorer
+    default:
       return 0
   }
 }
@@ -70,6 +68,12 @@ export function getExportLimit(tier: string): number | null {
 // ------------------------------------------------------------------
 // Labels
 // ------------------------------------------------------------------
+
+export const TIER_LABELS: Record<string, string> = {
+  explorer: "Explorer",
+  professional: "Professional",
+  enterprise: "Enterprise",
+}
 
 export const SECTOR_LABELS: Record<string, string> = {
   ai_agents: "AI Agents",

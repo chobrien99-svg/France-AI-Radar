@@ -42,7 +42,7 @@ export async function GET(
     .eq("id", user.id)
     .single()
 
-  const tier = profile?.subscription_tier ?? "free"
+  const tier = profile?.subscription_tier ?? "explorer"
   const limit = getExportLimit(tier)
 
   if (limit === 0) {

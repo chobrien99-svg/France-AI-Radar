@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { redirect } from "next/navigation"
 import { Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { getStartupLimit } from "@/lib/subscription"
@@ -65,6 +66,9 @@ export default async function DatabasePage({
     data: { user },
   } = await supabase.auth.getUser()
 
+  // No free tier — redirect unauthenticated users to signup
+  if (!user) redirect("/pricing")
+
   let profile: Profile | null = null
   if (user) {
     const { data } = await supabase
@@ -75,7 +79,7 @@ export default async function DatabasePage({
     profile = data
   }
 
-  const tier = profile?.subscription_tier ?? "free"
+  const tier = profile?.subscription_tier ?? "explorer"
   const limit = getStartupLimit(tier)
 
   // Parse filters
@@ -271,9 +275,7 @@ export default async function DatabasePage({
                 {total - visible.length !== 1 ? "s" : ""} in the database
               </p>
               <p className="mb-4 text-[13px] text-muted-foreground">
-                {tier === "free"
-                  ? "You're on the free plan — upgrade to Explorer to see 50 startups per month, or Professional for unlimited access."
-                  : "Upgrade to Professional for unlimited access to all startups and signals."}
+                Upgrade to Professional for unlimited access to all startups and signals.
               </p>
               <Button size="sm" asChild>
                 <a href="/pricing">Upgrade Plan →</a>

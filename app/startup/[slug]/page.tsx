@@ -81,7 +81,7 @@ export default async function StartupProfilePage({
     profile = data
   }
 
-  const tier = profile?.subscription_tier ?? "free"
+  const tier = profile?.subscription_tier ?? "explorer"
   const canFull = canAccessFullProfile(tier)
   const canPremium = canAccessPremiumFields(tier)
   const canSave = canSaveAndList(tier)
@@ -341,9 +341,7 @@ function UpgradeGate({ tier, viewsUsed, viewLimit }: { tier: string; viewsUsed?:
       <p className="mb-5 text-[13px] text-muted-foreground">
         {isViewLimitHit
           ? "Upgrade to Professional for unlimited profile views, full signal timelines, founder analysis, and investor briefs."
-          : tier === "free"
-            ? "Upgrade to Explorer to preview startup profiles, or Professional for full access to all intelligence."
-            : "Upgrade to Professional for full signal timelines, founder analysis, and investor briefs."}
+          : "Upgrade to Professional for full signal timelines, founder analysis, and investor briefs."}
       </p>
       <Button size="sm" asChild>
         <Link href="/pricing">Upgrade to Professional</Link>
