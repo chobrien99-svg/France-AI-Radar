@@ -320,12 +320,11 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       <Field label="Technology layer">
         <Select className={inputClass} value={form.technology_layer} onChange={(e) => set("technology_layer", e.target.value)}>
           <option value="">— None —</option>
-          <option value="perception">Perception</option>
-          <option value="robotics">Robotics</option>
-          <option value="agent_platform">Agent Platform</option>
-          <option value="orchestration">Orchestration</option>
-          <option value="vertical_ai">Vertical AI</option>
           <option value="infrastructure">Infrastructure</option>
+          <option value="model">Model</option>
+          <option value="application">Application</option>
+          <option value="tooling">Tooling</option>
+          <option value="data">Data</option>
           <option value="other">Other</option>
         </Select>
       </Field>
