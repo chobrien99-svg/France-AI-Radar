@@ -7,15 +7,25 @@ export default async function AdminFoundersPage() {
   await requireAdmin()
   const supabase = await createServiceClient()
 
-  // Only show people linked to AI Radar organizations
-  const { data: founders } = await supabase
-    .from("organization_people")
-    .select(`
-      role,
-      people(id, full_name, slug, is_repeat_founder, has_phd, has_big_tech_background, big_tech_employer, created_at)
-    `)
-    .eq("is_founder", true)
-    .order("created_at", { ascending: false, referencedTable: "people" })
+  // Get AI Radar organization IDs first
+  const { data: aiRadarOrgs } = await supabase
+    .from("product_organizations")
+    .select("organization_id, product_catalog!inner(slug)")
+    .eq("product_catalog.slug", "ai-radar")
+
+  const aiRadarOrgIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
+
+  // Only show people linked as founders to AI Radar organizations
+  const { data: founders } = aiRadarOrgIds.length > 0
+    ? await supabase
+        .from("organization_people")
+        .select(`
+          role,
+          people(id, full_name, slug, is_repeat_founder, has_phd, has_big_tech_background, big_tech_employer, created_at)
+        `)
+        .eq("is_founder", true)
+        .in("organization_id", aiRadarOrgIds)
+    : { data: [] }
 
   // Deduplicate people (same person may be linked to multiple orgs)
   const seen = new Set<string>()
