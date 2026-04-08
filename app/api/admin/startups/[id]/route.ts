@@ -67,7 +67,6 @@ export async function PATCH(
     .maybeSingle()
 
   if (error) {
-    // Log but continue — try to save profile fields even if org update fails
     console.error("Org update error:", error.message)
   }
 
@@ -104,7 +103,10 @@ export async function PATCH(
   }
 
   return NextResponse.json(
-    startup ?? { id, slug: fields.slug },
+    {
+      ...(startup ?? { id, slug: fields.slug }),
+      ...(error ? { _warning: `Org update failed: ${error.message}` } : {}),
+    },
     error ? { status: 207 } : undefined
   )
 }

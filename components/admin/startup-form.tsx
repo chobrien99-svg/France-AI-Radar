@@ -196,21 +196,24 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       body: JSON.stringify(payload),
     })
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}))
-      setError(body.error ?? "Something went wrong.")
+    const data = await res.json().catch(() => ({}))
+
+    if (!res.ok && res.status !== 207) {
+      setError(data.error ?? "Something went wrong.")
       setSaving(false)
       return
     }
 
-    const data = await res.json()
+    // Show warning if partial save (207)
+    if (data._warning) {
+      setError(`Partial save: ${data._warning}`)
+    }
+
     setSaving(false)
 
     if (startupId) {
-      // Editing — stay on the same page, just refresh data
       router.refresh()
     } else {
-      // Creating — navigate to the new startup's edit page
       router.push(`/admin/startups/${data.id}/edit`)
     }
   }
