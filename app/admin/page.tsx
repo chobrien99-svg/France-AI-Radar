@@ -10,9 +10,14 @@ export default async function AdminDashboard() {
   const [
     { count: totalStartups },
     { count: activeStartups },
+    { count: draftStartups },
   ] = await Promise.all([
-    supabase.from("organizations").select("*", { count: "exact", head: true }).eq("organization_type", "startup"),
-    supabase.from("organizations").select("*", { count: "exact", head: true }).eq("organization_type", "startup").eq("status", "active"),
+    supabase.from("product_organizations").select("*", { count: "exact", head: true })
+      .eq("product_id", (await supabase.from("product_catalog").select("id").eq("slug", "ai-radar").single()).data?.id ?? ""),
+    supabase.from("organizations").select("*, product_organizations!inner(product_catalog!inner(slug))", { count: "exact", head: true })
+      .eq("product_organizations.product_catalog.slug", "ai-radar").eq("status", "active"),
+    supabase.from("organizations").select("*, product_organizations!inner(product_catalog!inner(slug))", { count: "exact", head: true })
+      .eq("product_organizations.product_catalog.slug", "ai-radar").eq("status", "draft"),
   ])
 
   return (
@@ -28,9 +33,9 @@ export default async function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <StatCard label="Total startups" value={totalStartups ?? 0} />
-        <StatCard label="Active / published" value={activeStartups ?? 0} />
-        <StatCard label="Inactive / hidden" value={(totalStartups ?? 0) - (activeStartups ?? 0)} />
+        <StatCard label="AI Radar startups" value={totalStartups ?? 0} />
+        <StatCard label="Published" value={activeStartups ?? 0} />
+        <StatCard label="Drafts" value={draftStartups ?? 0} />
       </div>
 
       <div className="mt-10">
