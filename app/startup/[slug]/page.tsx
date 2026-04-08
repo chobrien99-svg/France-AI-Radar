@@ -592,7 +592,8 @@ function PremiumContent({
       {/* Product & Market */}
       {(profileData?.product_description ||
         profileData?.target_market ||
-        profileData?.competitive_landscape) && (
+        profileData?.competitive_landscape ||
+        profileData?.technical_thesis) && (
         <section>
           <SectionHeader label="Product & Market" />
           <div className="mt-4 space-y-4 text-[14px] leading-relaxed">
@@ -623,6 +624,46 @@ function PremiumContent({
                 </strong>
                 <span className="text-muted-foreground">
                   <BlurredText blur={blurPremium}>{profileData.competitive_landscape}</BlurredText>
+                </span>
+              </p>
+            )}
+            {profileData.technical_thesis && (
+              <p>
+                <strong className="font-semibold text-foreground">
+                  Technical thesis:{" "}
+                </strong>
+                <span className="text-muted-foreground">
+                  <BlurredText blur={blurPremium}>{profileData.technical_thesis}</BlurredText>
+                </span>
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Strategy */}
+      {(profileData?.current_strategy ||
+        profileData?.business_model_hypothesis) && (
+        <section>
+          <SectionHeader label="Strategy" />
+          <div className="mt-4 space-y-4 text-[14px] leading-relaxed">
+            {profileData.current_strategy && (
+              <p>
+                <strong className="font-semibold text-foreground">
+                  Current strategy:{" "}
+                </strong>
+                <span className="text-muted-foreground">
+                  <BlurredText blur={blurPremium}>{profileData.current_strategy}</BlurredText>
+                </span>
+              </p>
+            )}
+            {profileData.business_model_hypothesis && (
+              <p>
+                <strong className="font-semibold text-foreground">
+                  Business model:{" "}
+                </strong>
+                <span className="text-muted-foreground">
+                  <BlurredText blur={blurPremium}>{profileData.business_model_hypothesis}</BlurredText>
                 </span>
               </p>
             )}
