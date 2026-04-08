@@ -50,7 +50,7 @@ export async function PATCH(
     email: fields.email || fields.contact_email || null,
     phone: fields.phone || fields.contact_phone || null,
     description: fields.description || null,
-    technology_layer: fields.technology_layer || null,
+    ...(fields.technology_layer ? { technology_layer: fields.technology_layer } : {}),
     total_raised_eur: fields.total_raised_eur ?? null,
     last_round: fields.last_round || null,
     fundraising_status: fields.fundraising_status || "unknown",
@@ -66,10 +66,12 @@ export async function PATCH(
     .select("id, slug")
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!startup) return NextResponse.json({ error: "Startup not found" }, { status: 404 })
+  if (error) {
+    // Log but continue — try to save profile fields even if org update fails
+    console.error("Org update error:", error.message)
+  }
 
-  // Upsert profile fields to organization_profiles
+  // Upsert profile fields to organization_profiles (independent of org update)
   const profileFields = {
     organization_id: id,
     investor_brief: fields.investor_brief || null,
@@ -101,7 +103,10 @@ export async function PATCH(
     )
   }
 
-  return NextResponse.json(startup)
+  return NextResponse.json(
+    startup ?? { id, slug: fields.slug },
+    error ? { status: 207 } : undefined
+  )
 }
 
 export async function DELETE(

@@ -58,6 +58,9 @@ function formatEur(amount: number | null): string {
 // Page
 // ------------------------------------------------------------------
 
+// Force dynamic rendering — data changes frequently via admin
+export const dynamic = "force-dynamic"
+
 export default async function StartupProfilePage({
   params,
 }: {

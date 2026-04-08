@@ -53,6 +53,8 @@ function cutoffDate(time: string): string | null {
 // Page
 // ------------------------------------------------------------------
 
+export const dynamic = "force-dynamic"
+
 export default async function DatabasePage({
   searchParams,
 }: {
