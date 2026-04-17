@@ -80,7 +80,7 @@ export function LinkedFounders({ organizationId, linkedPeople: initial, allPeopl
           Linked People
         </p>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/admin/founders/new">+ Create new person</Link>
+          <Link href={`/admin/founders/new?link_to=${organizationId}`}>+ Create new person</Link>
         </Button>
       </div>
 

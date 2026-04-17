@@ -13,7 +13,9 @@ export async function POST(
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   const { id: organization_id } = await params
-  const { founder_id, role } = await request.json()
+  const body = await request.json()
+  const founder_id = body.founder_id || body.person_id
+  const role = body.role
   if (!founder_id) return NextResponse.json({ error: "founder_id required" }, { status: 400 })
 
   const supabase = await createServiceClient()

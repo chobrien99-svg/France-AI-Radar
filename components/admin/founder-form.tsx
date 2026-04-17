@@ -52,6 +52,7 @@ function generateSlug(name: string): string {
 interface Props {
   initialValues?: Partial<FounderFormValues>
   founderId?: string
+  linkToOrganizationId?: string
 }
 
 // ------------------------------------------------------------------
@@ -82,7 +83,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // Component
 // ------------------------------------------------------------------
 
-export function FounderForm({ initialValues, founderId }: Props) {
+export function FounderForm({ initialValues, founderId, linkToOrganizationId }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<FounderFormValues>({ ...DEFAULTS, ...initialValues })
   const [slugLocked, setSlugLocked] = useState(!!founderId)
@@ -130,10 +131,22 @@ export function FounderForm({ initialValues, founderId }: Props) {
     }
 
     const data = await res.json()
+
+    // Auto-link to startup if we came from a startup edit page
+    if (!founderId && linkToOrganizationId && data.id) {
+      await fetch(`/api/admin/startups/${linkToOrganizationId}/founders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ founder_id: data.id, role: form.role || null }),
+      })
+    }
+
     setSaving(false)
 
     if (founderId) {
       router.refresh()
+    } else if (linkToOrganizationId) {
+      router.push(`/admin/startups/${linkToOrganizationId}/edit`)
     } else {
       router.push(`/admin/founders/${data.id}/edit`)
     }
