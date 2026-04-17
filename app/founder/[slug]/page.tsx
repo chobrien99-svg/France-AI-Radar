@@ -211,9 +211,13 @@ type FounderDetail = {
   id: string
   full_name: string
   slug: string
-  role: string | null
   bio: string | null
+  email: string | null
   linkedin_url: string | null
+  twitter_url: string | null
+  google_scholar_url: string | null
+  github_url: string | null
+  personal_website_url: string | null
   previous_exits: number
   big_tech_employer: string | null
   academic_lab: string | null
