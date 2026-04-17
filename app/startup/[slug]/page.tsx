@@ -674,7 +674,8 @@ function PremiumContent({
       {/* Funding */}
       {(venture.total_raised_eur ||
         venture.last_round ||
-        profileData?.est_next_raise) && (
+        profileData?.est_next_raise ||
+        profileData?.fundraising_signal_summary) && (
         <section>
           <SectionHeader label="Funding" />
           <div className="mt-4 data-card-compact bg-card p-5">

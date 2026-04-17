@@ -53,7 +53,7 @@ export async function PATCH(
     ...(fields.technology_layer ? { technology_layer: fields.technology_layer } : {}),
     total_raised_eur: fields.total_raised_eur ?? null,
     last_round: fields.last_round || null,
-    fundraising_status: fields.fundraising_status || "unknown",
+    ...(fields.fundraising_status && fields.fundraising_status !== "unknown" ? { fundraising_status: fields.fundraising_status } : {}),
     founded_date: fields.founded_date || null,
     updated_at: new Date().toISOString(),
   }
