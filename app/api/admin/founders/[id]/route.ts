@@ -44,6 +44,14 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  // Update role on all organization_people links for this person
+  if (body.role) {
+    await supabase
+      .from("organization_people")
+      .update({ role: body.role })
+      .eq("person_id", id)
+  }
+
   return NextResponse.json(founder)
 }
 

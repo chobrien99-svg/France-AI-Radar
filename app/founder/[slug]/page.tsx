@@ -1,9 +1,10 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { canAccessFullProfile } from "@/lib/subscription"
+import { canAccessFullProfile, canAccessPremiumFields } from "@/lib/subscription"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { BlurredText } from "@/components/blurred-gate"
 import type { Profile } from "@/lib/types"
 
 // ------------------------------------------------------------------
@@ -49,9 +50,13 @@ export default async function FounderProfilePage({
     id: string
     full_name: string
     slug: string
-    role: string | null
     bio: string | null
+    email: string | null
     linkedin_url: string | null
+    twitter_url: string | null
+    google_scholar_url: string | null
+    github_url: string | null
+    personal_website_url: string | null
     previous_exits: number
     big_tech_employer: string | null
     academic_lab: string | null
@@ -59,6 +64,8 @@ export default async function FounderProfilePage({
     is_repeat_founder: boolean
     has_big_tech_background: boolean
   }
+
+  const canPremium = canAccessPremiumFields(tier)
 
   // Fetch the startups this founder is associated with
   const { data: ventureLinksRaw } = await supabase
@@ -71,6 +78,9 @@ export default async function FounderProfilePage({
     role: row.role,
     ...(row.organizations as { id: string; name: string; slug: string }),
   }))
+
+  // Get primary role from first venture link
+  const primaryRole = ventures[0]?.role ?? null
 
   return (
     <main className="page-container py-8 pb-20">
@@ -92,22 +102,51 @@ export default async function FounderProfilePage({
             <h1 className="font-serif text-[26px] font-bold tracking-tight text-foreground">
               {founder.full_name}
             </h1>
-            {founder.role && (
-              <p className="text-[14px] font-medium text-primary">{founder.role}</p>
+            {primaryRole && (
+              <p className="text-[14px] font-medium text-primary">{primaryRole}</p>
             )}
           </div>
 
-          {founder.linkedin_url && (
-            <a
-              href={founder.linkedin_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1.5 border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-300 hover:bg-accent"
-            >
-              LinkedIn ↗
-            </a>
-          )}
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {founder.linkedin_url && (
+              <a
+                href={founder.linkedin_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-300 hover:bg-accent"
+              >
+                LinkedIn ↗
+              </a>
+            )}
+            {founder.github_url && (
+              <a
+                href={founder.github_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-300 hover:bg-accent"
+              >
+                GitHub ↗
+              </a>
+            )}
+            {founder.google_scholar_url && (
+              <a
+                href={founder.google_scholar_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors duration-300 hover:bg-accent"
+              >
+                Google Scholar ↗
+              </a>
+            )}
+          </div>
         </div>
+
+        {/* Contact — visible to pro, blurred for explorer */}
+        {founder.email && (
+          <div className="mb-4 text-[13px] text-muted-foreground">
+            <BlurredText blur={!canPremium}>{founder.email}</BlurredText>
+          </div>
+        )}
 
         <Separator className="mb-8" />
 
