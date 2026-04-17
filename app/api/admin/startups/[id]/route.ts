@@ -55,6 +55,7 @@ export async function PATCH(
     last_round: fields.last_round || null,
     fundraising_status: fields.fundraising_status || "unknown",
     founded_date: fields.founded_date || null,
+    first_seen_at: fields.first_seen_at || null,
     updated_at: new Date().toISOString(),
   }
   if (cityId !== undefined) updateFields.city_id = cityId
