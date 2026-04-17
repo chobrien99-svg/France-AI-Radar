@@ -360,9 +360,11 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       <Field label="Fundraising status">
         <Select className={inputClass} value={form.fundraising_status} onChange={(e) => set("fundraising_status", e.target.value)}>
           <option value="unknown">Unknown</option>
-          <option value="preparing_for_fundraising">Preparing for fundraising</option>
-          <option value="likely_raising_within_12_months">Likely raising within 12 months</option>
-          <option value="not_currently_raising">Not currently raising</option>
+          <option value="not_raising">Not raising</option>
+          <option value="exploring">Exploring</option>
+          <option value="actively_raising">Actively raising</option>
+          <option value="closing">Closing</option>
+          <option value="recently_closed">Recently closed</option>
         </Select>
       </Field>
       <Field label="Fundraising signal summary">
