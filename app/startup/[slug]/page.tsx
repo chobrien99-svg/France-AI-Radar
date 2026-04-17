@@ -710,6 +710,23 @@ function PremiumContent({
         </section>
       )}
 
+      {/* Legal */}
+      {profileData?.entity_complexity && (
+        <section>
+          <SectionHeader label="Legal" />
+          <div className="mt-4 text-[14px] leading-relaxed">
+            <p>
+              <strong className="font-semibold text-foreground">
+                Entity complexity:{" "}
+              </strong>
+              <span className="text-muted-foreground">
+                <BlurredText blur={blurPremium}>{profileData.entity_complexity}</BlurredText>
+              </span>
+            </p>
+          </div>
+        </section>
+      )}
+
       {/* Upgrade banner for Explorer */}
       {blurPremium && (
         <div className="mt-6 border-l-2 border-l-primary bg-card px-6 py-5 text-center">

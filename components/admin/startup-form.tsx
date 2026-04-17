@@ -422,7 +422,7 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
       </div>
 
       {/* ── Legal ── */}
-      <SectionTitle>Legal (Admin only — never shown to users)</SectionTitle>
+      <SectionTitle>Legal - Admin</SectionTitle>
       <Field label="Entity complexity">
         <Input className={inputClass} value={form.entity_complexity} onChange={(e) => set("entity_complexity", e.target.value)} placeholder="e.g. Single SAS, holding in Luxembourg…" />
       </Field>
