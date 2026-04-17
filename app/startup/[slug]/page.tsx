@@ -157,7 +157,7 @@ export default async function StartupProfilePage({
   // Fetch founders via junction table
   const { data: foundersRaw } = await supabase
     .from("organization_people")
-    .select("people(*)")
+    .select("role, people(*)")
     .eq("organization_id", venture.id)
     .eq("is_founder", true)
 
@@ -178,9 +178,24 @@ export default async function StartupProfilePage({
     ? venture.organization_profiles[0] ?? null
     : venture.organization_profiles ?? null
 
-  const founders = (foundersRaw ?? []).map(
-    (row: { people: unknown }) => row.people
-  ) as {
+  const founders = (foundersRaw ?? []).map((row: Record<string, unknown>) => {
+    const p = (Array.isArray(row.people) ? row.people[0] : row.people) as Record<string, unknown> | null
+    if (!p) return null
+    return {
+      id: p.id as string,
+      full_name: p.full_name as string,
+      slug: (p.slug as string | null) ?? null,
+      role: (row.role as string | null) ?? null,
+      bio: (p.bio as string | null) ?? null,
+      linkedin_url: (p.linkedin_url as string | null) ?? null,
+      previous_exits: (p.previous_exits as number) ?? 0,
+      big_tech_employer: (p.big_tech_employer as string | null) ?? null,
+      academic_lab: (p.academic_lab as string | null) ?? null,
+      has_phd: !!p.has_phd,
+      is_repeat_founder: !!p.is_repeat_founder,
+      has_big_tech_background: !!p.has_big_tech_background,
+    }
+  }).filter(Boolean) as Array<{
     id: string
     full_name: string
     slug: string | null
@@ -193,7 +208,7 @@ export default async function StartupProfilePage({
     has_phd: boolean
     is_repeat_founder: boolean
     has_big_tech_background: boolean
-  }[]
+  }>
 
   return (
     <main className="page-container py-8 pb-20">
@@ -532,9 +547,18 @@ function PremiumContent({
               >
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-serif text-[14px] font-bold text-foreground">
-                      <BlurredText blur={blurPremium}>{founder.full_name}</BlurredText>
-                    </p>
+                    {founder.slug && !blurPremium ? (
+                      <Link
+                        href={`/founder/${founder.slug}`}
+                        className="font-serif text-[14px] font-bold text-foreground underline-offset-2 hover:underline"
+                      >
+                        {founder.full_name}
+                      </Link>
+                    ) : (
+                      <p className="font-serif text-[14px] font-bold text-foreground">
+                        <BlurredText blur={blurPremium}>{founder.full_name}</BlurredText>
+                      </p>
+                    )}
                     {founder.role && (
                       <p className="text-[12px] font-medium text-primary">
                         <BlurredText blur={blurPremium}>{founder.role}</BlurredText>
