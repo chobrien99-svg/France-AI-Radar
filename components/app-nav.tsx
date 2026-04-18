@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
+import { AnalyticsIdentifier } from "@/components/analytics-identifier"
 
 const TIER_LABEL: Record<string, string> = {
   explorer: "Explorer",
@@ -25,13 +26,17 @@ export async function AppNav({
   } = await supabase.auth.getUser()
 
   let tier: string | null = null
+  let userEmail: string | null = null
+  let isAdmin = false
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("subscription_tier")
+      .select("subscription_tier, email, is_admin")
       .eq("id", user.id)
       .single()
-    tier = data?.subscription_tier ?? "free"
+    tier = data?.subscription_tier ?? "explorer"
+    userEmail = data?.email ?? user.email ?? null
+    isAdmin = !!data?.is_admin
   }
 
   const navLink = (page: typeof activePage) =>
@@ -41,6 +46,14 @@ export async function AppNav({
 
   return (
     <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md" style={{ borderBottom: '1px solid rgba(193, 199, 206, 0.25)' }}>
+      {user && tier && (
+        <AnalyticsIdentifier
+          userId={user.id}
+          email={userEmail}
+          tier={tier}
+          isAdmin={isAdmin}
+        />
+      )}
       <div className="page-container flex h-14 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">

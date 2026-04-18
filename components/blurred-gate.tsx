@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Events } from "@/lib/analytics"
 
 /** Wraps a large section — shows blurred content with an overlay upgrade prompt */
 export function BlurredGate({
@@ -24,7 +25,9 @@ export function BlurredGate({
             {message}
           </p>
           <Button size="sm" asChild>
-            <Link href="/pricing">Upgrade</Link>
+            <Link href="/pricing" onClick={() => Events.upgradeClicked("blurred_gate")}>
+              Upgrade
+            </Link>
           </Button>
         </div>
       </div>

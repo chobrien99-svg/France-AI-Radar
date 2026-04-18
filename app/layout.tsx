@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Newsreader } from "next/font/google"
 import { Public_Sans } from "next/font/google"
+import { CookieConsent } from "@/components/cookie-consent"
 import "./globals.css"
 
 const newsreader = Newsreader({
@@ -25,7 +26,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${newsreader.variable} ${publicSans.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieConsent />
+      </body>
     </html>
   )
 }

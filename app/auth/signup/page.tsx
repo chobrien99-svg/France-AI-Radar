@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Events } from "@/lib/analytics"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -21,9 +22,10 @@ export default function SignupPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    Events.signupStarted()
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+    const { data: authData, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -38,6 +40,9 @@ export default function SignupPage() {
       return
     }
 
+    if (authData.user) {
+      Events.signupCompleted(authData.user.id)
+    }
     setSuccess(true)
     setLoading(false)
   }

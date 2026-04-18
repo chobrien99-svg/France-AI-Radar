@@ -6,6 +6,7 @@ import { useCallback } from "react"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { canUseAdvancedFilters, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
+import { Events } from "@/lib/analytics"
 
 const TIME_OPTIONS = [
   { value: "30d", label: "Last 30 days" },
@@ -169,6 +170,7 @@ function LockedFilter({ label }: { label: string }) {
         </p>
         <Link
           href="/pricing"
+          onClick={() => Events.upgradeClicked(`locked_filter_${label.toLowerCase()}`)}
           className="text-[12px] font-medium text-primary transition-colors duration-300 hover:text-primary-container"
         >
           Upgrade to unlock →

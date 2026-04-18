@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator"
 import { SaveButton } from "@/components/startup/save-button"
 import { ExportCsvButton } from "@/components/startup/export-csv-button"
 import { BlurredGate, BlurredText } from "@/components/blurred-gate"
+import { AnalyticsPageTrack } from "@/components/analytics-page-track"
+import { AnalyticsIdentifier } from "@/components/analytics-identifier"
 import type { Venture, Profile } from "@/lib/types"
 
 // ------------------------------------------------------------------
@@ -212,6 +214,19 @@ export default async function StartupProfilePage({
 
   return (
     <main className="page-container py-8 pb-20">
+      {user && profile && (
+        <AnalyticsIdentifier
+          userId={user.id}
+          email={profile.email ?? null}
+          tier={tier}
+          isAdmin={isAdmin}
+        />
+      )}
+      <AnalyticsPageTrack
+        event={hasViewAccess ? "profile_viewed" : "profile_view_limit_hit"}
+        slug={venture.slug}
+        tier={tier}
+      />
       <div className="mx-auto max-w-[960px]">
 
         {/* Back link */}

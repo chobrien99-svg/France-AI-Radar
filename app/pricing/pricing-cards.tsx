@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Events } from "@/lib/analytics"
 
 type Interval = "monthly" | "annual"
 
@@ -122,7 +123,10 @@ export function PricingCards() {
           </div>
 
           <Button variant="outline" className="w-full" asChild>
-            <Link href={`/api/stripe/checkout?tier=explorer&interval=${interval}`}>
+            <Link
+              href={`/api/stripe/checkout?tier=explorer&interval=${interval}`}
+              onClick={() => Events.checkoutStarted("explorer", interval)}
+            >
               Start Exploring
             </Link>
           </Button>
@@ -176,7 +180,10 @@ export function PricingCards() {
           </div>
 
           <Button className="w-full" asChild>
-            <Link href={`/api/stripe/checkout?tier=professional&interval=${interval}`}>
+            <Link
+              href={`/api/stripe/checkout?tier=professional&interval=${interval}`}
+              onClick={() => Events.checkoutStarted("professional", interval)}
+            >
               Get Full Access
             </Link>
           </Button>
