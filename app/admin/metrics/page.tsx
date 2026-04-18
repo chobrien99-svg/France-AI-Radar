@@ -93,7 +93,8 @@ export default async function AdminMetricsPage() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10)
 
-  const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.posthog.com"
+  // Link to the PostHog app (not the ingestion host)
+  const posthogAppUrl = "https://eu.posthog.com"
 
   return (
     <div>
@@ -106,7 +107,7 @@ export default async function AdminMetricsPage() {
           </p>
         </div>
         <Button variant="outline" asChild>
-          <Link href={posthogHost} target="_blank">Open PostHog →</Link>
+          <Link href={posthogAppUrl} target="_blank">Open PostHog →</Link>
         </Button>
       </div>
 
