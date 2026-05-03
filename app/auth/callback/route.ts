@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server"
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
-  const next = searchParams.get("next") ?? "/database"
+  const next = searchParams.get("next")
 
   if (code) {
     const cookieStore = await cookies()
@@ -29,7 +29,25 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      // If explicit redirect provided, use it
+      if (next) return NextResponse.redirect(`${origin}${next}`)
+
+      // Otherwise, check subscription status — only let active subscribers into the database
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("subscription_status")
+          .eq("id", user.id)
+          .single()
+
+        if (profile?.subscription_status === "active") {
+          return NextResponse.redirect(`${origin}/database`)
+        }
+      }
+
+      // New signup or inactive subscription → pricing
+      return NextResponse.redirect(`${origin}/pricing`)
     }
   }
 

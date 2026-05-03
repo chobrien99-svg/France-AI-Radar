@@ -86,9 +86,10 @@ export default async function StartupProfilePage({
     profile = data
   }
 
-  const tier = profile?.subscription_tier ?? "explorer"
   const isAdmin = !!(profile as Record<string, unknown> | null)?.is_admin
-  const canFull = canAccessFullProfile(tier)
+  const hasActiveSub = isAdmin || profile?.subscription_status === "active"
+  const tier = hasActiveSub ? (profile?.subscription_tier ?? "explorer") : "none"
+  const canFull = hasActiveSub && canAccessFullProfile(tier)
   const canPremium = canAccessPremiumFields(tier)
   const canSave = canSaveAndList(tier)
   const canAlert = canSetAlerts(tier)

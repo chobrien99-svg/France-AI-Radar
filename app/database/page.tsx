@@ -75,10 +75,16 @@ export default async function DatabasePage({
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end")
+      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, is_admin")
       .eq("id", user.id)
       .single()
     profile = data
+  }
+
+  // Require active subscription (admins always have access)
+  const isAdmin = !!(profile as Record<string, unknown> | null)?.is_admin
+  if (!isAdmin && profile?.subscription_status !== "active") {
+    redirect("/pricing")
   }
 
   const tier = profile?.subscription_tier ?? "explorer"

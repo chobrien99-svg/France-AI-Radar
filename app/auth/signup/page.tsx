@@ -55,9 +55,12 @@ export default function SignupPage() {
             <span className="text-xl text-accent-green">✓</span>
           </div>
           <h1 className="mb-2 font-serif text-lg font-semibold text-foreground">Check your email</h1>
-          <p className="text-sm text-muted-foreground">
-            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
+          <p className="mb-4 text-sm text-muted-foreground">
+            We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account, then choose a plan to get started.
           </p>
+          <Link href="/pricing" className="text-[13px] font-medium text-primary hover:underline">
+            View plans →
+          </Link>
         </div>
       </div>
     )
