@@ -92,6 +92,22 @@ export function UserRow({
     if (!ok) setIsAdmin(!newValue)
   }
 
+  async function handleDelete() {
+    if (!confirm(`Delete user ${email}? This permanently removes their account and all associated data.`)) return
+    setSaving(true)
+    setError(null)
+
+    const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setError(body.error ?? "Failed to delete.")
+      setSaving(false)
+      return
+    }
+
+    router.refresh()
+  }
+
   return (
     <tr className="bg-background hover:bg-secondary/20 transition-colors">
       <td className="px-4 py-3">
@@ -134,7 +150,18 @@ export function UserRow({
         </Button>
       </td>
       <td className="px-4 py-3">
-        {error && <p className="text-[11px] text-destructive">{error}</p>}
+        <div className="flex items-center gap-2">
+          {error && <p className="text-[11px] text-destructive">{error}</p>}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[11px] text-muted-foreground hover:text-destructive"
+            onClick={handleDelete}
+            disabled={saving}
+          >
+            Delete
+          </Button>
+        </div>
       </td>
     </tr>
   )

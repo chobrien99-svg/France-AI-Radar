@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminUser } from "@/lib/admin"
+import { createClient } from "@supabase/supabase-js"
 import { createServiceClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
 
+function getAdminSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
+
 const ALLOWED_TIERS = ["explorer", "professional", "enterprise"]
 
+/** Update a user's tier, admin status, or subscription status */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -31,6 +40,10 @@ export async function PATCH(
     updateFields.subscription_status = body.subscription_status
   }
 
+  if (body.full_name !== undefined) {
+    updateFields.full_name = body.full_name || null
+  }
+
   if (Object.keys(updateFields).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
   }
@@ -46,4 +59,21 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
+}
+
+/** Delete a user account entirely (auth.users + cascades to profiles) */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
+  const { id } = await params
+  const supabase = getAdminSupabase()
+
+  const { error } = await supabase.auth.admin.deleteUser(id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ deleted: true })
 }

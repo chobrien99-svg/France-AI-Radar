@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
 import { UserRow } from "@/components/admin/user-row"
+import { CreateUserDialog } from "@/components/admin/create-user-dialog"
 
 export const dynamic = "force-dynamic"
 
@@ -71,6 +72,7 @@ export default async function AdminUsersPage() {
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Admin</p>
           <h1 className="mt-0.5 font-serif text-[24px] font-bold text-foreground">Users</h1>
         </div>
+        <CreateUserDialog />
       </div>
 
       {/* Metrics */}
