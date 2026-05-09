@@ -5,22 +5,16 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { useCallback } from "react"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { canUseAdvancedFilters, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
+import { canUseAdvancedFilters } from "@/lib/subscription"
 import { Events } from "@/lib/analytics"
 
 const TIME_OPTIONS = [
+  { value: "7d", label: "Last 7 days" },
+  { value: "14d", label: "Last 14 days" },
   { value: "30d", label: "Last 30 days" },
   { value: "90d", label: "Last 90 days" },
   { value: "12m", label: "Last 12 months" },
   { value: "all", label: "All time" },
-]
-
-const LOCATION_OPTIONS = [
-  { value: "paris", label: "Paris / Île-de-France" },
-  { value: "lyon", label: "Lyon" },
-  { value: "toulouse", label: "Toulouse" },
-  { value: "grenoble", label: "Grenoble" },
-  { value: "other", label: "Other" },
 ]
 
 function parseParam(value: string | null): string[] {
@@ -28,7 +22,15 @@ function parseParam(value: string | null): string[] {
   return value.split(",").filter(Boolean)
 }
 
-export function FilterSidebar({ tier = "free" }: { tier?: string }) {
+type FilterOption = { value: string; label: string }
+
+interface Props {
+  tier?: string
+  sectorOptions?: FilterOption[]
+  locationOptions?: FilterOption[]
+}
+
+export function FilterSidebar({ tier = "explorer", sectorOptions = [], locationOptions = [] }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -36,7 +38,7 @@ export function FilterSidebar({ tier = "free" }: { tier?: string }) {
 
   const selected = {
     time: parseParam(searchParams.get("time")),
-    signalType: parseParam(searchParams.get("signalType")),
+    sector: parseParam(searchParams.get("sector")),
     location: parseParam(searchParams.get("location")),
   }
 
@@ -83,30 +85,42 @@ export function FilterSidebar({ tier = "free" }: { tier?: string }) {
 
         <Separator />
 
-        {/* Signal Type — Pro only */}
+        {/* Sector — Pro only */}
         {advancedAllowed ? (
-          <FilterGroup
-            label="Signal Type"
-            options={Object.entries(SIGNAL_TYPE_LABELS).map(
-              ([value, label]) => ({ value, label })
-            )}
-            selected={selected.signalType}
-            onToggle={(v) => toggle("signalType", selected.signalType, v)}
-          />
+          sectorOptions.length > 0 ? (
+            <FilterGroup
+              label="Sector"
+              options={sectorOptions}
+              selected={selected.sector}
+              onToggle={(v) => toggle("sector", selected.sector, v)}
+            />
+          ) : (
+            <div>
+              <p className="metric-label mb-2">Sector</p>
+              <p className="text-[12px] text-muted-foreground">No sectors assigned yet.</p>
+            </div>
+          )
         ) : (
-          <LockedFilter label="Signal Type" />
+          <LockedFilter label="Sector" />
         )}
 
         <Separator />
 
         {/* Location — Pro only */}
         {advancedAllowed ? (
-          <FilterGroup
-            label="Location"
-            options={LOCATION_OPTIONS}
-            selected={selected.location}
-            onToggle={(v) => toggle("location", selected.location, v)}
-          />
+          locationOptions.length > 0 ? (
+            <FilterGroup
+              label="Location"
+              options={locationOptions}
+              selected={selected.location}
+              onToggle={(v) => toggle("location", selected.location, v)}
+            />
+          ) : (
+            <div>
+              <p className="metric-label mb-2">Location</p>
+              <p className="text-[12px] text-muted-foreground">No locations available.</p>
+            </div>
+          )
         ) : (
           <LockedFilter label="Location" />
         )}
@@ -133,7 +147,7 @@ function FilterGroup({
   onToggle,
 }: {
   label: string
-  options: { value: string; label: string }[]
+  options: FilterOption[]
   selected: string[]
   onToggle: (value: string) => void
 }) {

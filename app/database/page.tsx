@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/server"
 import { getStartupLimit } from "@/lib/subscription"
 import { FilterSidebar } from "@/components/database/filter-sidebar"
 import { StartupCard } from "@/components/database/startup-card"
@@ -22,30 +23,13 @@ function parseList(val: string | string[] | undefined): string[] {
   return str.split(",").filter(Boolean)
 }
 
-function cityForLocation(loc: string): string[] {
-  const map: Record<string, string[]> = {
-    paris: ["Paris"],
-    lyon: ["Lyon"],
-    toulouse: ["Toulouse"],
-    grenoble: ["Grenoble"],
-  }
-  return map[loc] ?? []
-}
-
 function cutoffDate(time: string): string | null {
   const now = new Date()
-  if (time === "30d") {
-    now.setDate(now.getDate() - 30)
-    return now.toISOString()
-  }
-  if (time === "90d") {
-    now.setDate(now.getDate() - 90)
-    return now.toISOString()
-  }
-  if (time === "12m") {
-    now.setFullYear(now.getFullYear() - 1)
-    return now.toISOString()
-  }
+  if (time === "7d") { now.setDate(now.getDate() - 7); return now.toISOString() }
+  if (time === "14d") { now.setDate(now.getDate() - 14); return now.toISOString() }
+  if (time === "30d") { now.setDate(now.getDate() - 30); return now.toISOString() }
+  if (time === "90d") { now.setDate(now.getDate() - 90); return now.toISOString() }
+  if (time === "12m") { now.setFullYear(now.getFullYear() - 1); return now.toISOString() }
   return null
 }
 
@@ -93,48 +77,45 @@ export default async function DatabasePage({
   // Parse filters
   const q = (Array.isArray(params.q) ? params.q[0] : params.q) ?? ""
   const locations = parseList(params.location)
+  const sectors = parseList(params.sector)
   const times = parseList(params.time)
-  const founderSignals = parseList(params.founderSignal)
-  const signalTypes = parseList(params.signalType)
   const sort = (Array.isArray(params.sort) ? params.sort[0] : params.sort) ?? "newest"
 
-  // Resolve location filter city names → city_id UUIDs
-  let locationCityIds: string[] | null = null
-  let locationExcludeCityIds: string[] | null = null
-  if (locations.length > 0) {
-    const cityNames: string[] = []
-    let includeOther = false
-    for (const loc of locations) {
-      if (loc === "other") {
-        includeOther = true
-      } else {
-        cityNames.push(...cityForLocation(loc))
-      }
-    }
-    if (cityNames.length > 0 || includeOther) {
-      // Fetch IDs for the known cities
-      const knownCities = ["Paris", "Lyon", "Toulouse", "Grenoble"]
-      const { data: cityRows } = await supabase
-        .from("cities")
-        .select("id, name")
-        .in("name", cityNames.length > 0 ? cityNames : knownCities)
-      const cityIdMap = new Map((cityRows ?? []).map((c: { id: string; name: string }) => [c.name, c.id]))
+  // Load filter options from the database (use service client to bypass RLS)
+  const svc = await createServiceClient()
 
-      if (cityNames.length > 0 && !includeOther) {
-        locationCityIds = cityNames.map((n) => cityIdMap.get(n)).filter(Boolean) as string[]
-      } else if (includeOther) {
-        // Fetch IDs for all known metro cities to exclude
-        const { data: knownRows } = await supabase
-          .from("cities")
-          .select("id")
-          .in("name", knownCities)
-        locationExcludeCityIds = (knownRows ?? []).map((c: { id: string }) => c.id)
-        if (cityNames.length > 0) {
-          locationCityIds = cityNames.map((n) => cityIdMap.get(n)).filter(Boolean) as string[]
-        }
-      }
-    }
+  // Get AI Radar org IDs for scoping filter options
+  const { data: aiRadarOrgs } = await svc
+    .from("product_organizations")
+    .select("organization_id, product_catalog!inner(slug)")
+    .eq("product_catalog.slug", "ai-radar")
+  const aiRadarOrgIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
+
+  // Load distinct cities from AI Radar orgs
+  const { data: cityRows } = aiRadarOrgIds.length > 0
+    ? await svc.from("organizations").select("city_id, cities(id, name)").in("id", aiRadarOrgIds).not("city_id", "is", null)
+    : { data: [] }
+  const cityMap = new Map<string, string>()
+  for (const row of (cityRows ?? []) as Array<{ city_id: string; cities: { id: string; name: string } | { id: string; name: string }[] | null }>) {
+    const city = Array.isArray(row.cities) ? row.cities[0] : row.cities
+    if (city && !cityMap.has(city.id)) cityMap.set(city.id, city.name)
   }
+  const locationOptions = Array.from(cityMap.entries())
+    .map(([id, name]) => ({ value: id, label: name }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  // Load sectors assigned to AI Radar orgs
+  const { data: sectorRows } = aiRadarOrgIds.length > 0
+    ? await svc.from("organization_sectors").select("sector_id, sectors(id, name)").in("organization_id", aiRadarOrgIds)
+    : { data: [] }
+  const sectorMap = new Map<string, string>()
+  for (const row of (sectorRows ?? []) as Array<{ sector_id: string; sectors: { id: string; name: string } | { id: string; name: string }[] | null }>) {
+    const sec = Array.isArray(row.sectors) ? row.sectors[0] : row.sectors
+    if (sec && !sectorMap.has(sec.id)) sectorMap.set(sec.id, sec.name)
+  }
+  const sectorOptions = Array.from(sectorMap.entries())
+    .map(([id, name]) => ({ value: id, label: name }))
+    .sort((a, b) => a.label.localeCompare(b.label))
 
   // Build query — scoped to AI Radar product via product_organizations inner join
   let query = supabase
@@ -148,16 +129,24 @@ export default async function DatabasePage({
   if (q) {
     query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
   }
-  // Location filter using city_id
-  if (locationCityIds && !locationExcludeCityIds) {
-    query = query.in("city_id", locationCityIds)
-  } else if (locationCityIds && locationExcludeCityIds) {
-    // Include specific cities OR anything not in the known metros
-    query = query.or(
-      `city_id.in.(${locationCityIds.join(",")}),city_id.not.in.(${locationExcludeCityIds.join(",")})`
-    )
-  } else if (locationExcludeCityIds) {
-    query = query.not("city_id", "in", `(${locationExcludeCityIds.join(",")})`)
+
+  // Location filter — values are city UUIDs now
+  if (locations.length > 0) {
+    query = query.in("city_id", locations)
+  }
+
+  // Sector filter — get org IDs in those sectors, then filter
+  if (sectors.length > 0) {
+    const { data: sectorOrgRows } = await svc
+      .from("organization_sectors")
+      .select("organization_id")
+      .in("sector_id", sectors)
+    const sectorOrgIds = (sectorOrgRows ?? []).map((r: { organization_id: string }) => r.organization_id)
+    if (sectorOrgIds.length > 0) {
+      query = query.in("id", sectorOrgIds)
+    } else {
+      query = query.in("id", ["00000000-0000-0000-0000-000000000000"])
+    }
   }
 
   // Time filter on last_signal_date
@@ -165,17 +154,6 @@ export default async function DatabasePage({
   if (latestTime && latestTime !== "all") {
     const cutoff = cutoffDate(latestTime)
     if (cutoff) query = query.gte("last_signal_date", cutoff)
-  }
-
-  // Founder signal filter (array overlap)
-  if (founderSignals.length > 0) {
-    // Join with founders table via subquery isn't directly supported in PostgREST
-    // so we skip server-side founder_signal filtering for now and note it's a UI-only hint
-  }
-
-  // Signal type filter — similarly needs a subquery; deferred
-  if (signalTypes.length > 0) {
-    // Deferred: requires subquery on signals table
   }
 
   // Sort
@@ -200,7 +178,11 @@ export default async function DatabasePage({
         {/* Sidebar — hidden on mobile, visible lg+ */}
         <div className="hidden lg:block">
           <Suspense fallback={<SidebarSkeleton />}>
-            <FilterSidebar tier={tier} />
+            <FilterSidebar
+              tier={tier}
+              sectorOptions={sectorOptions}
+              locationOptions={locationOptions}
+            />
           </Suspense>
         </div>
 
