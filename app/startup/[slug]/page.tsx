@@ -593,12 +593,6 @@ function PremiumContent({
                   )}
                 </div>
 
-                {founder.bio && (
-                  <p className="text-[13px] leading-snug text-muted-foreground">
-                    <BlurredText blur={blurPremium}>{founder.bio}</BlurredText>
-                  </p>
-                )}
-
                 {/* Pedigree summary */}
                 <div className="mt-3 space-y-1.5">
                   {founder.big_tech_employer && (
