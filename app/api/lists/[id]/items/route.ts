@@ -12,8 +12,9 @@ export async function POST(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { startup_id: organization_id } = await request.json()
-  if (!organization_id) return NextResponse.json({ error: "startup_id required" }, { status: 400 })
+  const body = await request.json()
+  const organization_id = body.organization_id || body.startup_id
+  if (!organization_id) return NextResponse.json({ error: "organization_id required" }, { status: 400 })
 
   // Verify list ownership
   const { data: list } = await supabase
@@ -46,8 +47,8 @@ export async function DELETE(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const organization_id = request.nextUrl.searchParams.get("startup_id")
-  if (!organization_id) return NextResponse.json({ error: "startup_id required" }, { status: 400 })
+  const organization_id = request.nextUrl.searchParams.get("organization_id") || request.nextUrl.searchParams.get("startup_id")
+  if (!organization_id) return NextResponse.json({ error: "organization_id required" }, { status: 400 })
 
   // Verify list ownership
   const { data: list } = await supabase

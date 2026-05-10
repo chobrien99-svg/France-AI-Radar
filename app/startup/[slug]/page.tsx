@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SaveButton } from "@/components/startup/save-button"
 import { AlertButton } from "@/components/startup/alert-button"
+import { AddToListButton } from "@/components/startup/add-to-list-button"
 import { ExportCsvButton } from "@/components/startup/export-csv-button"
 import { BlurredGate, BlurredText } from "@/components/blurred-gate"
 import { AnalyticsPageTrack } from "@/components/analytics-page-track"
@@ -296,6 +297,10 @@ export default async function StartupProfilePage({
                 <SaveButton
                   startupId={venture.id}
                   initialSaved={isBookmarked}
+                  isLoggedIn={!!user}
+                />
+                <AddToListButton
+                  startupId={venture.id}
                   isLoggedIn={!!user}
                 />
               </>
