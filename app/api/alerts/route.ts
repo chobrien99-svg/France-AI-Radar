@@ -9,22 +9,26 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await request.json()
-  const organization_id = body.organization_id || body.startup_id
+  const organization_id = body.organization_id
   if (!organization_id) return NextResponse.json({ error: "organization_id required" }, { status: 400 })
 
   const { error } = await supabase
-    .from("watchlist")
-    .insert({ user_id: user.id, organization_id })
+    .from("alerts")
+    .insert({
+      user_id: user.id,
+      organization_id,
+      alert_type: "all_signals",
+      is_active: true,
+    })
 
   if (error) {
     if (error.code === "23505") {
-      // Already saved — treat as success
-      return NextResponse.json({ saved: true })
+      return NextResponse.json({ alert: true })
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ saved: true })
+  return NextResponse.json({ alert: true })
 }
 
 export async function DELETE(request: NextRequest) {
@@ -32,16 +36,16 @@ export async function DELETE(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const organization_id = request.nextUrl.searchParams.get("organization_id") || request.nextUrl.searchParams.get("startup_id")
+  const organization_id = request.nextUrl.searchParams.get("organization_id")
   if (!organization_id) return NextResponse.json({ error: "organization_id required" }, { status: 400 })
 
   const { error } = await supabase
-    .from("watchlist")
+    .from("alerts")
     .delete()
     .eq("user_id", user.id)
     .eq("organization_id", organization_id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ saved: false })
+  return NextResponse.json({ alert: false })
 }

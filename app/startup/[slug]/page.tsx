@@ -8,6 +8,7 @@ import type { OrganizationProfile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SaveButton } from "@/components/startup/save-button"
+import { AlertButton } from "@/components/startup/alert-button"
 import { ExportCsvButton } from "@/components/startup/export-csv-button"
 import { BlurredGate, BlurredText } from "@/components/blurred-gate"
 import { AnalyticsPageTrack } from "@/components/analytics-page-track"
@@ -166,14 +167,14 @@ export default async function StartupProfilePage({
 
   // Check watchlist status
   let isBookmarked = false
+  let hasAlert = false
   if (user) {
-    const { data: wl } = await supabase
-      .from("watchlist")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("organization_id", venture.id)
-      .maybeSingle()
+    const [{ data: wl }, { data: al }] = await Promise.all([
+      supabase.from("watchlist").select("id").eq("user_id", user.id).eq("organization_id", venture.id).maybeSingle(),
+      supabase.from("alerts").select("id").eq("user_id", user.id).eq("organization_id", venture.id).maybeSingle(),
+    ])
     isBookmarked = !!wl
+    hasAlert = !!al
   }
 
   // Resolve profile fields from joined organization_profiles
@@ -303,9 +304,11 @@ export default async function StartupProfilePage({
               Share
             </Button>
             {canAlert ? (
-              <Button size="sm" className="text-[13px]">
-                Set Alert
-              </Button>
+              <AlertButton
+                startupId={venture.id}
+                initialAlert={hasAlert}
+                isLoggedIn={!!user}
+              />
             ) : (
               <Button size="sm" className="text-[13px]" asChild>
                 <Link href="/pricing">Set Alert</Link>
