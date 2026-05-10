@@ -78,7 +78,7 @@ export async function AppNav({
           </Link>
           {user && (
             <Link href="/account" className={navLink("account")}>
-              Account
+              My Account
             </Link>
           )}
         </div>

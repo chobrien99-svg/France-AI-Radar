@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WatchlistRemoveButton } from "@/components/account/watchlist-remove-button"
 import { CreateListDialog } from "@/components/account/create-list-dialog"
 import { DeleteListButton } from "@/components/account/delete-list-button"
+import { ProfileEditor } from "@/components/account/profile-editor"
 
 const TIER_LABEL: Record<string, string> = {
   explorer: "Explorer",
@@ -63,7 +64,7 @@ export default async function AccountPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, subscription_tier, subscription_status, subscription_period_end, stripe_customer_id, is_admin"
+      "id, email, full_name, title, company, user_type, subscription_tier, subscription_status, subscription_period_end, stripe_customer_id, is_admin"
     )
     .eq("id", user.id)
     .single()
@@ -105,7 +106,7 @@ export default async function AccountPage() {
 
         {/* Page header */}
         <div className="mb-8">
-          <p className="section-kicker">Account</p>
+          <p className="section-kicker">My Account</p>
           <h1 className="font-serif section-title mt-1">
             {profile.full_name || profile.email}
           </h1>
@@ -127,6 +128,19 @@ export default async function AccountPage() {
           </div>
         )}
 
+        {/* Profile */}
+        <div className="data-card mb-10 p-6">
+          <p className="metric-label mb-4">Profile</p>
+          <ProfileEditor
+            initialValues={{
+              full_name: profile.full_name ?? "",
+              title: (profile as Record<string, unknown>).title as string ?? "",
+              company: (profile as Record<string, unknown>).company as string ?? "",
+              user_type: (profile as Record<string, unknown>).user_type as string ?? "",
+            }}
+          />
+        </div>
+
         {/* Subscription card */}
         <div className="data-card mb-10 p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -147,7 +161,7 @@ export default async function AccountPage() {
               </div>
               {profile.subscription_period_end && (
                 <p className="mt-1.5 text-[13px] text-muted-foreground">
-                  Renews {formatDate(profile.subscription_period_end)}
+                  Next billing date: {formatDate(profile.subscription_period_end)}
                 </p>
               )}
               {canUpgrade && (
@@ -159,9 +173,14 @@ export default async function AccountPage() {
 
             <div className="flex shrink-0 flex-wrap gap-2">
               {canManageBilling && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/api/stripe/portal">Manage Billing</Link>
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/api/stripe/portal">Manage Billing</Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/api/stripe/portal">Invoices & Receipts</Link>
+                  </Button>
+                </>
               )}
               {canUpgrade && (
                 <Button size="sm" asChild>
@@ -194,6 +213,19 @@ export default async function AccountPage() {
               value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
             />
           </div>
+
+          {canManageBilling && (
+            <>
+              <Separator className="my-5" />
+              <p className="text-[12px] text-muted-foreground">
+                To cancel your subscription, change your plan, download invoices, or update payment methods, use{" "}
+                <Link href="/api/stripe/portal" className="font-medium text-primary hover:underline">
+                  Manage Billing
+                </Link>
+                . Changes take effect at the end of your current billing period.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Feature tabs */}
