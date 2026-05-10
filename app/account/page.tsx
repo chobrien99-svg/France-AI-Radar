@@ -141,95 +141,8 @@ export default async function AccountPage() {
           />
         </div>
 
-        {/* Subscription card */}
-        <div className="data-card mb-10 p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="metric-label mb-2">Subscription</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-serif text-[18px] font-bold text-foreground">
-                  {TIER_LABEL[tier] ?? tier} Plan
-                </h2>
-                <span
-                  className={
-                    STATUS_CLASS[profile.subscription_status ?? "inactive"] ??
-                    STATUS_CLASS.inactive
-                  }
-                >
-                  {profile.subscription_status ?? "inactive"}
-                </span>
-              </div>
-              {profile.subscription_period_end && (
-                <p className="mt-1.5 text-[13px] text-muted-foreground">
-                  Next billing date: {formatDate(profile.subscription_period_end)}
-                </p>
-              )}
-              {canUpgrade && (
-                <p className="mt-1.5 text-[13px] text-muted-foreground">
-                  Upgrade to Professional for full database access, investor briefs, saved searches, and more.
-                </p>
-              )}
-            </div>
-
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {canManageBilling && (
-                <>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/api/stripe/portal">Manage Billing</Link>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href="/api/stripe/portal">Invoices & Receipts</Link>
-                  </Button>
-                </>
-              )}
-              {canUpgrade && (
-                <Button size="sm" asChild>
-                  <Link href="/pricing">
-                    {tier === "explorer" ? "Upgrade to Pro →" : "Upgrade Plan →"}
-                  </Link>
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <Separator className="my-5" />
-
-          {/* Feature summary for current tier */}
-          <div className="grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
-            <FeatureStat
-              label="Profile views"
-              value={tier === "explorer" ? "3 / month" : "Unlimited"}
-            />
-            <FeatureStat
-              label="Investor briefs"
-              value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
-            />
-            <FeatureStat
-              label="Advanced filters"
-              value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
-            />
-            <FeatureStat
-              label="Watchlist, lists & alerts"
-              value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
-            />
-          </div>
-
-          {canManageBilling && (
-            <>
-              <Separator className="my-5" />
-              <p className="text-[12px] text-muted-foreground">
-                To cancel your subscription, change your plan, download invoices, or update payment methods, use{" "}
-                <Link href="/api/stripe/portal" className="font-medium text-primary hover:underline">
-                  Manage Billing
-                </Link>
-                . Changes take effect at the end of your current billing period.
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* Feature tabs */}
-        <Tabs defaultValue="watchlist">
+        {/* Feature tabs — above subscription for Pro users */}
+        <Tabs defaultValue="watchlist" className="mb-10">
           <TabsList className="mb-6 w-full justify-start">
             <TabsTrigger value="watchlist">
               Watchlist
@@ -447,22 +360,111 @@ export default async function AccountPage() {
                           All signals · {alert.is_active ? "Active" : "Paused"}
                         </p>
                       </div>
-                      <span className="badge-signal badge-signal-neutral text-[10px]">
-                        Coming soon
-                      </span>
                     </div>
                   )
                 })}
               </div>
             ) : (
               <EmptyState
-                title="Alerts coming soon"
-                description="Get notified when a tracked startup raises funding, makes a key hire, or has new signals."
-                comingSoon
+                title="No alerts set"
+                description="Set alerts on startup profiles to get notified when new signals are detected."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href="/database">Browse Startups →</Link>
+                  </Button>
+                }
               />
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Subscription card */}
+        <div className="data-card mb-10 p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="metric-label mb-2">Subscription</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-serif text-[18px] font-bold text-foreground">
+                  {TIER_LABEL[tier] ?? tier} Plan
+                </h2>
+                <span
+                  className={
+                    STATUS_CLASS[profile.subscription_status ?? "inactive"] ??
+                    STATUS_CLASS.inactive
+                  }
+                >
+                  {profile.subscription_status ?? "inactive"}
+                </span>
+              </div>
+              {profile.subscription_period_end && (
+                <p className="mt-1.5 text-[13px] text-muted-foreground">
+                  Next billing date: {formatDate(profile.subscription_period_end)}
+                </p>
+              )}
+              {canUpgrade && (
+                <p className="mt-1.5 text-[13px] text-muted-foreground">
+                  Upgrade to Professional for full database access, investor briefs, saved searches, and more.
+                </p>
+              )}
+            </div>
+
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {canManageBilling && (
+                <>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/api/stripe/portal">Manage Billing</Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/api/stripe/portal">Invoices & Receipts</Link>
+                  </Button>
+                </>
+              )}
+              {canUpgrade && (
+                <Button size="sm" asChild>
+                  <Link href="/pricing">
+                    {tier === "explorer" ? "Upgrade to Pro →" : "Upgrade Plan →"}
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <Separator className="my-5" />
+
+          {/* Feature summary for current tier */}
+          <div className="grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
+            <FeatureStat
+              label="Profile views"
+              value={tier === "explorer" ? "3 / month" : "Unlimited"}
+            />
+            <FeatureStat
+              label="Investor briefs"
+              value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
+            />
+            <FeatureStat
+              label="Advanced filters"
+              value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
+            />
+            <FeatureStat
+              label="Watchlist, lists & alerts"
+              value={tier === "professional" || tier === "enterprise" ? "Included" : "—"}
+            />
+          </div>
+
+          {canManageBilling && (
+            <>
+              <Separator className="my-5" />
+              <p className="text-[12px] text-muted-foreground">
+                To cancel your subscription, change your plan, download invoices, or update payment methods, use{" "}
+                <Link href="/api/stripe/portal" className="font-medium text-primary hover:underline">
+                  Manage Billing
+                </Link>
+                . Changes take effect at the end of your current billing period.
+              </p>
+            </>
+          )}
+        </div>
+
       </div>
     </>
   )
