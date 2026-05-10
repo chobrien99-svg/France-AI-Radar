@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: user.id,
       organization_id,
-      alert_type: "all_signals",
+      alert_type: "signal",
       is_active: true,
     })
 
