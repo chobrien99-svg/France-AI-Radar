@@ -135,18 +135,14 @@ export default async function DatabasePage({
     query = query.in("city_id", locations)
   }
 
-  // Sector filter — get org IDs in those sectors, then filter
+  // Sector filter — resolve matching org IDs for post-query filter
+  let sectorFilterOrgIds: Set<string> | null = null
   if (sectors.length > 0) {
     const { data: sectorOrgRows } = await svc
       .from("organization_sectors")
       .select("organization_id")
       .in("sector_id", sectors)
-    const sectorOrgIds = (sectorOrgRows ?? []).map((r: { organization_id: string }) => r.organization_id)
-    if (sectorOrgIds.length > 0) {
-      query = query.in("id", sectorOrgIds)
-    } else {
-      query = query.in("id", ["00000000-0000-0000-0000-000000000000"])
-    }
+    sectorFilterOrgIds = new Set((sectorOrgRows ?? []).map((r: { organization_id: string }) => r.organization_id))
   }
 
   // Time filter on last_signal_date
@@ -166,7 +162,12 @@ export default async function DatabasePage({
   }
 
   const { data: allVentures } = await query
-  const ventures = (allVentures ?? []) as Venture[]
+  let ventures = (allVentures ?? []) as Venture[]
+
+  // Apply sector filter client-side (PostgREST .in() conflicts with inner join)
+  if (sectorFilterOrgIds) {
+    ventures = ventures.filter((v) => sectorFilterOrgIds!.has(v.id))
+  }
 
   const total = ventures.length
   const visible = limit !== null ? ventures.slice(0, limit) : ventures
