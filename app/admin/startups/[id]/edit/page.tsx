@@ -118,7 +118,7 @@ export default async function EditStartupPage({
     city: (startup.cities as { name: string } | null)?.name ?? "",
     country: startup.country ?? "France",
     founded_date: startup.founded_date ?? "",
-    first_seen_at: startup.first_seen_at ?? "",
+    first_seen_at: startup.first_seen_at ? startup.first_seen_at.slice(0, 10) : "",
     status: startup.status ?? "active",
     website: startup.website ?? "",
     linkedin_url: startup.linkedin_url ?? "",
