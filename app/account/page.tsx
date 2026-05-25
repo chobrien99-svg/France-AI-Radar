@@ -9,6 +9,7 @@ import { WatchlistRemoveButton } from "@/components/account/watchlist-remove-but
 import { CreateListDialog } from "@/components/account/create-list-dialog"
 import { DeleteListButton } from "@/components/account/delete-list-button"
 import { ProfileEditor } from "@/components/account/profile-editor"
+import { WatchlistView } from "@/components/account/watchlist-view"
 
 const TIER_LABEL: Record<string, string> = {
   explorer: "Explorer",
@@ -83,7 +84,7 @@ export default async function AccountPage() {
 
   const { data: watchlistItems } = await supabase
     .from("watchlist")
-    .select("id, created_at, organizations(id, name, slug)")
+    .select("id, created_at, organizations(id, name, slug, signal_count, last_signal_date, cities(name), organization_tags(tag, strength))")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
@@ -184,32 +185,31 @@ export default async function AccountPage() {
                 }
               />
             ) : watchlistItems && watchlistItems.length > 0 ? (
-              <div className="space-y-2">
-                {watchlistItems.map((item) => {
-                  const s = item.organizations as unknown as {
-                    id: string
-                    name: string
-                    slug: string
+              <WatchlistView
+                items={watchlistItems.map((item) => {
+                  const o = item.organizations as unknown as {
+                    id: string; name: string; slug: string;
+                    signal_count: number | null; last_signal_date: string | null;
+                    cities: { name: string } | { name: string }[] | null;
+                    organization_tags: { tag: string; strength: number }[] | null;
                   } | null
-                  if (!s) return null
-                  return (
-                    <div
-                      key={item.id}
-                      className="data-card flex items-center justify-between gap-4 p-4"
-                    >
-                      <div>
-                        <p className="text-[14px] font-semibold text-foreground">{s.name}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <WatchlistRemoveButton startupId={s.id} />
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/startup/${s.slug}`}>View →</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                  const city = o?.cities ? (Array.isArray(o.cities) ? o.cities[0]?.name : o.cities.name) : null
+                  const tags = (o?.organization_tags ?? []).map((t) => t.tag)
+                  return {
+                    id: item.id,
+                    created_at: item.created_at,
+                    org: {
+                      id: o?.id ?? "",
+                      name: o?.name ?? "",
+                      slug: o?.slug ?? "",
+                      signal_count: o?.signal_count ?? null,
+                      last_signal_date: o?.last_signal_date ?? null,
+                      city,
+                      tags,
+                    },
+                  }
+                }).filter((i) => i.org.id)}
+              />
             ) : (
               <EmptyState
                 title="Your watchlist is empty"
@@ -220,7 +220,7 @@ export default async function AccountPage() {
                   </Button>
                 }
               />
-            )}
+            )
           </TabsContent>
 
           {/* ── Saved Searches ── */}
