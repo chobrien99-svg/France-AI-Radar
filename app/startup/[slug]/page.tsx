@@ -166,6 +166,29 @@ export default async function StartupProfilePage({
     .eq("organization_id", venture.id)
     .eq("is_founder", true)
 
+  // Fetch programs
+  const { data: programsRaw } = await supabase
+    .from("program_organizations")
+    .select("id, membership_role, notes, program_editions(name, cohort_label, year, programs(name, program_type))")
+    .eq("organization_id", venture.id)
+
+  const programs = (programsRaw ?? []).map((row: Record<string, unknown>) => {
+    const ed = Array.isArray(row.program_editions)
+      ? (row.program_editions as Record<string, unknown>[])[0]
+      : (row.program_editions as Record<string, unknown> | null)
+    const prog = ed
+      ? (Array.isArray(ed.programs) ? (ed.programs as Record<string, unknown>[])[0] : ed.programs as Record<string, unknown> | null)
+      : null
+    return {
+      id: row.id as string,
+      program_name: (prog?.name as string) ?? "Unknown",
+      program_type: (prog?.program_type as string) ?? "other",
+      edition_label: (ed?.cohort_label as string) ?? (ed?.name as string) ?? null,
+      year: (ed?.year as number) ?? null,
+      membership_role: row.membership_role as string | null,
+    }
+  })
+
   // Check watchlist status
   let isBookmarked = false
   let hasAlert = false
@@ -349,6 +372,7 @@ export default async function StartupProfilePage({
             venture={venture}
             signals={signals}
             founders={founders}
+            programs={programs}
             profileData={profileData}
             blurPremium
           />
@@ -360,6 +384,7 @@ export default async function StartupProfilePage({
             venture={venture}
             signals={signals}
             founders={founders}
+            programs={programs}
             profileData={profileData}
           />
         )}
@@ -439,16 +464,39 @@ type FounderLocal = {
   has_big_tech_background: boolean
 }
 
+type ProgramLink = {
+  id: string
+  program_name: string
+  program_type: string
+  edition_label: string | null
+  year: number | null
+  membership_role: string | null
+}
+
+const PROGRAM_TYPE_LABELS: Record<string, string> = {
+  accelerator: "Accelerator",
+  incubator: "Incubator",
+  france_2030: "France 2030",
+  competition: "Competition",
+  grant_program: "Grant Program",
+  government: "Government",
+  university: "University",
+  corporate: "Corporate",
+  other: "Program",
+}
+
 function PremiumContent({
   venture,
   signals,
   founders,
+  programs,
   profileData,
   blurPremium = false,
 }: {
   venture: Venture
   signals: Signal[]
   founders: FounderLocal[]
+  programs: ProgramLink[]
   profileData: OrganizationProfile | null
   blurPremium?: boolean
 }) {
@@ -586,6 +634,29 @@ function PremiumContent({
                   )}
                 </div>
 
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Programs & Affiliations */}
+      {programs.length > 0 && (
+        <section>
+          <SectionHeader label="Programs & Affiliations" />
+          <div className="mt-4 space-y-2">
+            {programs.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-3 border-l-2 border-l-border bg-accent p-3">
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground">
+                    <BlurredText blur={blurPremium}>{p.program_name}</BlurredText>
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    <BlurredText blur={blurPremium}>
+                      {[PROGRAM_TYPE_LABELS[p.program_type] ?? p.program_type, p.edition_label, p.year, p.membership_role].filter(Boolean).join(" · ")}
+                    </BlurredText>
+                  </p>
+                </div>
               </div>
             ))}
           </div>
