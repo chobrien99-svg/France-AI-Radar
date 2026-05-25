@@ -34,6 +34,38 @@ export async function POST(
   return NextResponse.json(data, { status: 201 })
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const admin = await getAdminUser()
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
+  const body = await request.json()
+  const signalId = body.signal_id
+  if (!signalId) return NextResponse.json({ error: "signal_id required" }, { status: 400 })
+
+  const supabase = await createServiceClient()
+
+  const { data, error } = await supabase
+    .from("signals")
+    .update({
+      signal_type: body.signal_type,
+      signal_date: body.signal_date || null,
+      strength: body.strength ? Number(body.strength) : null,
+      title: body.title,
+      description: body.description || null,
+      source_url: body.source_url || null,
+      source_name: body.source_name || null,
+    })
+    .eq("id", signalId)
+    .select("id")
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

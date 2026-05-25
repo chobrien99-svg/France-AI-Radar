@@ -113,6 +113,63 @@ export function LinkedSignals({ organizationId, signals: initial }: Props) {
     router.refresh()
   }
 
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({
+    signal_type: "",
+    signal_date: "",
+    strength: "",
+    title: "",
+    description: "",
+    source_url: "",
+    source_name: "",
+  })
+
+  function startEdit(s: Signal) {
+    setEditingId(s.id)
+    setEditForm({
+      signal_type: s.signal_type,
+      signal_date: s.signal_date?.slice(0, 10) ?? "",
+      strength: s.strength ? String(s.strength) : "3",
+      title: s.title,
+      description: s.description ?? "",
+      source_url: s.source_url ?? "",
+      source_name: s.source_name ?? "",
+    })
+  }
+
+  async function saveEdit() {
+    if (!editingId || !editForm.title.trim()) return
+    setLoading(true)
+    setError(null)
+
+    const res = await fetch(`/api/admin/startups/${organizationId}/signals`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ signal_id: editingId, ...editForm }),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      setError(body.error ?? "Failed to update signal.")
+      setLoading(false)
+      return
+    }
+
+    setSignals((prev) => prev.map((s) => s.id === editingId ? {
+      ...s,
+      signal_type: editForm.signal_type,
+      signal_date: editForm.signal_date || null,
+      strength: editForm.strength ? Number(editForm.strength) : null,
+      title: editForm.title,
+      description: editForm.description || null,
+      source_url: editForm.source_url || null,
+      source_name: editForm.source_name || null,
+    } : s))
+    setEditingId(null)
+    setLoading(false)
+    router.refresh()
+  }
+
   async function removeSignal(signalId: string) {
     setLoading(true)
     await fetch(`/api/admin/startups/${organizationId}/signals?signal_id=${signalId}`, { method: "DELETE" })
@@ -128,14 +185,40 @@ export function LinkedSignals({ organizationId, signals: initial }: Props) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           Key Signals
         </p>
-        <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(!showForm)}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null) }}>
           {showForm ? "Cancel" : "+ Add Signal"}
         </Button>
       </div>
 
       {signals.length > 0 ? (
         <div className="mb-4 space-y-2">
-          {signals.map((s) => (
+          {signals.map((s) => editingId === s.id ? (
+            <div key={s.id} className="space-y-3 border-l-2 border-l-primary bg-accent p-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Select className="text-[13px]" value={editForm.signal_type} onChange={(e) => setEditForm((p) => ({ ...p, signal_type: e.target.value }))}>
+                  {SIGNAL_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </Select>
+                <Input type="date" className="text-[13px]" value={editForm.signal_date} onChange={(e) => setEditForm((p) => ({ ...p, signal_date: e.target.value }))} />
+                <Select className="text-[13px]" value={editForm.strength} onChange={(e) => setEditForm((p) => ({ ...p, strength: e.target.value }))}>
+                  {STRENGTH_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </Select>
+              </div>
+              <Input className="text-[13px]" placeholder="Signal title *" value={editForm.title} onChange={(e) => setEditForm((p) => ({ ...p, title: e.target.value }))} />
+              <Textarea className="min-h-[60px] text-[13px]" placeholder="Description" value={editForm.description} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input className="text-[13px]" placeholder="Source name" value={editForm.source_name} onChange={(e) => setEditForm((p) => ({ ...p, source_name: e.target.value }))} />
+                <Input className="text-[13px]" placeholder="Source URL" value={editForm.source_url} onChange={(e) => setEditForm((p) => ({ ...p, source_url: e.target.value }))} />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
+                <Button type="button" size="sm" onClick={saveEdit} disabled={!editForm.title.trim() || loading}>Save</Button>
+              </div>
+            </div>
+          ) : (
             <div key={s.id} className="flex items-start justify-between gap-3 border-l-2 border-l-border bg-card p-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -160,14 +243,24 @@ export function LinkedSignals({ organizationId, signals: initial }: Props) {
                   </p>
                 )}
               </div>
-              <Button
-                variant="ghost" size="sm"
-                className="shrink-0 text-[12px] text-muted-foreground hover:text-destructive"
-                onClick={() => removeSignal(s.id)}
-                disabled={loading}
-              >
-                Remove
-              </Button>
+              <div className="flex shrink-0 gap-1">
+                <Button
+                  variant="ghost" size="sm"
+                  className="text-[12px] text-muted-foreground hover:text-foreground"
+                  onClick={() => startEdit(s)}
+                  disabled={loading}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost" size="sm"
+                  className="text-[12px] text-muted-foreground hover:text-destructive"
+                  onClick={() => removeSignal(s.id)}
+                  disabled={loading}
+                >
+                  Remove
+                </Button>
+              </div>
             </div>
           ))}
         </div>
