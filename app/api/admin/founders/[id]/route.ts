@@ -22,6 +22,7 @@ export async function PATCH(
       first_name: body.first_name || null,
       last_name: body.last_name || null,
       slug: body.slug,
+      short_bio: body.short_bio || null,
       bio: body.bio || null,
       email: body.email || null,
       linkedin_url: body.linkedin_url || null,

@@ -191,6 +191,7 @@ export default async function StartupProfilePage({
       full_name: p.full_name as string,
       slug: (p.slug as string | null) ?? null,
       role: (row.role as string | null) ?? null,
+      short_bio: (p.short_bio as string | null) ?? null,
       bio: (p.bio as string | null) ?? null,
       linkedin_url: (p.linkedin_url as string | null) ?? null,
       previous_exits: (p.previous_exits as number) ?? 0,
@@ -205,6 +206,7 @@ export default async function StartupProfilePage({
     full_name: string
     slug: string | null
     role: string | null
+    short_bio: string | null
     bio: string | null
     linkedin_url: string | null
     previous_exits: number
@@ -426,6 +428,7 @@ type FounderLocal = {
   full_name: string
   slug: string | null
   role: string | null
+  short_bio: string | null
   bio: string | null
   linkedin_url: string | null
   previous_exits: number
@@ -552,6 +555,12 @@ function PremiumContent({
                     </a>
                   )}
                 </div>
+
+                {founder.short_bio && (
+                  <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
+                    <BlurredText blur={blurPremium}>{founder.short_bio}</BlurredText>
+                  </p>
+                )}
 
                 {/* Pedigree summary */}
                 <div className="mt-3 space-y-1.5">

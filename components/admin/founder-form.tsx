@@ -13,6 +13,7 @@ export type FounderFormValues = {
   last_name: string
   slug: string
   role: string
+  short_bio: string
   bio: string
   email: string
   linkedin_url: string
@@ -32,7 +33,7 @@ export type FounderFormValues = {
 
 const DEFAULTS: FounderFormValues = {
   full_name: "", first_name: "", last_name: "",
-  slug: "", role: "", bio: "",
+  slug: "", role: "", short_bio: "", bio: "",
   email: "", linkedin_url: "", twitter_url: "", photo_url: "",
   google_scholar_url: "", github_url: "", personal_website_url: "", notable_publications: "",
   big_tech_employer: "", academic_lab: "",
@@ -211,8 +212,11 @@ export function FounderForm({ initialValues, founderId, linkToOrganizationId }: 
       </Field>
 
       <SectionTitle>Biography</SectionTitle>
-      <Field label="Bio">
-        <Textarea className="min-h-[100px] text-[13px]" value={form.bio} onChange={(e) => set("bio", e.target.value)} placeholder="Public biography shown on the founder profile page…" />
+      <Field label="Short bio (one line — shown on startup cards)">
+        <Input className={inputClass} value={form.short_bio} onChange={(e) => set("short_bio", e.target.value)} placeholder="e.g. Ex-Google AI researcher, 2x founder, PhD in computer vision" />
+      </Field>
+      <Field label="Full bio (shown on founder profile page)">
+        <Textarea className="min-h-[100px] text-[13px]" value={form.bio} onChange={(e) => set("bio", e.target.value)} placeholder="Detailed biography…" />
       </Field>
 
       {/* -- Academic & Research -- */}

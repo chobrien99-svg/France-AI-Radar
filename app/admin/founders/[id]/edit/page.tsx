@@ -29,6 +29,7 @@ export default async function EditFounderPage({
     last_name: founder.last_name ?? "",
     slug: founder.slug ?? "",
     role: founder.role ?? "",
+    short_bio: founder.short_bio ?? "",
     bio: founder.bio ?? "",
     email: founder.email ?? "",
     linkedin_url: founder.linkedin_url ?? "",
