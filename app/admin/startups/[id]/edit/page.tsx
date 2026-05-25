@@ -6,6 +6,7 @@ import { StartupForm, type StartupFormValues, type TagRow } from "@/components/a
 import { Button } from "@/components/ui/button"
 import { DeleteStartupButton } from "@/components/admin/delete-startup-button"
 import { LinkedFounders } from "@/components/admin/linked-founders"
+import { LinkedSignals } from "@/components/admin/linked-signals"
 import { LinkedGrants } from "@/components/admin/linked-grants"
 import { LinkedFundingRounds } from "@/components/admin/linked-funding-rounds"
 import { LinkedPrograms } from "@/components/admin/linked-programs"
@@ -26,6 +27,7 @@ export default async function EditStartupPage({
     { data: linkedRaw },
     { data: allFoundersRaw },
     { data: grantsRaw },
+    { data: signalsRaw },
     { data: fundingRoundsRaw },
     { data: programLinksRaw },
     { data: legalEntitiesRaw },
@@ -36,6 +38,7 @@ export default async function EditStartupPage({
     supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
     supabase.from("people").select("id, full_name, slug, role").order("full_name"),
     supabase.from("grants").select("*").eq("organization_id", id).order("awarded_date", { ascending: false }),
+    supabase.from("signals").select("*").eq("organization_id", id).order("signal_date", { ascending: false }),
     supabase.from("funding_rounds").select("*").eq("organization_id", id).order("announced_date", { ascending: false }),
     supabase.from("program_organizations").select("id, membership_role, program_editions(name, cohort_label, year, programs(name, program_type))").eq("organization_id", id),
     supabase.from("legal_entities").select("*").eq("organization_id", id),
@@ -62,6 +65,12 @@ export default async function EditStartupPage({
     id: string; grant_name: string; granting_body: string | null;
     amount_eur: number | null; awarded_date: string | null;
     program: string | null; description: string | null; source_url: string | null
+  }>
+
+  const signals = (signalsRaw ?? []) as Array<{
+    id: string; signal_type: string; signal_date: string | null;
+    strength: number | null; title: string; description: string | null;
+    source_url: string | null; source_name: string | null
   }>
 
   const fundingRounds = (fundingRoundsRaw ?? []) as Array<{
@@ -177,6 +186,11 @@ export default async function EditStartupPage({
         organizationId={id}
         linkedPeople={linkedFounders}
         allPeople={allFounders}
+      />
+
+      <LinkedSignals
+        organizationId={id}
+        signals={signals}
       />
 
       <LinkedGrants
