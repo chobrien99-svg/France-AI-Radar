@@ -125,7 +125,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="mx-auto mb-8 max-w-[560px] text-[17px] leading-[1.65] text-muted-foreground">
-            We surface AI startups across France at their earliest signal—at incorporation, in stealth, or at their first public trace. Structured intelligence built from administrative filings, founder activity, and ecosystem signals, designed for VCs, corporate strategists, and LPs.
+            We detect AI startups across France at their earliest signal - when they are incorporated, still in stealth, or just beginning to leave a public trace. Structured intelligence built from administrative filings, founder activity, and ecosystem signals, designed for VCs, corporate strategists, and LPs.
           </p>
 
           <div className="flex items-center justify-center gap-3">
@@ -226,7 +226,7 @@ export default function LandingPage() {
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div>
                       <div className="font-serif text-[15px] font-bold tracking-tight text-foreground">
-                        {card.name}
+                        Stealth Startup
                       </div>
                       <div className="mt-0.5 text-[12px] text-muted-foreground">
                         {card.meta}
