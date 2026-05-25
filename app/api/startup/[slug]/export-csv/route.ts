@@ -186,9 +186,21 @@ export async function GET(
 
   // === FOUNDERS / TEAM ===
   const people = (peopleData ?? []).map((row: Record<string, unknown>) => {
-    const p = Array.isArray(row.people) ? row.people[0] : row.people
-    return { role: row.role as string | null, is_founder: row.is_founder as boolean, ...(p as Record<string, unknown>) }
-  }).filter((p: Record<string, unknown>) => p.full_name)
+    const p = (Array.isArray(row.people) ? row.people[0] : row.people) as Record<string, unknown> | null
+    return {
+      full_name: (p?.full_name as string) ?? "",
+      role: (row.role as string) ?? "",
+      is_founder: !!row.is_founder,
+      linkedin_url: (p?.linkedin_url as string) ?? "",
+      email: (p?.email as string) ?? "",
+      short_bio: (p?.short_bio as string) ?? "",
+      big_tech_employer: (p?.big_tech_employer as string) ?? "",
+      academic_lab: (p?.academic_lab as string) ?? "",
+      has_phd: !!p?.has_phd,
+      is_repeat_founder: !!p?.is_repeat_founder,
+      previous_exits: (p?.previous_exits as number) ?? 0,
+    }
+  }).filter((p) => p.full_name)
 
   if (people.length > 0) {
     lines.push("")
