@@ -164,7 +164,7 @@ export async function GET(
     lines.push("=== INVESTOR BRIEF & ANALYSIS ===")
     lines.push("")
     const profileHeaders = ["Field", "Value"]
-    const profileRows: [string, string][] = [
+    const profileRows = [
       ["Investor Brief", profileData.investor_brief ?? ""],
       ["Analyst Note", profileData.analyst_note ?? ""],
       ["Product Description", profileData.product_description ?? ""],
@@ -176,7 +176,7 @@ export async function GET(
       ["Fundraising Signal Summary", profileData.fundraising_signal_summary ?? ""],
       ["Est. Next Raise", profileData.est_next_raise ?? ""],
       ["Entity Complexity", profileData.entity_complexity ?? ""],
-    ].filter(([, v]) => v)
+    ].filter((row): row is [string, string] => !!row[1])
 
     lines.push(profileHeaders.map(csvEscape).join(","))
     for (const [field, value] of profileRows) {
