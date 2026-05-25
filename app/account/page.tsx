@@ -220,7 +220,7 @@ export default async function AccountPage() {
                   </Button>
                 }
               />
-            )
+            )}
           </TabsContent>
 
           {/* ── Saved Searches ── */}
