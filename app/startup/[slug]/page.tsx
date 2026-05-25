@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { SaveButton } from "@/components/startup/save-button"
 import { AlertButton } from "@/components/startup/alert-button"
 import { AddToListButton } from "@/components/startup/add-to-list-button"
+import { ShareButton } from "@/components/startup/share-button"
 import { ExportCsvButton } from "@/components/startup/export-csv-button"
 import { BlurredGate, BlurredText } from "@/components/blurred-gate"
 import { AnalyticsPageTrack } from "@/components/analytics-page-track"
@@ -330,9 +331,7 @@ export default async function StartupProfilePage({
                 />
               </>
             )}
-            <Button variant="outline" size="sm" className="text-[13px]">
-              Share
-            </Button>
+            <ShareButton slug={venture.slug} name={venture.name} />
             {canAlert ? (
               <AlertButton
                 startupId={venture.id}
@@ -361,9 +360,17 @@ export default async function StartupProfilePage({
           <UpgradeGate tier={tier} viewsUsed={profileViewsUsed} viewLimit={viewLimit} />
         )}
 
-        {/* Free tier — full upgrade gate */}
+        {/* Unauthenticated / no subscription — show blurred teaser */}
         {!canFull && (
-          <UpgradeGate tier={tier} />
+          <PremiumContent
+            venture={venture}
+            signals={signals}
+            founders={founders}
+            programs={programs}
+            profileData={profileData}
+            blurPremium
+            isAuthenticated={!!user}
+          />
         )}
 
         {/* Explorer with views remaining — show content with blurred premium fields */}
@@ -492,6 +499,7 @@ function PremiumContent({
   programs,
   profileData,
   blurPremium = false,
+  isAuthenticated = true,
 }: {
   venture: Venture
   signals: Signal[]
@@ -499,6 +507,7 @@ function PremiumContent({
   programs: ProgramLink[]
   profileData: OrganizationProfile | null
   blurPremium?: boolean
+  isAuthenticated?: boolean
 }) {
   const hasContact =
     venture.website || venture.linkedin_url || venture.email || venture.phone
@@ -855,18 +864,39 @@ function PremiumContent({
         </section>
       )}
 
-      {/* Upgrade banner for Explorer */}
+      {/* CTA banner */}
       {blurPremium && (
         <div className="mt-6 border-l-2 border-l-primary bg-card px-6 py-5 text-center">
-          <p className="mb-1 font-serif text-[14px] font-semibold text-foreground">
-            Unlock the full intelligence brief
-          </p>
-          <p className="mb-3 text-[13px] text-muted-foreground">
-            Upgrade to Professional for unblurred investor briefs, signal timelines, founder analysis, and contact details.
-          </p>
-          <Button size="sm" asChild>
-            <Link href="/pricing">Upgrade to Professional</Link>
-          </Button>
+          {isAuthenticated ? (
+            <>
+              <p className="mb-1 font-serif text-[14px] font-semibold text-foreground">
+                Unlock the full intelligence brief
+              </p>
+              <p className="mb-3 text-[13px] text-muted-foreground">
+                Upgrade to Professional for unblurred investor briefs, signal timelines, founder analysis, and contact details.
+              </p>
+              <Button size="sm" asChild>
+                <Link href="/pricing">Upgrade to Professional</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="mb-1 font-serif text-[14px] font-semibold text-foreground">
+                Get the full picture on this startup
+              </p>
+              <p className="mb-3 text-[13px] text-muted-foreground">
+                Sign up for AI Radar to access investor briefs, signal timelines, founder intelligence, funding data, and more across the French AI ecosystem.
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <Button size="sm" asChild>
+                  <Link href="/pricing">View Plans</Link>
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/auth/signup">Create Account</Link>
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
