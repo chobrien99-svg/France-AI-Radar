@@ -9,16 +9,21 @@ import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 
 const SIGNAL_TYPE_OPTIONS = [
+  { value: "fundraising", label: "Fundraising" },
   { value: "hiring_surge", label: "Hiring Surge" },
+  { value: "key_hire", label: "Key Hire" },
+  { value: "restructuring", label: "Restructuring" },
+  { value: "incorporation", label: "Incorporation" },
   { value: "new_product", label: "New Product" },
   { value: "pivot", label: "Pivot" },
   { value: "expansion", label: "Expansion" },
   { value: "partnership", label: "Partnership" },
+  { value: "founder_departure", label: "Founder Departure" },
+  { value: "talent_move", label: "Talent Move" },
+  { value: "patent_filing", label: "Patent Filing" },
   { value: "award", label: "Award" },
   { value: "media_mention", label: "Media Mention" },
   { value: "regulatory", label: "Regulatory" },
-  { value: "talent_move", label: "Talent Move" },
-  { value: "patent_filing", label: "Patent Filing" },
   { value: "open_source", label: "Open Source" },
   { value: "conference", label: "Conference" },
   { value: "other", label: "Other" },

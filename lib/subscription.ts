@@ -100,16 +100,21 @@ export const STAGE_LABELS: Record<string, string> = {
 }
 
 export const SIGNAL_TYPE_LABELS: Record<string, string> = {
+  fundraising: "Fundraising",
   hiring_surge: "Hiring Surge",
+  key_hire: "Key Hire",
+  restructuring: "Restructuring",
+  incorporation: "Incorporation",
   new_product: "New Product",
   pivot: "Pivot",
   expansion: "Expansion",
   partnership: "Partnership",
+  founder_departure: "Founder Departure",
+  talent_move: "Talent Move",
+  patent_filing: "Patent Filing",
   award: "Award",
   media_mention: "Media Mention",
   regulatory: "Regulatory",
-  talent_move: "Talent Move",
-  patent_filing: "Patent Filing",
   open_source: "Open Source",
   conference: "Conference",
   other: "Other",
