@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Events } from "@/lib/analytics"
+import { trackEvent } from "@/lib/analytics"
 
 interface Props {
   slug: string
@@ -23,7 +23,7 @@ export function ShareButton({ slug, name }: Props) {
           text: `Check out ${name} on France AI Radar`,
           url,
         })
-        Events.trackEvent("share_completed", { slug, method: "native" })
+        trackEvent("share_completed", { slug, method: "native" })
         return
       } catch {
         // User cancelled or not supported — fall through to clipboard
@@ -34,7 +34,7 @@ export function ShareButton({ slug, name }: Props) {
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
-      Events.trackEvent("share_completed", { slug, method: "clipboard" })
+      trackEvent("share_completed", { slug, method: "clipboard" })
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // Last resort: prompt
