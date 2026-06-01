@@ -1,8 +1,32 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminUser } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 export const runtime = "nodejs"
+
+async function updateSignalCount(supabase: SupabaseClient, organizationId: string) {
+  const { count } = await supabase
+    .from("signals")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", organizationId)
+
+  const { data: latestSignal } = await supabase
+    .from("signals")
+    .select("signal_date")
+    .eq("organization_id", organizationId)
+    .order("signal_date", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  await supabase
+    .from("organizations")
+    .update({
+      signal_count: count ?? 0,
+      last_signal_date: latestSignal?.signal_date ?? null,
+    })
+    .eq("id", organizationId)
+}
 
 export async function POST(
   request: NextRequest,
@@ -31,6 +55,8 @@ export async function POST(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await updateSignalCount(supabase, organization_id)
   return NextResponse.json(data, { status: 201 })
 }
 
@@ -77,8 +103,10 @@ export async function DELETE(
   if (!signalId) return NextResponse.json({ error: "signal_id required" }, { status: 400 })
 
   const supabase = await createServiceClient()
+  const { id: organization_id } = await params
   const { error } = await supabase.from("signals").delete().eq("id", signalId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  await updateSignalCount(supabase, organization_id)
   return NextResponse.json({ deleted: true })
 }

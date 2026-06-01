@@ -121,7 +121,7 @@ export default async function DatabasePage({
   let query = supabase
     .from("organizations")
     .select(
-      "*, cities(id, name), organization_tags(id, tag, strength), organization_people(people(id, full_name, slug, big_tech_employer, has_phd, is_repeat_founder, has_big_tech_background)), product_organizations!inner(product_catalog!inner(slug))"
+      "*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(investor_brief), organization_sectors(sectors(name)), product_organizations!inner(product_catalog!inner(slug))"
     )
     .eq("product_organizations.product_catalog.slug", "ai-radar")
     .eq("status", "active")
@@ -224,35 +224,21 @@ export default async function DatabasePage({
           >
             {visible.map((startup) => {
               const raw = startup as Venture & {
-                organization_people?: Array<{
-                  people: {
-                    id: string
-                    full_name: string
-                    slug: string | null
-                    big_tech_employer: string | null
-                    has_phd: boolean
-                    is_repeat_founder: boolean
-                    has_big_tech_background: boolean
-                  } | null
+                organization_sectors?: Array<{
+                  sectors: { name: string } | { name: string }[] | null
                 }>
               }
-              const founders = (raw.organization_people ?? [])
-                .map((op) => op.people)
-                .filter(Boolean) as Array<{
-                  id: string
-                  full_name: string
-                  slug: string | null
-                  big_tech_employer: string | null
-                  has_phd: boolean
-                  is_repeat_founder: boolean
-                  has_big_tech_background: boolean
-                }>
+              const sectors = (raw.organization_sectors ?? [])
+                .map((os) => {
+                  const s = Array.isArray(os.sectors) ? os.sectors[0] : os.sectors
+                  return s?.name ?? null
+                })
+                .filter(Boolean) as string[]
               return (
                 <StartupCard
                   key={startup.id}
                   venture={startup}
-                  founders={founders}
-                  showContact={tier === "professional" || tier === "enterprise"}
+                  sectors={sectors}
                 />
               )
             })}

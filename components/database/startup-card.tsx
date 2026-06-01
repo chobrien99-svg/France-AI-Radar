@@ -1,16 +1,6 @@
 import Link from "next/link"
 import { type Venture, tagStrengthLabel } from "@/lib/types"
 
-type FounderSummary = {
-  id: string
-  full_name: string
-  slug: string | null
-  big_tech_employer: string | null
-  has_phd: boolean
-  is_repeat_founder: boolean
-  has_big_tech_background: boolean
-}
-
 const BADGE_CLASS: Record<string, string> = {
   positive: "badge-signal badge-signal-positive",
   warning: "badge-signal badge-signal-warning",
@@ -37,7 +27,6 @@ function takeaway(venture: Venture): string | null {
     ? venture.organization_profiles[0]
     : venture.organization_profiles
   if (!profile?.investor_brief) return null
-  // First sentence, max 120 chars
   const first = profile.investor_brief.split(/\.\s+/)[0]
   if (first.length <= 120) return first + "."
   return first.slice(0, 117) + "…"
@@ -68,12 +57,10 @@ function firstSeenLabel(date: string | null): string {
 
 export function StartupCard({
   venture,
-  founders = [],
-  showContact = false,
+  sectors = [],
 }: {
   venture: Venture
-  founders?: FounderSummary[]
-  showContact?: boolean
+  sectors?: string[]
 }) {
   const dotStrength = signalDotStrength(venture.organization_tags)
   const hint = takeaway(venture)
@@ -94,6 +81,20 @@ export function StartupCard({
             </p>
           </div>
         </div>
+
+        {/* Sectors */}
+        {sectors.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {sectors.map((sector) => (
+              <span
+                key={sector}
+                className="badge-signal badge-signal-neutral"
+              >
+                {sector}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Tags */}
         {venture.organization_tags.length > 0 && (
@@ -122,59 +123,6 @@ export function StartupCard({
           <p className="font-serif text-[13px] italic leading-snug text-muted-foreground line-clamp-2">
             {hint}
           </p>
-        )}
-
-        {/* Founder summary */}
-        {founders.length > 0 && (
-          <div className="mt-3 border-t border-border/40 pt-3">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Founders
-            </p>
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
-              {founders.map((f) => {
-                const badges: string[] = []
-                if (f.big_tech_employer) badges.push(f.big_tech_employer)
-                else if (f.has_big_tech_background) badges.push("Big Tech")
-                if (f.has_phd) badges.push("PhD")
-                if (f.is_repeat_founder) badges.push("Repeat")
-
-                return (
-                  <span key={f.id} className="text-[12px] text-foreground">
-                    {f.full_name}
-                    {badges.length > 0 && (
-                      <span className="ml-1 text-muted-foreground">
-                        ({badges.join(", ")})
-                      </span>
-                    )}
-                  </span>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Contact row — Professional+ only */}
-        {showContact && (venture.website || venture.email || venture.phone) && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 pt-3 text-[12px] text-muted-foreground">
-            {venture.website && (
-              <span className="flex items-center gap-1">
-                <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5C8 1.5 5.5 4.5 5.5 8s2.5 6.5 2.5 6.5M8 1.5C8 1.5 10.5 4.5 10.5 8S8 14.5 8 14.5M1.5 8h13"/></svg>
-                <span className="truncate max-w-[160px]">{venture.website.replace(/^https?:\/\//, "")}</span>
-              </span>
-            )}
-            {venture.email && (
-              <span className="flex items-center gap-1">
-                <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="1.5" y="3.5" width="13" height="9" rx="1"/><path d="m1.5 4 6.5 5 6.5-5"/></svg>
-                <span className="truncate max-w-[200px]">{venture.email}</span>
-              </span>
-            )}
-            {venture.phone && (
-              <span className="flex items-center gap-1">
-                <svg className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M5.5 2h-.25A2.25 2.25 0 0 0 3 4.25v7.5A2.25 2.25 0 0 0 5.25 14h5.5A2.25 2.25 0 0 0 13 11.75v-7.5A2.25 2.25 0 0 0 10.75 2H10.5"/></svg>
-                <span>{venture.phone}</span>
-              </span>
-            )}
-          </div>
         )}
 
         {/* Signal footer */}
