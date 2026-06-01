@@ -145,11 +145,11 @@ export default async function DatabasePage({
     sectorFilterOrgIds = new Set((sectorOrgRows ?? []).map((r: { organization_id: string }) => r.organization_id))
   }
 
-  // Time filter on last_signal_date
+  // Time filter on first_seen_at (when the startup was added)
   const latestTime = times[times.length - 1]
   if (latestTime && latestTime !== "all") {
     const cutoff = cutoffDate(latestTime)
-    if (cutoff) query = query.gte("last_signal_date", cutoff)
+    if (cutoff) query = query.gte("first_seen_at", cutoff)
   }
 
   // Sort
@@ -158,7 +158,7 @@ export default async function DatabasePage({
   } else if (sort === "funding") {
     query = query.order("total_raised_eur", { ascending: false, nullsFirst: false })
   } else {
-    query = query.order("last_signal_date", { ascending: false, nullsFirst: false })
+    query = query.order("first_seen_at", { ascending: false, nullsFirst: false })
   }
 
   const { data: allVentures } = await query
