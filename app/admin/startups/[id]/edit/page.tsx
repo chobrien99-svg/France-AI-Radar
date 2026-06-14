@@ -34,7 +34,7 @@ export default async function EditStartupPage({
     { data: sectorLinksRaw },
     { data: allSectorsRaw },
   ] = await Promise.all([
-    supabase.from("organizations").select("*, cities(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
+    supabase.from("organizations").select("*, cities!organizations_city_id_fkey(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
     supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
     supabase.from("people").select("id, full_name, slug, role").order("full_name"),
     supabase.from("grants").select("*").eq("organization_id", id).order("awarded_date", { ascending: false }),

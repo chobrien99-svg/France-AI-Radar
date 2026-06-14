@@ -104,7 +104,7 @@ export default async function StartupProfilePage({
   const svcForRead = await createServiceClient()
   let ventureQuery = svcForRead
     .from("organizations")
-    .select("*, cities(id, name), organization_tags(id, tag, strength)")
+    .select("*, cities!organizations_city_id_fkey(id, name), organization_tags(id, tag, strength)")
     .eq("slug", slug)
     .eq("organization_type", "startup")
 

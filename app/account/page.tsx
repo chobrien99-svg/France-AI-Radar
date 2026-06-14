@@ -84,7 +84,7 @@ export default async function AccountPage() {
 
   const { data: watchlistItems } = await supabase
     .from("watchlist")
-    .select("id, created_at, organizations(id, name, slug, signal_count, last_signal_date, cities(name), organization_tags(tag, strength))")
+    .select("id, created_at, organizations(id, name, slug, signal_count, last_signal_date, cities!organizations_city_id_fkey(name), organization_tags(tag, strength))")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 

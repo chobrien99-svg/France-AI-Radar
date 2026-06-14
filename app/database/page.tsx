@@ -93,7 +93,7 @@ export default async function DatabasePage({
 
   // Load distinct cities from AI Radar orgs
   const { data: cityRows } = aiRadarOrgIds.length > 0
-    ? await svc.from("organizations").select("city_id, cities(id, name)").in("id", aiRadarOrgIds).not("city_id", "is", null)
+    ? await svc.from("organizations").select("city_id, cities!organizations_city_id_fkey(id, name)").in("id", aiRadarOrgIds).not("city_id", "is", null)
     : { data: [] }
   const cityMap = new Map<string, string>()
   for (const row of (cityRows ?? []) as Array<{ city_id: string; cities: { id: string; name: string } | { id: string; name: string }[] | null }>) {
@@ -121,7 +121,7 @@ export default async function DatabasePage({
   let query = svc
     .from("organizations")
     .select(
-      "*, cities(id, name), organization_tags(id, tag, strength)"
+      "*, cities!organizations_city_id_fkey(id, name), organization_tags(id, tag, strength)"
     )
     .eq("organization_type", "startup")
     .eq("status", "active")

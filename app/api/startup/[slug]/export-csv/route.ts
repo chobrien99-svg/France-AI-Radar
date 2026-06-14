@@ -79,7 +79,7 @@ export async function GET(
   // Fetch everything in parallel
   const { data: startup } = await svc
     .from("organizations")
-    .select("*, cities(name)")
+    .select("*, cities!organizations_city_id_fkey(name)")
     .eq("slug", slug)
     .eq("organization_type", "startup")
     .single()
