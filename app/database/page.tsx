@@ -117,13 +117,13 @@ export default async function DatabasePage({
     .map(([id, name]) => ({ value: id, label: name }))
     .sort((a, b) => a.label.localeCompare(b.label))
 
-  // Build query — scoped to AI Radar product via product_organizations inner join
+  // Build query — scoped to AI Radar orgs
   let query = svc
     .from("organizations")
     .select(
       "*, cities!organizations_city_id_fkey(id, name), organization_tags(id, tag, strength)"
     )
-    .eq("organization_type", "startup")
+    .in("id", aiRadarOrgIds.length > 0 ? aiRadarOrgIds : ["00000000-0000-0000-0000-000000000000"])
     .eq("status", "active")
 
   if (q) {
