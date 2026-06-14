@@ -286,9 +286,9 @@ export default function LandingPage() {
         <div className="page-container flex flex-col items-center justify-between gap-2 text-[12px] text-muted-foreground md:flex-row">
           <span>France AI Radar by French Tech Journal</span>
           <div className="flex items-center gap-4">
-            <Link href="#" className="hover:text-foreground transition-colors duration-300">Privacy</Link>
-            <Link href="#" className="hover:text-foreground transition-colors duration-300">Terms</Link>
-            <Link href="#" className="hover:text-foreground transition-colors duration-300">Contact</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors duration-300">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors duration-300">Terms</Link>
+            <Link href="/contact" className="hover:text-foreground transition-colors duration-300">Contact</Link>
             <span>© 2026</span>
           </div>
         </div>

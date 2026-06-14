@@ -121,7 +121,13 @@ export default function PricingPage() {
 
       {/* Footer */}
       <footer className="py-6 text-center text-[12px] text-muted-foreground" style={{ borderTop: '1px solid rgba(193, 199, 206, 0.25)' }}>
-        AI Radar by French Tech Journal · Privacy · Terms · Contact · © 2026
+        <div className="flex items-center justify-center gap-4">
+          <span>France AI Radar by French Tech Journal</span>
+          <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+          <Link href="/terms" className="hover:text-foreground">Terms</Link>
+          <Link href="/contact" className="hover:text-foreground">Contact</Link>
+          <span>© 2026</span>
+        </div>
       </footer>
     </div>
   )
