@@ -121,7 +121,7 @@ export default async function DatabasePage({
   let query = supabase
     .from("organizations")
     .select(
-      "*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(investor_brief), organization_sectors(sectors(name)), product_organizations!inner(product_catalog!inner(slug))"
+      "*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(investor_brief), product_organizations!inner(product_catalog!inner(slug))"
     )
     .eq("product_organizations.product_catalog.slug", "ai-radar")
     .eq("status", "active")
@@ -167,6 +167,21 @@ export default async function DatabasePage({
   // Apply sector filter client-side (PostgREST .in() conflicts with inner join)
   if (sectorFilterOrgIds) {
     ventures = ventures.filter((v) => sectorFilterOrgIds!.has(v.id))
+  }
+
+  // Fetch sectors for each venture (separate query to avoid join issues)
+  const ventureIds = ventures.map((v) => v.id)
+  const { data: allOrgSectors } = ventureIds.length > 0
+    ? await svc.from("organization_sectors").select("organization_id, sectors(name)").in("organization_id", ventureIds)
+    : { data: [] }
+  const sectorsByOrgId = new Map<string, string[]>()
+  for (const row of (allOrgSectors ?? []) as Array<{ organization_id: string; sectors: { name: string } | { name: string }[] | null }>) {
+    const sec = Array.isArray(row.sectors) ? row.sectors[0] : row.sectors
+    if (sec) {
+      const existing = sectorsByOrgId.get(row.organization_id) ?? []
+      existing.push(sec.name)
+      sectorsByOrgId.set(row.organization_id, existing)
+    }
   }
 
   const total = ventures.length
@@ -223,17 +238,7 @@ export default async function DatabasePage({
             }}
           >
             {visible.map((startup) => {
-              const raw = startup as Venture & {
-                organization_sectors?: Array<{
-                  sectors: { name: string } | { name: string }[] | null
-                }>
-              }
-              const sectors = (raw.organization_sectors ?? [])
-                .map((os) => {
-                  const s = Array.isArray(os.sectors) ? os.sectors[0] : os.sectors
-                  return s?.name ?? null
-                })
-                .filter(Boolean) as string[]
+              const sectors = sectorsByOrgId.get(startup.id) ?? []
               return (
                 <StartupCard
                   key={startup.id}

@@ -111,7 +111,11 @@ export default async function StartupProfilePage({
     ventureQuery = ventureQuery.eq("status", "active")
   }
 
-  const { data: ventureRaw } = await ventureQuery.single()
+  const { data: ventureRaw, error: ventureError } = await ventureQuery.single()
+
+  if (ventureError) {
+    console.error("Venture query error:", ventureError.message, ventureError.code)
+  }
 
   if (!ventureRaw) notFound()
   const venture = ventureRaw as Venture
