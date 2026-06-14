@@ -46,21 +46,27 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // User must be logged in to checkout — redirect to signup if not
+  if (!user) {
+    return NextResponse.redirect(
+      new URL(`/auth/signup?next=/api/stripe/checkout?tier=${tier}&interval=${interval}`, request.url)
+    )
+  }
+
   const stripe = getStripe()
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
-    ...(user?.email ? { customer_email: user.email } : {}),
-    // Store on both session and subscription so webhook handlers can read them
+    customer_email: user.email ?? undefined,
     metadata: {
-      user_id: user?.id ?? "",
+      user_id: user.id,
       tier,
     },
     subscription_data: {
       metadata: {
-        user_id: user?.id ?? "",
+        user_id: user.id,
         tier,
       },
     },

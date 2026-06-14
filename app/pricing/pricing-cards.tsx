@@ -210,7 +210,7 @@ export function PricingCards() {
           </div>
 
           <Button variant="outline" className="w-full" asChild>
-            <Link href="mailto:enterprise@frenchtech.journal">
+            <Link href="mailto:chris@frenchtechjournal.com">
               Contact Us
             </Link>
           </Button>
