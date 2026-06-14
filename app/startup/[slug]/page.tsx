@@ -1,7 +1,7 @@
 import React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { canAccessFullProfile, canAccessPremiumFields, getProfileViewLimit, getExportLimit, canSaveAndList, canSetAlerts, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
 import { tagStrengthLabel, signalStrengthLabel } from "@/lib/types"
 import type { OrganizationProfile } from "@/lib/types"
