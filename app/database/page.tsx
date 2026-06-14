@@ -118,7 +118,7 @@ export default async function DatabasePage({
     .sort((a, b) => a.label.localeCompare(b.label))
 
   // Build query — scoped to AI Radar product via product_organizations inner join
-  let query = supabase
+  let query = svc
     .from("organizations")
     .select(
       "*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(investor_brief), product_organizations!inner(product_catalog!inner(slug))"

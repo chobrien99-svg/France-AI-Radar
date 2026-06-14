@@ -101,7 +101,8 @@ export default async function StartupProfilePage({
   const period = new Date().toISOString().slice(0, 7) // YYYY-MM
 
   // Fetch venture — admins can see any status, others only active
-  let ventureQuery = supabase
+  const svcForRead = await createServiceClient()
+  let ventureQuery = svcForRead
     .from("organizations")
     .select("*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(*)")
     .eq("slug", slug)
