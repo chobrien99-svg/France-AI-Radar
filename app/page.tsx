@@ -119,7 +119,7 @@ export default function LandingPage() {
           </div>
 
           <h1 className="mb-4 font-serif text-[clamp(32px,5vw,52px)] font-bold leading-[1.1] tracking-[-0.02em] text-foreground">
-            The French AI Radar
+            The France AI Radar
             <br />
             <span className="text-primary">Discover AI startups before the market.</span>
           </h1>
@@ -164,12 +164,12 @@ export default function LandingPage() {
 
         {/* -- VALUE PROPS -- */}
         <section className="py-[72px]">
-          <p className="section-kicker mb-2 text-center">Why AI Radar</p>
+          <p className="section-kicker mb-2 text-center">Why France AI Radar</p>
           <h2 className="mb-2 text-center font-serif text-2xl font-bold tracking-[-0.02em] text-foreground">
             Intelligence, Not Noise
           </h2>
           <p className="mb-12 text-center text-[15px] text-muted-foreground">
-            What separates AI Radar from startup directories and news feeds.
+            What separates France AI Radar from startup directories and news feeds.
           </p>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -284,7 +284,7 @@ export default function LandingPage() {
       {/* -- FOOTER -- */}
       <footer className="py-6" style={{ borderTop: '1px solid rgba(193, 199, 206, 0.25)' }}>
         <div className="page-container flex flex-col items-center justify-between gap-2 text-[12px] text-muted-foreground md:flex-row">
-          <span>AI Radar by French Tech Journal</span>
+          <span>France AI Radar by French Tech Journal</span>
           <div className="flex items-center gap-4">
             <Link href="#" className="hover:text-foreground transition-colors duration-300">Privacy</Link>
             <Link href="#" className="hover:text-foreground transition-colors duration-300">Terms</Link>

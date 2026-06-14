@@ -17,7 +17,7 @@ const publicSans = Public_Sans({
 })
 
 export const metadata: Metadata = {
-  title: "French AI Radar",
+  title: "France AI Radar",
   description: "Investor intelligence for the French AI ecosystem",
 }
 
