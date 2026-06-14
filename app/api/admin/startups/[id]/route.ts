@@ -39,6 +39,28 @@ export async function PATCH(
     }
   }
 
+  // Resolve secondary city name → secondary_city_id
+  let secondaryCityId: string | undefined = undefined
+  if (fields.secondary_city) {
+    const { data: cityRow } = await supabase
+      .from("cities")
+      .select("id")
+      .eq("name", fields.secondary_city)
+      .limit(1)
+      .maybeSingle()
+    if (cityRow) {
+      secondaryCityId = cityRow.id
+    } else {
+      const citySlug = fields.secondary_city.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+      const { data: newCity } = await supabase
+        .from("cities")
+        .insert({ name: fields.secondary_city, slug: citySlug, country: "United States" })
+        .select("id")
+        .single()
+      secondaryCityId = newCity?.id ?? undefined
+    }
+  }
+
   // Build update object — only include city_id if we resolved one
   const updateFields: Record<string, unknown> = {
     name: fields.name,
@@ -59,6 +81,8 @@ export async function PATCH(
     updated_at: new Date().toISOString(),
   }
   if (cityId !== undefined) updateFields.city_id = cityId
+  if (secondaryCityId !== undefined) updateFields.secondary_city_id = secondaryCityId
+  if (fields.secondary_city === "") updateFields.secondary_city_id = null
 
   const { data: startup, error } = await supabase
     .from("organizations")

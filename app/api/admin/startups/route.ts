@@ -35,6 +35,28 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Resolve secondary city
+  let secondaryCityId: string | null = null
+  if (fields.secondary_city) {
+    const { data: cityRow } = await supabase
+      .from("cities")
+      .select("id")
+      .eq("name", fields.secondary_city)
+      .limit(1)
+      .maybeSingle()
+    if (cityRow) {
+      secondaryCityId = cityRow.id
+    } else {
+      const citySlug = fields.secondary_city.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+      const { data: newCity } = await supabase
+        .from("cities")
+        .insert({ name: fields.secondary_city, slug: citySlug, country: "United States" })
+        .select("id")
+        .single()
+      secondaryCityId = newCity?.id ?? null
+    }
+  }
+
   // Create organization
   const { data: startup, error } = await supabase
     .from("organizations")
@@ -44,6 +66,7 @@ export async function POST(request: NextRequest) {
       slug: fields.slug,
       country: fields.country || "France",
       city_id: cityId,
+      secondary_city_id: secondaryCityId,
       status: fields.status || "draft",
       website: fields.website || fields.website_url || null,
       linkedin_url: fields.linkedin_url || null,

@@ -34,7 +34,7 @@ export default async function EditStartupPage({
     { data: sectorLinksRaw },
     { data: allSectorsRaw },
   ] = await Promise.all([
-    supabase.from("organizations").select("*, cities!organizations_city_id_fkey(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
+    supabase.from("organizations").select("*, cities!organizations_city_id_fkey(name), secondary_city:cities!organizations_secondary_city_id_fkey(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
     supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
     supabase.from("people").select("id, full_name, slug, role").order("full_name"),
     supabase.from("grants").select("*").eq("organization_id", id).order("awarded_date", { ascending: false }),
@@ -125,6 +125,7 @@ export default async function EditStartupPage({
     name: startup.name ?? "",
     slug: startup.slug ?? "",
     city: (startup.cities as { name: string } | null)?.name ?? "",
+    secondary_city: (startup.secondary_city as { name: string } | null)?.name ?? "",
     country: startup.country ?? "France",
     founded_date: startup.founded_date ?? "",
     first_seen_at: startup.first_seen_at ? startup.first_seen_at.slice(0, 10) : "",

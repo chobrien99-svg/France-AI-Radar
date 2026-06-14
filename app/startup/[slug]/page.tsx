@@ -104,7 +104,7 @@ export default async function StartupProfilePage({
   const svcForRead = await createServiceClient()
   let ventureQuery = svcForRead
     .from("organizations")
-    .select("*, cities!organizations_city_id_fkey(id, name), organization_tags(id, tag, strength)")
+    .select("*, cities!organizations_city_id_fkey(id, name), secondary_city:cities!organizations_secondary_city_id_fkey(id, name), organization_tags(id, tag, strength)")
     .eq("slug", slug)
     .eq("organization_type", "startup")
 
@@ -285,7 +285,7 @@ export default async function StartupProfilePage({
             </h1>
             <p className="text-[13px] text-muted-foreground">
               {[
-                venture.cities?.name,
+                [venture.cities?.name, (venture as Record<string, unknown>).secondary_city ? ((venture as Record<string, unknown>).secondary_city as { name: string })?.name : null].filter(Boolean).join(" & "),
                 venture.founded_date
                   ? `Founded ${formatDateShort(venture.founded_date)}`
                   : null,

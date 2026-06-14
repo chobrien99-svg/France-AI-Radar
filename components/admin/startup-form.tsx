@@ -28,6 +28,7 @@ export type StartupFormValues = {
   name: string
   slug: string
   city: string
+  secondary_city: string
   country: string
   founded_date: string
   first_seen_at: string
@@ -59,7 +60,7 @@ export type StartupFormValues = {
 }
 
 const DEFAULTS: StartupFormValues = {
-  name: "", slug: "", city: "", country: "France",
+  name: "", slug: "", city: "", secondary_city: "", country: "France",
   founded_date: "", first_seen_at: "",
   status: "draft",
   website: "", linkedin_url: "", email: "", phone: "",
@@ -258,10 +259,15 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
         </Field>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="City">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Primary city">
           <Input className={inputClass} value={form.city} onChange={(e) => set("city", e.target.value)} placeholder="Paris" />
         </Field>
+        <Field label="Secondary city (optional)">
+          <Input className={inputClass} value={form.secondary_city} onChange={(e) => set("secondary_city", e.target.value)} placeholder="e.g. San Francisco, New York" />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Country">
           <Input className={inputClass} value={form.country} onChange={(e) => set("country", e.target.value)} />
         </Field>
