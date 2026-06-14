@@ -121,9 +121,9 @@ export default async function DatabasePage({
   let query = svc
     .from("organizations")
     .select(
-      "*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(investor_brief), product_organizations!inner(product_catalog!inner(slug))"
+      "*, cities(id, name), organization_tags(id, tag, strength)"
     )
-    .eq("product_organizations.product_catalog.slug", "ai-radar")
+    .eq("organization_type", "startup")
     .eq("status", "active")
 
   if (q) {

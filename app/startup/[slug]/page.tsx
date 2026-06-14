@@ -104,7 +104,7 @@ export default async function StartupProfilePage({
   const svcForRead = await createServiceClient()
   let ventureQuery = svcForRead
     .from("organizations")
-    .select("*, cities(id, name), organization_tags(id, tag, strength), organization_profiles(*)")
+    .select("*, cities(id, name), organization_tags(id, tag, strength)")
     .eq("slug", slug)
     .eq("organization_type", "startup")
 
@@ -207,10 +207,14 @@ export default async function StartupProfilePage({
     hasAlert = !!al
   }
 
-  // Resolve profile fields from joined organization_profiles
-  const profileData = Array.isArray(venture.organization_profiles)
-    ? venture.organization_profiles[0] ?? null
-    : venture.organization_profiles ?? null
+  // Fetch profile data separately
+  const { data: profileDataRaw } = await svcForRead
+    .from("organization_profiles")
+    .select("*")
+    .eq("organization_id", venture.id)
+    .maybeSingle()
+
+  const profileData = profileDataRaw as OrganizationProfile | null
 
   const founders = (foundersRaw ?? []).map((row: Record<string, unknown>) => {
     const p = (Array.isArray(row.people) ? row.people[0] : row.people) as Record<string, unknown> | null
