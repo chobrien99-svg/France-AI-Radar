@@ -158,10 +158,14 @@ export default async function DatabasePage({
   } else if (sort === "funding") {
     query = query.order("total_raised_eur", { ascending: false, nullsFirst: false })
   } else {
-    query = query.order("first_seen_at", { ascending: false, nullsFirst: false })
+    query = query.order("created_at", { ascending: false })
   }
 
-  const { data: allVentures } = await query
+  const { data: allVentures, error: queryError } = await query
+  if (queryError) {
+    console.error("Database query error:", queryError.message, queryError.code)
+  }
+  console.log("Database query returned:", (allVentures ?? []).length, "results")
   let ventures = (allVentures ?? []) as Venture[]
 
   // Apply sector filter client-side (PostgREST .in() conflicts with inner join)
