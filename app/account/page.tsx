@@ -9,6 +9,7 @@ import { WatchlistRemoveButton } from "@/components/account/watchlist-remove-but
 import { CreateListDialog } from "@/components/account/create-list-dialog"
 import { DeleteListButton } from "@/components/account/delete-list-button"
 import { ProfileEditor } from "@/components/account/profile-editor"
+import { ChangePassword } from "@/components/account/change-password"
 import { WatchlistView } from "@/components/account/watchlist-view"
 
 const TIER_LABEL: Record<string, string> = {
@@ -140,6 +141,11 @@ export default async function AccountPage() {
               user_type: (profile as Record<string, unknown>).user_type as string ?? "",
             }}
           />
+
+          <Separator className="my-5" />
+
+          <p className="metric-label mb-4">Password</p>
+          <ChangePassword />
         </div>
 
         {/* Feature tabs — above subscription for Pro users */}
