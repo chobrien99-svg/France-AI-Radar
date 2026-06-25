@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { createServiceClient } from "@/lib/supabase/server"
 
 // Sample cards pulled directly from seed data for the landing page
 const SAMPLE_CARDS = [
@@ -60,7 +61,35 @@ const badgeClass: Record<string, string> = {
   neutral: "badge-signal badge-signal-neutral",
 }
 
-export default function LandingPage() {
+export const dynamic = "force-dynamic"
+
+export default async function LandingPage() {
+  const svc = await createServiceClient()
+
+  // Fetch live stats
+  const { data: aiRadarOrgs } = await svc
+    .from("product_organizations")
+    .select("organization_id, product_catalog!inner(slug)")
+    .eq("product_catalog.slug", "ai-radar")
+  const orgIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
+
+  const { count: startupCount } = await svc
+    .from("organizations")
+    .select("id", { count: "exact", head: true })
+    .in("id", orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"])
+    .eq("status", "active")
+
+  const { count: signalCount } = await svc
+    .from("signals")
+    .select("id", { count: "exact", head: true })
+    .in("organization_id", orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"])
+
+  const { data: sectorRows } = await svc
+    .from("organization_sectors")
+    .select("sector_id")
+    .in("organization_id", orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"])
+  const uniqueSectors = new Set((sectorRows ?? []).map((r: { sector_id: string }) => r.sector_id))
+
   return (
     <div className="min-h-screen bg-background">
       {/* -- NAV -- */}
@@ -142,9 +171,9 @@ export default function LandingPage() {
         <section className="mb-[72px]">
           <div className="mx-auto grid max-w-[720px] grid-cols-4 overflow-hidden bg-card">
             {[
-              { num: "6", label: "Startups Tracked" },
-              { num: "21", label: "Signals Detected" },
-              { num: "48", label: "Sectors Covered" },
+              { num: String(startupCount ?? 0), label: "Startups Tracked" },
+              { num: String(signalCount ?? 0), label: "Signals Detected" },
+              { num: String(uniqueSectors.size), label: "Sectors Covered" },
               { num: "Weekly", label: "Updated" },
             ].map((item, idx) => (
               <div
