@@ -77,6 +77,7 @@ export type Venture = {
   // Denormalised
   signal_count: number
   last_signal_date: string | null
+  updated_at: string | null
 
   // Joined relations
   cities: City | null
