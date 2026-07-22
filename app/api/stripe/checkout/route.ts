@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
     customer_email: user.email ?? undefined,
+    allow_promotion_codes: true,
     metadata: {
       user_id: user.id,
       tier,
