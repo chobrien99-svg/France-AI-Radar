@@ -133,8 +133,8 @@ export function StartupCard({
             />
             <span>
               {venture.signal_count} signal{venture.signal_count !== 1 ? "s" : ""}
-              {venture.last_signal_date
-                ? ` · Last updated ${relativeDate(venture.last_signal_date)}`
+              {venture.updated_at
+                ? ` · Profile updated ${relativeDate(venture.updated_at)}`
                 : ""}
             </span>
           </div>
