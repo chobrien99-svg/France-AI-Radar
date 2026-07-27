@@ -4,10 +4,14 @@ import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 
+type CallbackState =
+  | { kind: "working" }
+  | { kind: "error"; message: string; detail?: string }
+
 function CallbackInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [status, setStatus] = useState<"working" | "error">("working")
+  const [state, setState] = useState<CallbackState>({ kind: "working" })
 
   useEffect(() => {
     let cancelled = false
@@ -16,7 +20,7 @@ function CallbackInner() {
       const supabase = createClient()
       const next = searchParams.get("next")
 
-      // Implicit flow: tokens in the URL fragment (dashboard-sent magic links)
+      // Implicit flow: tokens in URL fragment (dashboard-sent magic links)
       const hash = typeof window !== "undefined" ? window.location.hash : ""
       if (hash.startsWith("#")) {
         const params = new URLSearchParams(hash.slice(1))
@@ -26,7 +30,7 @@ function CallbackInner() {
           const { error } = await supabase.auth.setSession({ access_token, refresh_token })
           if (cancelled) return
           if (error) {
-            router.replace("/auth/login?error=auth_callback_failed")
+            setState({ kind: "error", message: "Could not set your session.", detail: error.message })
             return
           }
           router.replace(next ?? "/database")
@@ -34,13 +38,17 @@ function CallbackInner() {
         }
       }
 
-      // PKCE flow: code query param (app-initiated signup/login/reset)
+      // PKCE flow: code query param
       const code = searchParams.get("code")
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (cancelled) return
         if (error) {
-          router.replace("/auth/login?error=auth_callback_failed")
+          setState({
+            kind: "error",
+            message: "Could not exchange the sign-in code.",
+            detail: error.message,
+          })
           return
         }
         router.replace(next ?? "/database")
@@ -48,8 +56,10 @@ function CallbackInner() {
       }
 
       if (!cancelled) {
-        setStatus("error")
-        router.replace("/auth/login?error=auth_callback_failed")
+        setState({
+          kind: "error",
+          message: "No sign-in code or token was found in the URL.",
+        })
       }
     }
 
@@ -59,7 +69,31 @@ function CallbackInner() {
     }
   }, [router, searchParams])
 
-  return <CallbackShell message={status === "error" ? "Sign-in failed. Redirecting…" : "Signing you in…"} />
+  if (state.kind === "error") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm text-center">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center bg-destructive/10">
+            <span className="text-xl text-destructive">!</span>
+          </div>
+          <h1 className="mb-2 font-serif text-lg font-semibold text-foreground">
+            Sign-in link couldn&apos;t be completed
+          </h1>
+          <p className="mb-3 text-sm text-muted-foreground">{state.message}</p>
+          {state.detail && (
+            <p className="mb-4 border-l-2 border-l-destructive bg-destructive/10 px-3 py-2 text-left text-xs text-destructive">
+              {state.detail}
+            </p>
+          )}
+          <a href="/auth/login" className="text-[13px] font-medium text-primary hover:underline">
+            Back to sign in →
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  return <CallbackShell message="Signing you in…" />
 }
 
 function CallbackShell({ message }: { message: string }) {
