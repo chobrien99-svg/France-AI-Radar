@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { createServiceClient } from "@/lib/supabase/server"
-import { getStartupLimit } from "@/lib/subscription"
+import { getStartupLimit, getExportLimit } from "@/lib/subscription"
 import { FilterSidebar } from "@/components/database/filter-sidebar"
 import { StartupCard } from "@/components/database/startup-card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -12,6 +12,7 @@ import type { Venture, Profile, OrganizationProfile } from "@/lib/types"
 import { tagStrengthLabel } from "@/lib/types"
 import { SortDropdown } from "@/components/database/sort-dropdown"
 import { SearchInput } from "@/components/database/search-input"
+import { ExportButton } from "@/components/database/export-button"
 
 // ------------------------------------------------------------------
 // Helpers
@@ -73,6 +74,8 @@ export default async function DatabasePage({
 
   const tier = profile?.subscription_tier ?? "explorer"
   const limit = getStartupLimit(tier)
+  const exportLimit = getExportLimit(tier)
+  const canExport = isAdmin || exportLimit !== 0
 
   // Parse filters
   const q = (Array.isArray(params.q) ? params.q[0] : params.q) ?? ""
@@ -227,9 +230,7 @@ export default async function DatabasePage({
                   <strong className="text-foreground">{total}</strong> startups
                 </span>
                 <SortDropdown current={sort} />
-                <Button variant="outline" size="sm" className="text-xs">
-                  Export ↓
-                </Button>
+                <ExportButton canExport={canExport} />
               </div>
             </div>
           </Suspense>
