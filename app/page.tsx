@@ -1,52 +1,17 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { createServiceClient } from "@/lib/supabase/server"
+import { tagStrengthLabel } from "@/lib/types"
 
-// Sample cards pulled directly from seed data for the landing page
-const SAMPLE_CARDS = [
-  {
-    name: "NovaMind AI",
-    meta: "Paris, France · Founded Jan 2026",
-    sector: "AI Agents",
-    badges: [
-      { label: "Fundraising Signal", strength: "positive" },
-      { label: "Founder Reboot", strength: "warning" },
-    ],
-    description: "Autonomous agent framework for enterprise workflow orchestration.",
-    takeaway: "Ex-DeepMind founder; likely preparing seed round based on hiring velocity.",
-    signalCount: 3,
-    signalDot: "green",
-    href: "/startup/novamind-ai",
-  },
-  {
-    name: "Katrix.AI",
-    meta: "Meudon, France · Founded Nov 2025",
-    sector: "Robotics AI",
-    badges: [
-      { label: "Founder Reboot", strength: "warning" },
-      { label: "First Seen Jan 2026", strength: "neutral" },
-    ],
-    description: "Hybrid perception stack for autonomous systems.",
-    takeaway: "Potential relaunch of robotics tech focused on perception infrastructure.",
-    signalCount: 1,
-    signalDot: "amber",
-    href: "/startup/katrix-ai",
-  },
-  {
-    name: "BioSight",
-    meta: "Lyon, France · Founded Mar 2026",
-    sector: "BioAI",
-    badges: [
-      { label: "IP Signal", strength: "positive" },
-      { label: "Academic Spinout", strength: "neutral" },
-    ],
-    description: "AI-driven molecular imaging for drug discovery acceleration.",
-    takeaway: "CNRS spinout; patent filing detected — IP protection  fundraise.",
-    signalCount: 2,
-    signalDot: "green",
-    href: "/startup/biosight",
-  },
-]
+type SampleCard = {
+  id: string
+  meta: string
+  sector: string | null
+  badges: { label: string; strength: string }[]
+  description: string | null
+  signalCount: number
+  signalDot: "green" | "amber" | "red"
+}
 
 const signalDotClass: Record<string, string> = {
   green: "bg-accent-green",
@@ -59,6 +24,18 @@ const badgeClass: Record<string, string> = {
   warning: "badge-signal badge-signal-warning",
   risk: "badge-signal badge-signal-risk",
   neutral: "badge-signal badge-signal-neutral",
+}
+
+function foundedLabel(date: string | null): string {
+  if (!date) return ""
+  const d = new Date(date)
+  return `Founded ${d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`
+}
+
+function signalDotFor(count: number): SampleCard["signalDot"] {
+  if (count >= 3) return "green"
+  if (count >= 1) return "amber"
+  return "red"
 }
 
 export const dynamic = "force-dynamic"
@@ -89,6 +66,57 @@ export default async function LandingPage() {
     .select("sector_id")
     .in("organization_id", orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"])
   const uniqueSectors = new Set((sectorRows ?? []).map((r: { sector_id: string }) => r.sector_id))
+
+  // Sample cards: 3 recent active AI Radar startups, name hidden, no link
+  const { data: sampleRows } = orgIds.length > 0
+    ? await svc
+        .from("organizations")
+        .select(
+          "id, description, founded_date, signal_count, cities!organizations_city_id_fkey(name), organization_tags(id, tag, strength)"
+        )
+        .in("id", orgIds)
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .limit(3)
+    : { data: [] }
+
+  const sampleIds = (sampleRows ?? []).map((r: { id: string }) => r.id)
+  const { data: sampleSectorRows } = sampleIds.length > 0
+    ? await svc
+        .from("organization_sectors")
+        .select("organization_id, sectors(name)")
+        .in("organization_id", sampleIds)
+    : { data: [] }
+  const sectorByOrg = new Map<string, string>()
+  for (const row of (sampleSectorRows ?? []) as Array<{ organization_id: string; sectors: { name: string } | { name: string }[] | null }>) {
+    const sec = Array.isArray(row.sectors) ? row.sectors[0] : row.sectors
+    if (sec && !sectorByOrg.has(row.organization_id)) sectorByOrg.set(row.organization_id, sec.name)
+  }
+
+  const sampleCards: SampleCard[] = (sampleRows ?? []).map((row: {
+    id: string
+    description: string | null
+    founded_date: string | null
+    signal_count: number
+    cities: { name: string } | { name: string }[] | null
+    organization_tags: { id: string; tag: string; strength: number }[]
+  }) => {
+    const city = Array.isArray(row.cities) ? row.cities[0] : row.cities
+    const meta = [city?.name, foundedLabel(row.founded_date)].filter(Boolean).join(" · ")
+    const badges = row.organization_tags.slice(0, 2).map((t) => ({
+      label: t.tag,
+      strength: tagStrengthLabel(t.strength),
+    }))
+    return {
+      id: row.id,
+      meta: meta || "France",
+      sector: sectorByOrg.get(row.id) ?? null,
+      badges,
+      description: row.description,
+      signalCount: row.signal_count ?? 0,
+      signalDot: signalDotFor(row.signal_count ?? 0),
+    }
+  })
 
   return (
     <div className="min-h-screen bg-background">
@@ -162,7 +190,7 @@ export default async function LandingPage() {
               <Link href="/database">Explore the Radar</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/startup/novamind-ai">View Sample Report</Link>
+              <Link href="/pricing">View Pricing</Link>
             </Button>
           </div>
         </section>
@@ -248,50 +276,51 @@ export default async function LandingPage() {
           </p>
 
           <div className="mx-auto grid max-w-[960px] grid-cols-1 gap-4 md:grid-cols-3">
-            {SAMPLE_CARDS.map((card) => (
-              <Link key={card.name} href={card.href} className="block">
-                <div className="data-card cursor-pointer p-5">
-                  {/* Header */}
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-serif text-[15px] font-bold tracking-tight text-foreground">
-                        Stealth Startup
-                      </div>
-                      <div className="mt-0.5 text-[12px] text-muted-foreground">
-                        {card.meta}
-                      </div>
+            {sampleCards.map((card) => (
+              <div key={card.id} className="data-card p-5">
+                {/* Header */}
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-serif text-[15px] font-bold tracking-tight text-foreground">
+                      Stealth Startup
                     </div>
+                    <div className="mt-0.5 text-[12px] text-muted-foreground">
+                      {card.meta}
+                    </div>
+                  </div>
+                  {card.sector && (
                     <span className="badge-signal badge-signal-neutral whitespace-nowrap">
                       {card.sector}
                     </span>
-                  </div>
+                  )}
+                </div>
 
-                  {/* Badges */}
+                {/* Badges */}
+                {card.badges.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-1.5">
                     {card.badges.map((b) => (
-                      <span key={b.label} className={badgeClass[b.strength]}>
+                      <span key={b.label} className={badgeClass[b.strength] ?? badgeClass.neutral}>
                         {b.label}
                       </span>
                     ))}
                   </div>
+                )}
 
-                  {/* Body */}
-                  <p className="mb-1.5 text-[13px] leading-snug text-foreground">
+                {/* Body */}
+                {card.description && (
+                  <p className="mb-1.5 text-[13px] leading-snug text-foreground line-clamp-3">
                     {card.description}
                   </p>
-                  <p className="font-serif text-[13px] italic leading-snug text-muted-foreground">
-                    {card.takeaway}
-                  </p>
+                )}
 
-                  {/* Signal footer */}
-                  <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-3 text-[12px] text-muted-foreground">
-                    <span
-                      className={`h-[7px] w-[7px] shrink-0 rounded-full ${signalDotClass[card.signalDot]}`}
-                    />
-                    {card.signalCount} new signal{card.signalCount !== 1 ? "s" : ""} this week
-                  </div>
+                {/* Signal footer */}
+                <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-3 text-[12px] text-muted-foreground">
+                  <span
+                    className={`h-[7px] w-[7px] shrink-0 rounded-full ${signalDotClass[card.signalDot]}`}
+                  />
+                  {card.signalCount} signal{card.signalCount !== 1 ? "s" : ""} tracked
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </section>
