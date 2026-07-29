@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       type: "invite",
       email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://france-ai-radar.vercel.app"}/auth/callback`,
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://www.franceairadar.com"}/auth/callback`,
       },
     })
     inviteLink = linkData?.properties?.action_link ?? null
