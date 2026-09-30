@@ -42,7 +42,7 @@ export function ClientFragmentHandler({ next }: { next: string }) {
         setState({ kind: "error", message: error.message })
         return
       }
-      router.replace(next)
+      router.replace(params.get("type") === "recovery" ? "/auth/reset-password" : next)
     }
 
     handle()
