@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { ClientFragmentHandler } from "./client-fragment-handler"
 
 export const dynamic = "force-dynamic"
@@ -16,13 +15,11 @@ export default async function AuthCallback({
     redirect(`/auth/login?error=${encodeURIComponent(params.error_description ?? params.error)}`)
   }
 
+  // PKCE: hand the code to a Route Handler, which can set the session cookies
+  // (a page can't).
   if (params.code) {
-    const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(params.code)
-    if (error) {
-      redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
-    }
-    redirect(next)
+    const qs = new URLSearchParams({ code: params.code, next })
+    redirect(`/auth/exchange?${qs.toString()}`)
   }
 
   return <ClientFragmentHandler next={next} />

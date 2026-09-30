@@ -22,7 +22,8 @@ async function confirmAction(formData: FormData) {
   "use server"
   const token_hash = String(formData.get("token_hash") ?? "")
   const typeRaw = String(formData.get("type") ?? "")
-  const next = String(formData.get("next") ?? "/database")
+  const next =
+    typeRaw === "recovery" ? "/auth/reset-password" : String(formData.get("next") ?? "/database")
 
   if (!token_hash || !isEmailOtpType(typeRaw)) {
     redirect("/auth/login?error=Invalid+confirmation+link")
