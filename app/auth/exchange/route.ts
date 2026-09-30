@@ -16,9 +16,17 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     return NextResponse.redirect(`${origin}/auth/login?error=${encodeURIComponent(error.message)}`)
+  }
+
+  // Password reset links always go to the reset page, whatever `next` says
+  // (Supabase flags the code as a recovery when resetPasswordForEmail is used).
+  // (The field is returned at runtime but missing from the published types.)
+  const redirectType = (data as { redirectType?: string | null }).redirectType
+  if (redirectType === "PASSWORD_RECOVERY") {
+    return NextResponse.redirect(`${origin}/auth/reset-password`)
   }
 
   return NextResponse.redirect(`${origin}${next}`)
