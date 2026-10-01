@@ -49,7 +49,10 @@ export async function GET(request: NextRequest) {
   // User must be logged in to checkout — redirect to signup if not
   if (!user) {
     return NextResponse.redirect(
-      new URL(`/auth/signup?next=/api/stripe/checkout?tier=${tier}&interval=${interval}`, request.url)
+      new URL(
+        `/auth/signup?next=${encodeURIComponent(`/api/stripe/checkout?tier=${tier}&interval=${interval}`)}`,
+        request.url
+      )
     )
   }
 

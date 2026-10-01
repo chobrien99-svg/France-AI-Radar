@@ -5,19 +5,33 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 
 // Sends the user to Google, then back through /auth/callback, which exchanges
-// the code for a session and forwards to `next`.
-export function GoogleSignInButton({ next = "/database", label = "Continue with Google" }: { next?: string; label?: string }) {
+// the code for a session and forwards to `next`. Without a `next` prop, the
+// current page's ?next= is used, so flows like checkout resume after sign-in.
+export function GoogleSignInButton({
+  next,
+  label = "Continue with Google",
+  onStart,
+}: {
+  next?: string
+  label?: string
+  onStart?: () => void
+}) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleClick() {
     setError(null)
     setLoading(true)
+    onStart?.()
+
+    const destination = next ?? new URLSearchParams(window.location.search).get("next") ?? "/database"
+    const callback = new URLSearchParams({ next: destination, via: "google" })
+
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${window.location.origin}/auth/callback?${callback.toString()}`,
       },
     })
     // On success the browser navigates away to Google; only errors land here.

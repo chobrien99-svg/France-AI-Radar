@@ -29,5 +29,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/reset-password`)
   }
 
+  // OAuth sign-ins create the account on first use. Send brand-new users via
+  // /auth/welcome, which records the signup before continuing to `next` (which
+  // may leave the site, e.g. Stripe checkout). The signup_tracked flag makes
+  // this happen once per account; returning users are just logins.
+  const via = searchParams.get("via")
+  const user = data.user
+  if (via === "google" && user.created_at && user.last_sign_in_at && !user.user_metadata?.signup_tracked) {
+    const justCreated =
+      Math.abs(Date.parse(user.last_sign_in_at) - Date.parse(user.created_at)) < 60_000
+    if (justCreated) {
+      await supabase.auth.updateUser({ data: { signup_tracked: true } })
+      const qs = new URLSearchParams({ next, method: via })
+      return NextResponse.redirect(`${origin}/auth/welcome?${qs.toString()}`)
+    }
+  }
+
   return NextResponse.redirect(`${origin}${next}`)
 }
