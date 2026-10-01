@@ -91,8 +91,9 @@ export function trackEvent(event: string, properties?: Record<string, unknown>) 
 
 // Named events (typed wrappers)
 export const Events = {
-  signupStarted: () => trackEvent("signup_started"),
-  signupCompleted: (userId: string) => trackEvent("signup_completed", { userId }),
+  signupStarted: (method: "email" | "google" = "email") => trackEvent("signup_started", { method }),
+  signupCompleted: (userId: string, method: "email" | "google" = "email") =>
+    trackEvent("signup_completed", { userId, method }),
   checkoutStarted: (tier: string, interval: "monthly" | "annual") =>
     trackEvent("checkout_started", { tier, interval }),
   upgradeClicked: (source: string, tier?: string) =>

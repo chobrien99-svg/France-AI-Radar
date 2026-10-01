@@ -29,5 +29,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/auth/reset-password`)
   }
 
-  return NextResponse.redirect(`${origin}${next}`)
+  const response = NextResponse.redirect(`${origin}${next}`)
+
+  // OAuth sign-ins create the account on first use. Flag brand-new users so
+  // AuthEventTracker can record a signup (returning users are just logins).
+  const via = searchParams.get("via")
+  const user = data.user
+  if (via === "google" && user?.created_at && user.last_sign_in_at) {
+    const isNewUser =
+      Math.abs(Date.parse(user.last_sign_in_at) - Date.parse(user.created_at)) < 60_000
+    if (isNewUser) {
+      response.cookies.set("auth_event", `signup_completed:${via}:${user.id}`, {
+        path: "/",
+        maxAge: 300,
+        sameSite: "lax",
+        secure: true,
+      })
+    }
+  }
+
+  return response
 }

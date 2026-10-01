@@ -145,7 +145,7 @@ export default function SignupPage() {
           </form>
 
           <div className="mt-4">
-            <GoogleSignInButton label="Sign up with Google" />
+            <GoogleSignInButton label="Sign up with Google" onStart={() => Events.signupStarted("google")} />
           </div>
         </div>
 
