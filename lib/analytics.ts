@@ -1,6 +1,6 @@
 "use client"
 
-import posthog from "posthog-js"
+import posthog, { type CaptureOptions } from "posthog-js"
 
 const CONSENT_KEY = "ai-radar-analytics-consent"
 
@@ -79,11 +79,15 @@ export function resetIdentity() {
 }
 
 // Track a custom event
-export function trackEvent(event: string, properties?: Record<string, unknown>) {
+export function trackEvent(
+  event: string,
+  properties?: Record<string, unknown>,
+  options?: CaptureOptions
+) {
   if (typeof window === "undefined") return
   if (getConsent() !== "granted") return
   try {
-    posthog.capture(event, properties)
+    posthog.capture(event, properties, options)
   } catch {
     // ignore
   }
@@ -92,8 +96,8 @@ export function trackEvent(event: string, properties?: Record<string, unknown>) 
 // Named events (typed wrappers)
 export const Events = {
   signupStarted: (method: "email" | "google" = "email") => trackEvent("signup_started", { method }),
-  signupCompleted: (userId: string, method: "email" | "google" = "email") =>
-    trackEvent("signup_completed", { userId, method }),
+  signupCompleted: (userId: string, method: "email" | "google" = "email", options?: CaptureOptions) =>
+    trackEvent("signup_completed", { userId, method }, options),
   checkoutStarted: (tier: string, interval: "monthly" | "annual") =>
     trackEvent("checkout_started", { tier, interval }),
   upgradeClicked: (source: string, tier?: string) =>

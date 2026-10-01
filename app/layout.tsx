@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Newsreader } from "next/font/google"
 import { Public_Sans } from "next/font/google"
 import { CookieConsent } from "@/components/cookie-consent"
-import { AuthEventTracker } from "@/components/auth-event-tracker"
 import "./globals.css"
 
 const newsreader = Newsreader({
@@ -30,7 +29,6 @@ export default function RootLayout({
       <body>
         {children}
         <CookieConsent />
-        <AuthEventTracker />
       </body>
     </html>
   )
