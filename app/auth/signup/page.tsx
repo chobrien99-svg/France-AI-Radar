@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Events } from "@/lib/analytics"
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button"
 
 export default function SignupPage() {
   const router = useRouter()
@@ -142,6 +143,10 @@ export default function SignupPage() {
               {loading ? "Creating account…" : "Create account"}
             </Button>
           </form>
+
+          <div className="mt-4">
+            <GoogleSignInButton label="Sign up with Google" />
+          </div>
         </div>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">

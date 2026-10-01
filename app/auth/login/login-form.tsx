@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button"
 
 export function LoginForm() {
   const router = useRouter()
@@ -207,6 +208,10 @@ export function LoginForm() {
           {loading ? "Signing in…" : "Sign in"}
         </Button>
       </form>
+
+      <div className="mt-4">
+        <GoogleSignInButton next={next ?? "/database"} />
+      </div>
     </div>
   )
 }
