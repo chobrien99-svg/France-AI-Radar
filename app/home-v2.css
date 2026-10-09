@@ -53,10 +53,6 @@
 .lp-card .tk{font-family:var(--r2-serif);font-style:italic;font-size:14px;line-height:1.5;color:#93A0B4;margin:0}
 .lp-card .ft{margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--r2-mono);font-size:11px;color:#93A0B4;display:flex;gap:8px;align-items:center}
 .lp-card .ft i{width:6px;height:6px;background:var(--e-blue-soft);display:block}
-.lp-quote{max-width:880px;margin:0 auto;text-align:center}
-.lp-quote q{font-family:var(--r2-serif);font-size:clamp(28px,3.4vw,40px);line-height:1.2;letter-spacing:-.02em;color:#F5F8FC;quotes:"\201C" "\201D"}
-.lp-quote q::before,.lp-quote q::after{color:var(--e-blue-soft)}
-.lp-quote div{margin-top:24px;font-family:var(--r2-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#93A0B4}
 .lp-cta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:72px;align-items:center}
 .lp-cta p{font-size:15px;line-height:1.65;color:#A3AFC2;margin:0 0 24px}
 @media (max-width:860px){.lp-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.lp-stat:nth-child(3){border-left:0;padding-left:0}.lp-why,.lp-cta{grid-template-columns:1fr;gap:24px}.lp-cols,.lp-cards{grid-template-columns:1fr}}

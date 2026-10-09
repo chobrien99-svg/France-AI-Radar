@@ -210,14 +210,6 @@ export default async function LandingPage() {
           </section>
         )}
 
-        {/* ---------------- Quote ---------------- */}
-        <section className="lp-sec">
-          <div className="page-container lp-quote">
-            <q>The French AI ecosystem is the best covered early-stage market in Europe right now, and the least surfaced.</q>
-            <div>Charles O&apos;Brien · Editor, French Tech Journal</div>
-          </div>
-        </section>
-
         {/* ---------------- CTA ---------------- */}
         <section className="lp-sec">
           <div className="page-container lp-cta">
