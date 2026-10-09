@@ -1,4 +1,5 @@
 import { AppNav } from "@/components/app-nav"
+import { SiteFooter } from "@/components/site-footer"
 
 export default function FounderLayout({
   children,
@@ -9,6 +10,7 @@ export default function FounderLayout({
     <div className="min-h-screen bg-background">
       <AppNav activePage="database" />
       {children}
+      <SiteFooter />
     </div>
   )
 }

@@ -1,53 +1,12 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { AppNav } from "@/components/app-nav"
+import { SiteFooter } from "@/components/site-footer"
 import { PricingCards } from "./pricing-cards"
 
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md" style={{ borderBottom: '1px solid rgba(193, 199, 206, 0.25)' }}>
-        <div className="page-container flex h-14 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center bg-primary text-[12px] font-extrabold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
-              AR
-            </div>
-            <span className="font-serif text-[15px] font-bold tracking-tight text-foreground">
-              AI Radar
-            </span>
-          </Link>
-
-          <div className="hidden items-center gap-1 md:flex">
-            <Link
-              href="/"
-              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
-            >
-              Home
-            </Link>
-            <Link
-              href="/database"
-              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
-            >
-              Database
-            </Link>
-            <Link
-              href="/pricing"
-              className="px-3.5 py-1.5 text-[13px] font-bold uppercase tracking-wide text-primary border-b-2 border-primary"
-            >
-              Pricing
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/auth/login">Log in</Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link href="/auth/signup">Get Access</Link>
-            </Button>
-          </div>
-        </div>
-      </nav>
+      <AppNav activePage="pricing" />
 
       <div className="page-container py-16 pb-24">
         {/* Header */}
@@ -120,15 +79,7 @@ export default function PricingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="py-6 text-center text-[12px] text-muted-foreground" style={{ borderTop: '1px solid rgba(193, 199, 206, 0.25)' }}>
-        <div className="flex items-center justify-center gap-4">
-          <span>France AI Radar by French Tech Journal</span>
-          <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
-          <Link href="/terms" className="hover:text-foreground">Terms</Link>
-          <Link href="/contact" className="hover:text-foreground">Contact</Link>
-          <span>© 2026</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { AppNav } from "@/components/app-nav"
+import { SiteFooter } from "@/components/site-footer"
 import { CheckoutSuccessBanner } from "@/components/checkout-success-banner"
 
 export default function DatabaseLayout({
@@ -14,6 +15,7 @@ export default function DatabaseLayout({
         <CheckoutSuccessBanner />
       </Suspense>
       {children}
+      <SiteFooter />
     </div>
   )
 }

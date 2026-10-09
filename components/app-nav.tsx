@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/server"
 import { AnalyticsIdentifier } from "@/components/analytics-identifier"
 
@@ -7,12 +6,6 @@ const TIER_LABEL: Record<string, string> = {
   explorer: "Explorer",
   professional: "Pro",
   enterprise: "Enterprise",
-}
-
-const TIER_CLASS: Record<string, string> = {
-  explorer: "badge-signal badge-signal-neutral",
-  professional: "badge-signal badge-signal-positive",
-  enterprise: "badge-signal badge-signal-positive",
 }
 
 export async function AppNav({
@@ -41,11 +34,11 @@ export async function AppNav({
 
   const navLink = (page: typeof activePage) =>
     activePage === page
-      ? `px-3.5 py-1.5 text-[13px] font-bold uppercase tracking-wide text-primary border-b-2 border-primary`
-      : `px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground`
+      ? "rounded-[5px] bg-e-blue/12 px-3 py-[7px] text-[13px] font-medium text-e-blue-soft"
+      : "rounded-[5px] px-3 py-[7px] text-[13px] font-medium text-tx-dm transition-colors duration-200 hover:bg-white/5 hover:text-tx-d"
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md" style={{ borderBottom: '1px solid rgba(193, 199, 206, 0.25)' }}>
+    <nav className="sticky top-0 z-50 border-b border-white/9 bg-ink/95 backdrop-blur-md">
       {user && tier && (
         <AnalyticsIdentifier
           userId={user.id}
@@ -57,16 +50,17 @@ export async function AppNav({
       <div className="page-container flex h-14 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center bg-primary text-[12px] font-extrabold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
+          <div className="flex h-7 w-7 items-center justify-center bg-e-blue text-[11px] font-extrabold text-white">
             AR
           </div>
-          <span className="font-serif text-[15px] font-bold tracking-tight text-foreground">
+          <span className="font-serif text-[15px] font-bold tracking-tight text-tx-d">
             AI Radar
           </span>
+          <span className="ml-1 font-mono text-[11px] text-tx-dd">· FRA</span>
         </Link>
 
         {/* Links */}
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center gap-0.5 md:flex">
           <Link href="/" className={navLink("home")}>
             Home
           </Link>
@@ -89,24 +83,33 @@ export async function AppNav({
             <>
               <Link
                 href="/account"
-                className={`${TIER_CLASS[tier] ?? TIER_CLASS.free} hover:opacity-80 transition-opacity duration-300`}
+                className="rounded-[3px] border border-white/20 px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-tx-dm transition-colors duration-200 hover:text-tx-d"
               >
                 {TIER_LABEL[tier] ?? tier}
               </Link>
               <form action="/auth/signout" method="POST">
-                <Button variant="ghost" size="sm" type="submit">
+                <button
+                  type="submit"
+                  className="rounded-[5px] px-3 py-1.5 text-[13px] font-medium text-tx-dm transition-colors duration-200 hover:bg-white/6 hover:text-tx-d"
+                >
                   Sign out
-                </Button>
+                </button>
               </form>
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/auth/login">Log in</Link>
-              </Button>
-              <Button size="sm" asChild>
-                <Link href="/pricing">Get Access</Link>
-              </Button>
+              <Link
+                href="/auth/login"
+                className="rounded-[5px] px-3 py-1.5 text-[13px] font-medium text-tx-dm transition-colors duration-200 hover:bg-white/6 hover:text-tx-d"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/pricing"
+                className="rounded-[5px] bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition-colors duration-200 hover:bg-primary-container"
+              >
+                Get Access
+              </Link>
             </>
           )}
         </div>

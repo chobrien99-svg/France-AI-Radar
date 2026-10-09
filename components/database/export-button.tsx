@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 
 interface Props {
   canExport: boolean
+  className?: string
 }
 
-export function ExportButton({ canExport }: Props) {
+export function ExportButton({ canExport, className }: Props) {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +52,7 @@ export function ExportButton({ canExport }: Props) {
       <Button
         variant="outline"
         size="sm"
-        className="text-xs"
+        className={className ?? "text-xs"}
         onClick={handleClick}
         disabled={loading}
         title={canExport ? undefined : "Upgrade to Professional to export"}

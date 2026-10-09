@@ -1,38 +1,52 @@
+import Link from "next/link"
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
-import { Search } from "lucide-react"
-import { createClient } from "@/lib/supabase/server"
-import { createServiceClient } from "@/lib/supabase/server"
-import { getStartupLimit, getExportLimit } from "@/lib/subscription"
-import { FilterSidebar } from "@/components/database/filter-sidebar"
-import { StartupCard } from "@/components/database/startup-card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
-import type { Venture, Profile, OrganizationProfile } from "@/lib/types"
-import { tagStrengthLabel } from "@/lib/types"
-import { SortDropdown } from "@/components/database/sort-dropdown"
-import { SearchInput } from "@/components/database/search-input"
-import { ExportButton } from "@/components/database/export-button"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { getStartupLimit, getExportLimit, canUseAdvancedFilters, canSaveAndList, canAccessPremiumFields } from "@/lib/subscription"
+import { SORTS, founderTags, paramList, paramOne, signalLabel, stageFrom } from "@/lib/radar"
+import { FilterSidebarV2, type FilterGroupDef } from "@/components/radar/filter-sidebar"
+import { DatabaseSearch, DatabaseToolbar } from "@/components/radar/database-toolbar"
+import { StartupCardV2, StartupRowV2, FounderCardV2, FounderRowV2, type CardStartup, type CardFounder } from "@/components/radar/cards"
+import type { Profile } from "@/lib/types"
 
 // ------------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------------
 
-function parseList(val: string | string[] | undefined): string[] {
-  if (!val) return []
-  const str = Array.isArray(val) ? val[0] : val
-  return str.split(",").filter(Boolean)
+const TIME_OPTIONS = [
+  { value: "7d", label: "Last 7 days", days: 7 },
+  { value: "30d", label: "Last 30 days", days: 30 },
+  { value: "90d", label: "Last 90 days", days: 90 },
+  { value: "12m", label: "Last 12 months", days: 365 },
+]
+
+type Row = Record<string, unknown>
+type Named = { id: string; name: string }
+
+function one<T>(v: T | T[] | null | undefined): T | null {
+  return (Array.isArray(v) ? v[0] : v) ?? null
 }
 
-function cutoffDate(time: string): string | null {
-  const now = new Date()
-  if (time === "7d") { now.setDate(now.getDate() - 7); return now.toISOString() }
-  if (time === "14d") { now.setDate(now.getDate() - 14); return now.toISOString() }
-  if (time === "30d") { now.setDate(now.getDate() - 30); return now.toISOString() }
-  if (time === "90d") { now.setDate(now.getDate() - 90); return now.toISOString() }
-  if (time === "12m") { now.setFullYear(now.getFullYear() - 1); return now.toISOString() }
-  return null
+/** Tally values for filter counts, most common first */
+function tally<T>(items: T[], pick: (x: T) => Array<{ value: string; label: string }>) {
+  const m = new Map<string, { value: string; label: string; n: number }>()
+  for (const it of items) {
+    for (const o of pick(it)) {
+      const cur = m.get(o.value)
+      if (cur) cur.n++
+      else m.set(o.value, { ...o, n: 1 })
+    }
+  }
+  return Array.from(m.values()).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label))
 }
+
+/** Was `iso` within the last `days` days? */
+function withinTime(iso: string | null, days: number): boolean {
+  return !!iso && Date.now() - new Date(iso).getTime() <= days * 86_400_000
+}
+
+const matches = (selected: string[], values: Array<string | null | undefined>) =>
+  selected.length === 0 || values.some((v) => v != null && selected.includes(v))
 
 // ------------------------------------------------------------------
 // Page
@@ -48,7 +62,6 @@ export default async function DatabasePage({
   const params = await searchParams
   const supabase = await createClient()
 
-  // Auth + subscription tier
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -56,258 +69,310 @@ export default async function DatabasePage({
   // No free tier — redirect unauthenticated users to signup
   if (!user) redirect("/pricing")
 
-  let profile: Profile | null = null
-  if (user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, is_admin")
-      .eq("id", user.id)
-      .single()
-    profile = data
-  }
+  const { data: profileRow } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, is_admin")
+    .eq("id", user.id)
+    .single()
+  const profile = profileRow as (Profile & { is_admin?: boolean }) | null
 
   // Require active subscription (admins always have access)
-  const isAdmin = !!(profile as Record<string, unknown> | null)?.is_admin
-  if (!isAdmin && profile?.subscription_status !== "active") {
-    redirect("/pricing")
-  }
+  const isAdmin = !!profile?.is_admin
+  if (!isAdmin && profile?.subscription_status !== "active") redirect("/pricing")
 
   const tier = profile?.subscription_tier ?? "explorer"
-  const limit = getStartupLimit(tier)
+  const limit = isAdmin ? null : getStartupLimit(tier)
   const exportLimit = getExportLimit(tier)
   const canExport = isAdmin || exportLimit !== 0
+  const advanced = isAdmin || canUseAdvancedFilters(tier)
+  const canShortlist = isAdmin || canSaveAndList(tier)
+  const canPremium = isAdmin || canAccessPremiumFields(tier)
 
-  // Parse filters
-  const q = (Array.isArray(params.q) ? params.q[0] : params.q) ?? ""
-  const locations = parseList(params.location)
-  const sectors = parseList(params.sector)
-  const times = parseList(params.time)
-  const sort = (Array.isArray(params.sort) ? params.sort[0] : params.sort) ?? "newest"
+  // Parse URL state
+  const tab = paramOne(params.tab) === "founders" ? "founders" : "startups"
+  const q = paramOne(params.q).trim().toLowerCase()
+  const view = paramOne(params.view) === "list" ? "list" : "grid"
+  const sortParam = paramOne(params.sort)
+  const sort = SORTS[tab].some((o) => o.value === sortParam) ? sortParam : "latest"
+  const shortlistOnly = tab === "startups" && canShortlist && paramOne(params.shortlist) === "1"
+  const sel = {
+    sector: advanced ? paramList(params.sector) : [],
+    stage: advanced ? paramList(params.stage) : [],
+    signal: advanced ? paramList(params.signal) : [],
+    location: advanced ? paramList(params.location) : [],
+    bg: advanced ? paramList(params.bg) : [],
+    time: paramList(params.time),
+  }
 
-  // Load filter options from the database (use service client to bypass RLS)
+  // ---------------- Load (service client; access already checked above) ----------------
   const svc = await createServiceClient()
 
-  // Get AI Radar org IDs for scoping filter options
   const { data: aiRadarOrgs } = await svc
     .from("product_organizations")
     .select("organization_id, product_catalog!inner(slug)")
     .eq("product_catalog.slug", "ai-radar")
-  const aiRadarOrgIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
+  const orgIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
+  const idFilter = orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"]
 
-  // Load distinct cities from AI Radar orgs
-  const { data: cityRows } = aiRadarOrgIds.length > 0
-    ? await svc.from("organizations").select("city_id, cities!organizations_city_id_fkey(id, name)").in("id", aiRadarOrgIds).not("city_id", "is", null)
-    : { data: [] }
-  const cityMap = new Map<string, string>()
-  for (const row of (cityRows ?? []) as Array<{ city_id: string; cities: { id: string; name: string } | { id: string; name: string }[] | null }>) {
-    const city = Array.isArray(row.cities) ? row.cities[0] : row.cities
-    if (city && !cityMap.has(city.id)) cityMap.set(city.id, city.name)
-  }
-  const locationOptions = Array.from(cityMap.entries())
-    .map(([id, name]) => ({ value: id, label: name }))
-    .sort((a, b) => a.label.localeCompare(b.label))
+  const [{ data: orgRows, error: orgError }, { data: sectorRows }, { data: signalRows }, { data: founderRows }, { data: watchRows }] =
+    await Promise.all([
+      svc
+        .from("organizations")
+        .select("id, name, slug, description, short_description, logo_url, last_round, signal_count, last_signal_date, first_seen_at, created_at, cities!organizations_city_id_fkey(id, name)")
+        .in("id", idFilter)
+        .eq("status", "active"),
+      svc.from("organization_sectors").select("organization_id, is_primary, sectors(id, name)").in("organization_id", idFilter),
+      svc
+        .from("signals")
+        .select("organization_id, signal_type, title, signal_date")
+        .in("organization_id", idFilter)
+        .order("signal_date", { ascending: false, nullsFirst: false }),
+      svc
+        .from("organization_people")
+        .select("organization_id, role, people(id, full_name, slug, short_bio, bio, photo_url, has_phd, is_repeat_founder, has_big_tech_background, previous_exits, academic_lab)")
+        .in("organization_id", idFilter)
+        .eq("is_founder", true),
+      supabase.from("watchlist").select("organization_id").eq("user_id", user.id),
+    ])
+  if (orgError) console.error("Database query error:", orgError.message, orgError.code)
 
-  // Load sectors assigned to AI Radar orgs
-  const { data: sectorRows } = aiRadarOrgIds.length > 0
-    ? await svc.from("organization_sectors").select("sector_id, sectors(id, name)").in("organization_id", aiRadarOrgIds)
-    : { data: [] }
-  const sectorMap = new Map<string, string>()
-  for (const row of (sectorRows ?? []) as Array<{ sector_id: string; sectors: { id: string; name: string } | { id: string; name: string }[] | null }>) {
-    const sec = Array.isArray(row.sectors) ? row.sectors[0] : row.sectors
-    if (sec && !sectorMap.has(sec.id)) sectorMap.set(sec.id, sec.name)
-  }
-  const sectorOptions = Array.from(sectorMap.entries())
-    .map(([id, name]) => ({ value: id, label: name }))
-    .sort((a, b) => a.label.localeCompare(b.label))
-
-  // Build query — scoped to AI Radar orgs
-  let query = svc
-    .from("organizations")
-    .select(
-      "*, cities!organizations_city_id_fkey(id, name), organization_tags(id, tag, strength)"
-    )
-    .in("id", aiRadarOrgIds.length > 0 ? aiRadarOrgIds : ["00000000-0000-0000-0000-000000000000"])
-    .eq("status", "active")
-
-  if (q) {
-    query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
+  // Primary sector per startup
+  const sectorByOrg = new Map<string, Named>()
+  for (const r of (sectorRows ?? []) as Row[]) {
+    const s = one(r.sectors as Named | Named[] | null)
+    const orgId = r.organization_id as string
+    if (s && (!sectorByOrg.has(orgId) || r.is_primary)) sectorByOrg.set(orgId, s)
   }
 
-  // Location filter — values are city UUIDs now
-  if (locations.length > 0) {
-    query = query.in("city_id", locations)
-  }
-
-  // Sector filter — resolve matching org IDs for post-query filter
-  let sectorFilterOrgIds: Set<string> | null = null
-  if (sectors.length > 0) {
-    const { data: sectorOrgRows } = await svc
-      .from("organization_sectors")
-      .select("organization_id")
-      .in("sector_id", sectors)
-    sectorFilterOrgIds = new Set((sectorOrgRows ?? []).map((r: { organization_id: string }) => r.organization_id))
-  }
-
-  // Time filter on first_seen_at (when the startup was added)
-  const latestTime = times[times.length - 1]
-  if (latestTime && latestTime !== "all") {
-    const cutoff = cutoffDate(latestTime)
-    if (cutoff) query = query.gte("first_seen_at", cutoff)
-  }
-
-  // Sort
-  if (sort === "signals") {
-    query = query.order("signal_count", { ascending: false })
-  } else if (sort === "funding") {
-    query = query.order("total_raised_eur", { ascending: false, nullsFirst: false })
-  } else {
-    query = query.order("created_at", { ascending: false })
-  }
-
-  const { data: allVentures, error: queryError } = await query
-  if (queryError) {
-    console.error("Database query error:", queryError.message, queryError.code)
-  }
-  console.log("Database query returned:", (allVentures ?? []).length, "results")
-  let ventures = (allVentures ?? []) as Venture[]
-
-  // Apply sector filter client-side (PostgREST .in() conflicts with inner join)
-  if (sectorFilterOrgIds) {
-    ventures = ventures.filter((v) => sectorFilterOrgIds!.has(v.id))
-  }
-
-  // Fetch sectors for each venture (separate query to avoid join issues)
-  const ventureIds = ventures.map((v) => v.id)
-  const { data: allOrgSectors } = ventureIds.length > 0
-    ? await svc.from("organization_sectors").select("organization_id, sectors(name)").in("organization_id", ventureIds)
-    : { data: [] }
-  const sectorsByOrgId = new Map<string, string[]>()
-  for (const row of (allOrgSectors ?? []) as Array<{ organization_id: string; sectors: { name: string } | { name: string }[] | null }>) {
-    const sec = Array.isArray(row.sectors) ? row.sectors[0] : row.sectors
-    if (sec) {
-      const existing = sectorsByOrgId.get(row.organization_id) ?? []
-      existing.push(sec.name)
-      sectorsByOrgId.set(row.organization_id, existing)
+  // Latest signal per startup (rows are newest first)
+  const latestByOrg = new Map<string, { type: string; title: string; date: string | null }>()
+  for (const r of (signalRows ?? []) as Row[]) {
+    const orgId = r.organization_id as string
+    if (!latestByOrg.has(orgId)) {
+      latestByOrg.set(orgId, { type: r.signal_type as string, title: r.title as string, date: (r.signal_date as string | null) ?? null })
     }
   }
 
-  const total = ventures.length
-  const visible = limit !== null ? ventures.slice(0, limit) : ventures
-  const isLimited = limit !== null && total > limit
+  const founderNamesByOrg = new Map<string, string[]>()
+  for (const r of (founderRows ?? []) as Row[]) {
+    const p = one(r.people as Row | Row[] | null)
+    if (!p) continue
+    const list = founderNamesByOrg.get(r.organization_id as string) ?? []
+    list.push(p.full_name as string)
+    founderNamesByOrg.set(r.organization_id as string, list)
+  }
+
+  const saved = new Set(((watchRows ?? []) as Row[]).map((r) => r.organization_id as string))
+
+  type StartupItem = CardStartup & { sectorId: string | null; cityId: string | null; firstSeen: string | null; activity: number; search: string }
+  const allStartups: StartupItem[] = ((orgRows ?? []) as Row[]).map((o) => {
+    const id = o.id as string
+    const city = one(o.cities as Named | Named[] | null)
+    const sector = sectorByOrg.get(id) ?? null
+    const latest = latestByOrg.get(id) ?? null
+    const latestDate = latest?.date ?? (o.last_signal_date as string | null) ?? (o.created_at as string)
+    const item: StartupItem = {
+      id,
+      slug: o.slug as string,
+      name: o.name as string,
+      description: (o.short_description as string | null) || (o.description as string | null),
+      logoUrl: (o.logo_url as string | null) ?? null,
+      sector: sector?.name ?? null,
+      sectorId: sector?.id ?? null,
+      stage: stageFrom(o.last_round as string | null),
+      city: city?.name ?? null,
+      cityId: city?.id ?? null,
+      signalCount: (o.signal_count as number | null) ?? 0,
+      latestSignal: latest,
+      firstSeen: (o.first_seen_at as string | null) ?? null,
+      activity: latestDate ? new Date(latestDate).getTime() : 0,
+      search: "",
+    }
+    item.search = [item.name, o.description, item.sector, item.city, ...(founderNamesByOrg.get(id) ?? [])].join(" ").toLowerCase()
+    return item
+  })
+  const startupById = new Map(allStartups.map((s) => [s.id, s]))
+
+  // One entry per person; first linked Radar startup is their company
+  const founderMap = new Map<string, CardFounder & { sectorId: string | null; cityId: string | null; activity: number; search: string }>()
+  for (const r of (founderRows ?? []) as Row[]) {
+    const p = one(r.people as Row | Row[] | null)
+    const company = startupById.get(r.organization_id as string)
+    if (!p || !company || founderMap.has(p.id as string)) continue
+    const f = {
+      id: p.id as string,
+      slug: (p.slug as string | null) ?? null,
+      name: p.full_name as string,
+      role: (r.role as string | null) ?? null,
+      photoUrl: (p.photo_url as string | null) ?? null,
+      bio: (p.short_bio as string | null) || (p.bio as string | null),
+      tags: founderTags({
+        has_big_tech_background: !!p.has_big_tech_background,
+        has_phd: !!p.has_phd,
+        is_repeat_founder: !!p.is_repeat_founder,
+        previous_exits: (p.previous_exits as number | null) ?? 0,
+        academic_lab: (p.academic_lab as string | null) ?? null,
+      }),
+      company: { name: company.name, slug: company.slug, sector: company.sector, city: company.city },
+      sectorId: company.sectorId,
+      cityId: company.cityId,
+      activity: company.activity,
+      search: "",
+    }
+    f.search = [f.name, f.role, company.name, f.bio].join(" ").toLowerCase()
+    founderMap.set(f.id, f)
+  }
+  const allFounders = Array.from(founderMap.values())
+
+  // ---------------- Filter + sort ----------------
+  const timeOpt = TIME_OPTIONS.find((t) => t.value === sel.time[sel.time.length - 1])
+
+  const startups = allStartups.filter(
+    (s) =>
+      matches(sel.sector, [s.sectorId]) &&
+      matches(sel.stage, [s.stage]) &&
+      matches(sel.signal, [s.latestSignal?.type]) &&
+      matches(sel.location, [s.cityId]) &&
+      (!timeOpt || withinTime(s.firstSeen, timeOpt.days)) &&
+      (!shortlistOnly || saved.has(s.id)) &&
+      (!q || s.search.includes(q))
+  )
+  if (sort === "az") startups.sort((a, b) => a.name.localeCompare(b.name))
+  else if (sort === "signals") startups.sort((a, b) => b.signalCount - a.signalCount || b.activity - a.activity)
+  else startups.sort((a, b) => b.activity - a.activity)
+
+  const founders = allFounders.filter(
+    (f) =>
+      matches(sel.bg, f.tags) &&
+      matches(sel.sector, [f.sectorId]) &&
+      matches(sel.location, [f.cityId]) &&
+      (!q || f.search.includes(q))
+  )
+  const bareName = (n: string) => n.replace(/^Dr\.?\s*/i, "")
+  if (sort === "az") founders.sort((a, b) => bareName(a.name).localeCompare(bareName(b.name)))
+  else founders.sort((a, b) => b.activity - a.activity)
+
+  const visibleStartups = limit !== null ? startups.slice(0, limit) : startups
+  const hiddenCount = startups.length - visibleStartups.length
+
+  // ---------------- Filter groups (counts over the whole Radar) ----------------
+  const idOpt = (id: string | null, name: string | null) => (id && name ? [{ value: id, label: name }] : [])
+  const groups: FilterGroupDef[] =
+    tab === "startups"
+      ? [
+          { key: "sector", label: "Sector", locked: !advanced, options: tally(allStartups, (s) => idOpt(s.sectorId, s.sector)) },
+          { key: "stage", label: "Stage", locked: !advanced, options: tally(allStartups, (s) => [{ value: s.stage, label: s.stage }]) },
+          {
+            key: "signal",
+            label: "Latest signal",
+            locked: !advanced,
+            options: tally(allStartups, (s) => (s.latestSignal ? [{ value: s.latestSignal.type, label: signalLabel(s.latestSignal.type) }] : [])),
+          },
+          { key: "location", label: "City", locked: !advanced, options: tally(allStartups, (s) => idOpt(s.cityId, s.city)) },
+          {
+            key: "time",
+            label: "Added to the Radar",
+            options: TIME_OPTIONS.map((t) => ({ value: t.value, label: t.label, n: allStartups.filter((s) => withinTime(s.firstSeen, t.days)).length })),
+          },
+        ]
+      : [
+          { key: "bg", label: "Background", locked: !advanced, options: tally(allFounders, (f) => f.tags.map((t) => ({ value: t, label: t }))) },
+          { key: "sector", label: "Company sector", locked: !advanced, options: tally(allFounders, (f) => idOpt(f.sectorId, f.company?.sector ?? null)) },
+          { key: "location", label: "City", locked: !advanced, options: tally(allFounders, (f) => idOpt(f.cityId, f.company?.city ?? null)) },
+        ]
+
+  const sectorCount = new Set(allStartups.map((s) => s.sectorId).filter(Boolean)).size
+  const signalTotal = (signalRows ?? []).length
+  const shown = tab === "startups" ? visibleStartups.length : founders.length
+  const total = tab === "startups" ? allStartups.length : allFounders.length
+  const isEmpty = tab === "startups" ? startups.length === 0 : founders.length === 0
 
   return (
-    <div className="page-container">
-      <div className="grid gap-6 py-6 pb-16 lg:grid-cols-[260px_1fr]">
-        {/* Sidebar — hidden on mobile, visible lg+ */}
-        <div className="hidden lg:block">
-          <Suspense fallback={<SidebarSkeleton />}>
-            <FilterSidebar
-              tier={tier}
-              sectorOptions={sectorOptions}
-              locationOptions={locationOptions}
-            />
-          </Suspense>
-        </div>
-
-        {/* Main content */}
-        <div>
-          {/* Toolbar — Suspense required because SearchInput and SortDropdown use useSearchParams() */}
-          <Suspense fallback={<ToolbarSkeleton count={visible.length} total={total} />}>
-            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="relative max-w-[400px] flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <SearchInput
-                  defaultValue={q}
-                  placeholder="Search startups, founders, sectors…"
-                  className="pl-9"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[13px] text-muted-foreground">
-                  Showing{" "}
-                  <strong className="text-foreground">{visible.length}</strong>{" "}
-                  of{" "}
-                  <strong className="text-foreground">{total}</strong> startups
-                </span>
-                <SortDropdown current={sort} />
-                <ExportButton canExport={canExport} />
-              </div>
-            </div>
-          </Suspense>
-
-          {/* Card grid */}
-          <div
-            className="grid gap-[14px]"
-            style={{
-              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-            }}
-          >
-            {visible.map((startup) => {
-              const sectors = sectorsByOrgId.get(startup.id) ?? []
-              return (
-                <StartupCard
-                  key={startup.id}
-                  venture={startup}
-                  sectors={sectors}
-                />
-              )
-            })}
+    <div>
+      {/* ---------------- Header band ---------------- */}
+      <div className="r2-hero">
+        <div className="page-container r2-hero-in">
+          <div className="r2-eyebrow"><span className="bk" />The Radar · Database</div>
+          <h1 className="r2-h1">The Database</h1>
+          <p className="r2-lede">
+            Every French AI startup we&apos;ve picked up at its earliest signal, and the founders behind it.
+            {canShortlist ? " Shortlist the ones you want to follow." : ""}
+          </p>
+          <div className="r2-stats">
+            <div className="r2-stat"><b>{allStartups.length}</b><span>Startups</span></div>
+            <div className="r2-stat"><b>{allFounders.length}</b><span>Founders</span></div>
+            <div className="r2-stat"><b>{sectorCount}</b><span>Sectors</span></div>
+            <div className="r2-stat"><b>{signalTotal}</b><span>Signals logged</span></div>
           </div>
-
-          {/* Upgrade gate */}
-          {isLimited && (
-            <div className="mt-8 border-l-2 border-l-primary bg-card px-6 py-8 text-center">
-              <p className="mb-1 text-[15px] font-semibold text-foreground">
-                {total - visible.length} more startup
-                {total - visible.length !== 1 ? "s" : ""} in the database
-              </p>
-              <p className="mb-4 text-[13px] text-muted-foreground">
-                Upgrade to Professional for unlimited access to all startups and signals.
-              </p>
-              <Button size="sm" asChild>
-                <a href="/pricing">Upgrade Plan →</a>
-              </Button>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {visible.length === 0 && (
-            <div className="mt-16 text-center">
-              <p className="text-[15px] font-medium text-foreground">
-                No startups match these filters
-              </p>
-              <p className="mt-1 text-[13px] text-muted-foreground">
-                Try adjusting or resetting your filters.
-              </p>
-            </div>
-          )}
+          <nav className="r2-tabs" aria-label="Database sections">
+            <Link href="/database" className="r2-tab" aria-current={tab === "startups" ? "page" : undefined}>
+              Startups <span className="n">{allStartups.length}</span>
+            </Link>
+            <Link href="/database?tab=founders" className="r2-tab" aria-current={tab === "founders" ? "page" : undefined}>
+              Founders <span className="n">{allFounders.length}</span>
+            </Link>
+          </nav>
         </div>
       </div>
-    </div>
-  )
-}
 
-function SidebarSkeleton() {
-  return (
-    <div className="space-y-3 p-5">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-5 w-full" />
-      ))}
-    </div>
-  )
-}
+      {/* ---------------- Body ---------------- */}
+      <div className="page-container r2-body">
+        <Suspense>
+          <FilterSidebarV2 groups={groups} />
+        </Suspense>
 
-function ToolbarSkeleton({ count, total }: { count: number; total: number }) {
-  return (
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <Skeleton className="h-9 max-w-[400px] flex-1" />
-      <div className="flex items-center gap-3">
-        <span className="text-[13px] text-muted-foreground">
-          Showing <strong className="text-foreground">{count}</strong> of{" "}
-          <strong className="text-foreground">{total}</strong> startups
-        </span>
-        <Skeleton className="h-8 w-28" />
-        <Skeleton className="h-8 w-20" />
+        <div style={{ minWidth: 0 }}>
+          <Suspense>
+            <DatabaseSearch key={tab} tab={tab} defaultValue={paramOne(params.q)} />
+            <DatabaseToolbar
+              tab={tab}
+              shown={shown}
+              total={total}
+              sort={sort}
+              view={view}
+              shortlist={shortlistOnly}
+              savedCount={saved.size}
+              canShortlist={canShortlist}
+              canExport={canExport}
+            />
+          </Suspense>
+
+          {isEmpty ? (
+            <div className="r2-empty">
+              {shortlistOnly && saved.size === 0
+                ? "Your shortlist is empty. Star a startup to add it."
+                : "Nothing matches these filters."}
+            </div>
+          ) : tab === "startups" ? (
+            view === "grid" ? (
+              <div className="r2-grid">
+                {visibleStartups.map((s) => (
+                  <StartupCardV2 key={s.id} s={s} saved={saved.has(s.id)} canShortlist={canShortlist} showSignalTitle={canPremium} />
+                ))}
+              </div>
+            ) : (
+              <div className="r2-list">
+                {visibleStartups.map((s) => (
+                  <StartupRowV2 key={s.id} s={s} saved={saved.has(s.id)} canShortlist={canShortlist} />
+                ))}
+              </div>
+            )
+          ) : view === "grid" ? (
+            <div className="r2-grid">{founders.map((f) => <FounderCardV2 key={f.id} f={f} />)}</div>
+          ) : (
+            <div className="r2-list">{founders.map((f) => <FounderRowV2 key={f.id} f={f} />)}</div>
+          )}
+
+          {tab === "startups" && hiddenCount > 0 && (
+            <div className="r2-upsell">
+              <h5>
+                {hiddenCount} more startup{hiddenCount !== 1 ? "s" : ""} in the database
+              </h5>
+              <p>Upgrade to Professional for unlimited access to all startups and signals.</p>
+              <Link href="/pricing" className="r2-btn p">See plans</Link>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -20,9 +20,10 @@ type UserList = {
 interface Props {
   startupId: string
   isLoggedIn: boolean
+  className?: string
 }
 
-export function AddToListButton({ startupId, isLoggedIn }: Props) {
+export function AddToListButton({ startupId, isLoggedIn, className }: Props) {
   const router = useRouter()
   const [lists, setLists] = useState<UserList[]>([])
   const [loading, setLoading] = useState(false)
@@ -65,7 +66,7 @@ export function AddToListButton({ startupId, isLoggedIn }: Props) {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="text-[13px]">
+        <Button variant="outline" size="sm" className={className ?? "text-[13px]"}>
           {inListCount > 0 ? `In ${inListCount} list${inListCount > 1 ? "s" : ""}` : "Add to List"}
         </Button>
       </DropdownMenuTrigger>

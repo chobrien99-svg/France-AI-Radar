@@ -1,18 +1,17 @@
-import React from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { canAccessFullProfile, canAccessPremiumFields, getProfileViewLimit, getExportLimit, canSaveAndList, canSetAlerts, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
-import { tagStrengthLabel, signalStrengthLabel } from "@/lib/types"
+import { canAccessFullProfile, canAccessPremiumFields, getProfileViewLimit, getExportLimit, canSaveAndList, canSetAlerts } from "@/lib/subscription"
 import type { OrganizationProfile } from "@/lib/types"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { SaveButton } from "@/components/startup/save-button"
-import { AlertButton } from "@/components/startup/alert-button"
 import { AddToListButton } from "@/components/startup/add-to-list-button"
-import { ShareButton } from "@/components/startup/share-button"
 import { ExportCsvButton } from "@/components/startup/export-csv-button"
-import { BlurredGate, BlurredText } from "@/components/blurred-gate"
+import { BlurredText } from "@/components/blurred-gate"
+import { Icon } from "@/components/radar/icons"
+import { Monogram } from "@/components/radar/monogram"
+import { StartupCardV2 } from "@/components/radar/cards"
+import { ShortlistButton, AlertToggle, ShareButtonV2 } from "@/components/radar/profile-actions"
+import { formatDate, formatEur, founderTags, relativeDate, signalColor, signalLabel, stageFrom, toneFor } from "@/lib/radar"
+import { loadRelatedStartups } from "@/lib/radar-data"
 import { AnalyticsPageTrack } from "@/components/analytics-page-track"
 import { AnalyticsIdentifier } from "@/components/analytics-identifier"
 import type { Venture, Profile } from "@/lib/types"
@@ -20,44 +19,6 @@ import type { Venture, Profile } from "@/lib/types"
 // ------------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------------
-
-const BADGE_CLASS: Record<string, string> = {
-  positive: "badge-signal badge-signal-positive",
-  warning: "badge-signal badge-signal-warning",
-  risk: "badge-signal badge-signal-risk",
-  neutral: "badge-signal badge-signal-neutral",
-}
-
-const SIGNAL_DOT: Record<string, string> = {
-  positive: "bg-accent-green",
-  warning: "bg-[#8a6d00]",
-  risk: "bg-destructive",
-  neutral: "bg-[#72787e]",
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return ""
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function formatDateShort(iso: string | null): string {
-  if (!iso) return ""
-  return new Date(iso).toLocaleDateString("en-GB", {
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function formatEur(amount: number | null): string {
-  if (!amount) return "—"
-  if (amount >= 1_000_000) return `€${(amount / 1_000_000).toFixed(1)}M`
-  if (amount >= 1_000) return `€${(amount / 1_000).toFixed(0)}K`
-  return `€${amount}`
-}
 
 // ------------------------------------------------------------------
 // Page
@@ -93,7 +54,7 @@ export default async function StartupProfilePage({
   const hasActiveSub = isAdmin || profile?.subscription_status === "active"
   const tier = hasActiveSub ? (profile?.subscription_tier ?? "explorer") : "none"
   const canFull = hasActiveSub && canAccessFullProfile(tier)
-  const canPremium = canAccessPremiumFields(tier)
+  const canPremium = isAdmin || canAccessPremiumFields(tier)
   const canSave = canSaveAndList(tier)
   const canAlert = canSetAlerts(tier)
 
@@ -250,8 +211,25 @@ export default async function StartupProfilePage({
     has_big_tech_background: boolean
   }>
 
+  // Primary sector + related startups
+  const [{ data: sectorRows }, related] = await Promise.all([
+    svcForRead.from("organization_sectors").select("is_primary, sectors(name)").eq("organization_id", venture.id),
+    loadRelatedStartups(svcForRead, venture.id, venture.city_id),
+  ])
+  const sectorNames = ((sectorRows ?? []) as Array<{ is_primary: boolean; sectors: { name: string } | { name: string }[] | null }>)
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
+    .map((r) => (Array.isArray(r.sectors) ? r.sectors[0] : r.sectors)?.name)
+    .filter(Boolean) as string[]
+
+  const secondaryCity = (venture as unknown as { secondary_city?: { name: string } | null }).secondary_city?.name
+  const place = [venture.cities?.name, secondaryCity].filter(Boolean).join(" & ")
+  const lastSignal = signals[0]?.signal_date ?? venture.last_signal_date
+  const blurPremium = !canFull || !canPremium
+  const limitHit = canFull && !hasViewAccess
+  const bodyProps = { venture, signals, founders, programs, profileData, blurPremium, isAuthenticated: !!user }
+
   return (
-    <main className="page-container py-8 pb-20">
+    <main>
       {user && profile && (
         <AnalyticsIdentifier
           userId={user.id}
@@ -265,193 +243,106 @@ export default async function StartupProfilePage({
         slug={venture.slug}
         tier={tier}
       />
-      <div className="mx-auto max-w-[960px]">
 
-        {/* Back link */}
-        <div className="mb-6">
-          <Link
-            href="/database"
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition-colors duration-300 hover:text-foreground"
-          >
-            ← Back to Database
-          </Link>
-        </div>
-
-        {/* Header */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <h1 className="font-serif text-[26px] font-bold tracking-tight text-foreground">
-              {venture.name}
-            </h1>
-            <p className="text-[13px] text-muted-foreground">
-              {[
-                [venture.cities?.name, (venture as Record<string, unknown>).secondary_city ? ((venture as Record<string, unknown>).secondary_city as { name: string })?.name : null].filter(Boolean).join(" & "),
-                venture.founded_date
-                  ? `Founded ${formatDateShort(venture.founded_date)}`
-                  : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            {venture.first_seen_at && (
-              <p className="text-[12px] text-muted-foreground">
-                First seen {formatDateShort(venture.first_seen_at)}
-              </p>
-            )}
-            {venture.organization_tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {venture.organization_tags.map((tag) => {
-                  const strengthLabel = tagStrengthLabel(tag.strength)
-                  return (
-                    <span
-                      key={tag.id}
-                      className={BADGE_CLASS[strengthLabel] ?? BADGE_CLASS.neutral}
-                    >
-                      {tag.tag}
-                    </span>
-                  )
-                })}
-              </div>
-            )}
+      {/* ---------------- Header band ---------------- */}
+      <div className="r2-hero">
+        <div className="page-container r2-hero-in">
+          <Link href="/database" className="r2-back"><Icon name="back" size={13} /> Database</Link>
+          <div className="r2-ph">
+            <Monogram name={venture.name} tone={toneFor(venture.slug)} size="xl" imageUrl={(venture as unknown as { logo_url?: string | null }).logo_url} />
+            <div style={{ minWidth: 0 }}>
+              <div className="r2-eyebrow"><span className="bk" />{[sectorNames[0], place].filter(Boolean).join(" · ") || "AI Radar file"}</div>
+              <h1 className="r2-h1">{venture.name}</h1>
+              {venture.description && <p className="r2-lede">{venture.description}</p>}
+              {venture.organization_tags.length > 0 && (
+                <div className="r2-tags" style={{ paddingTop: 18 }}>
+                  {venture.organization_tags.map((t) => <span key={t.id} className="r2-tag">{t.tag}</span>)}
+                </div>
+              )}
+            </div>
+            <div className="r2-ph-acts">
+              {isAdmin && (
+                <Link href={`/admin/startups/${venture.id}/edit`} className="r2-btn s">Edit</Link>
+              )}
+              {canSave && <ShortlistButton startupId={venture.id} initialSaved={isBookmarked} isLoggedIn={!!user} />}
+              {canAlert ? (
+                <AlertToggle startupId={venture.id} initialAlert={hasAlert} isLoggedIn={!!user} />
+              ) : (
+                <Link href="/pricing" className="r2-btn s"><Icon name="bell" size={14} />Alert</Link>
+              )}
+              <ShareButtonV2 slug={venture.slug} name={venture.name} />
+            </div>
           </div>
-
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {isAdmin && (
-              <Button variant="outline" size="sm" className="text-[13px] border-primary text-primary" asChild>
-                <Link href={`/admin/startups/${venture.id}/edit`}>Edit</Link>
-              </Button>
-            )}
-            {canSave && (
-              <>
-                <ExportCsvButton
-                  slug={venture.slug}
-                  isLoggedIn={!!user}
-                  tier={tier}
-                  remaining={exportRemaining}
-                />
-                <SaveButton
-                  startupId={venture.id}
-                  initialSaved={isBookmarked}
-                  isLoggedIn={!!user}
-                />
-                <AddToListButton
-                  startupId={venture.id}
-                  isLoggedIn={!!user}
-                />
-              </>
-            )}
-            <ShareButton slug={venture.slug} name={venture.name} />
-            {canAlert ? (
-              <AlertButton
-                startupId={venture.id}
-                initialAlert={hasAlert}
-                isLoggedIn={!!user}
-              />
-            ) : (
-              <Button size="sm" className="text-[13px]" asChild>
-                <Link href="/pricing">Set Alert</Link>
-              </Button>
+          <div className="r2-stats sm">
+            <div className="r2-stat"><b>{stageFrom(venture.last_round)}</b><span>Stage</span></div>
+            <div className="r2-stat"><b>{formatDate(venture.founded_date, { month: "short", year: "numeric" })}</b><span>Founded</span></div>
+            <div className="r2-stat"><b>{signals.length || venture.signal_count}</b><span>Signals</span></div>
+            <div className="r2-stat"><b>{relativeDate(lastSignal)}</b><span>Last signal</span></div>
+            {profileData?.est_next_raise && (
+              <div className="r2-stat"><b><BlurredText blur={blurPremium}>{profileData.est_next_raise}</BlurredText></b><span>Est. next raise</span></div>
             )}
           </div>
         </div>
-
-        <Separator className="mb-8" />
-
-        {/* Description (always visible) */}
-        {venture.description && (
-          <p className="mb-8 text-[15px] leading-relaxed text-foreground">
-            {venture.description}
-          </p>
-        )}
-
-        {/* Explorer view limit exceeded */}
-        {canFull && !hasViewAccess && (
-          <UpgradeGate tier={tier} viewsUsed={profileViewsUsed} viewLimit={viewLimit} />
-        )}
-
-        {/* Unauthenticated / no subscription — show blurred teaser */}
-        {!canFull && (
-          <PremiumContent
-            venture={venture}
-            signals={signals}
-            founders={founders}
-            programs={programs}
-            profileData={profileData}
-            blurPremium
-            isAuthenticated={!!user}
-          />
-        )}
-
-        {/* Explorer with views remaining — show content with blurred premium fields */}
-        {canFull && hasViewAccess && !canPremium && (
-          <PremiumContent
-            venture={venture}
-            signals={signals}
-            founders={founders}
-            programs={programs}
-            profileData={profileData}
-            blurPremium
-          />
-        )}
-
-        {/* Professional+ — full access */}
-        {canFull && hasViewAccess && canPremium && (
-          <PremiumContent
-            venture={venture}
-            signals={signals}
-            founders={founders}
-            programs={programs}
-            profileData={profileData}
-          />
-        )}
       </div>
+
+      {/* ---------------- Body ---------------- */}
+      <div className="page-container r2-pbody">
+        <div style={{ minWidth: 0 }}>
+          {limitHit ? (
+            <UpgradeGate viewsUsed={profileViewsUsed} viewLimit={viewLimit} />
+          ) : (
+            <MainColumn {...bodyProps} />
+          )}
+        </div>
+
+        <aside className="r2-rail">
+          {!limitHit && <Rail {...bodyProps} sectorNames={sectorNames} place={place} />}
+          {canSave && (
+            <>
+              <ExportCsvButton slug={venture.slug} isLoggedIn={!!user} tier={tier} remaining={exportRemaining} className="r2-btn o w-full" />
+              <AddToListButton startupId={venture.id} isLoggedIn={!!user} className="r2-btn o w-full" />
+            </>
+          )}
+        </aside>
+      </div>
+
+      {related.length > 0 && (
+        <div className="page-container r2-more">
+          <div className="r2-more-h">
+            <h3>More on the Radar</h3>
+            <Link href="/database" className="r2-f-reset">All startups →</Link>
+          </div>
+          <div className="r2-grid">
+            {related.map((r) => (
+              <StartupCardV2 key={r.id} s={r} saved={false} canShortlist={false} showSignalTitle={canPremium} />
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   )
 }
 
 // ------------------------------------------------------------------
-// Upgrade gate
+// Upgrade gate (Explorer monthly view limit reached)
 // ------------------------------------------------------------------
 
-function UpgradeGate({ tier, viewsUsed, viewLimit }: { tier: string; viewsUsed?: number; viewLimit?: number | null }) {
-  const isViewLimitHit = viewsUsed !== undefined && viewLimit !== undefined && viewLimit !== null
-
+function UpgradeGate({ viewsUsed, viewLimit }: { viewsUsed: number; viewLimit: number | null }) {
   return (
-    <div className="border-l-2 border-l-primary bg-card px-8 py-10 text-center">
-      <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center bg-primary/10">
-        <svg
-          className="h-5 w-5 text-primary"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={1.5}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-          />
-        </svg>
-      </div>
-      <p className="mb-1 font-serif text-[15px] font-semibold text-foreground">
-        {isViewLimitHit
+    <div className="r2-upsell" style={{ marginTop: 0 }}>
+      <h5>
+        {viewLimit !== null
           ? `You've viewed ${viewsUsed} of ${viewLimit} profiles this month`
           : "Full investor brief is Professional-only"}
-      </p>
-      <p className="mb-5 text-[13px] text-muted-foreground">
-        {isViewLimitHit
-          ? "Upgrade to Professional for unlimited profile views, full signal timelines, founder analysis, and investor briefs."
-          : "Upgrade to Professional for full signal timelines, founder analysis, and investor briefs."}
-      </p>
-      <Button size="sm" asChild>
-        <Link href="/pricing">Upgrade to Professional</Link>
-      </Button>
+      </h5>
+      <p>Upgrade to Professional for unlimited profile views, full signal timelines, founder analysis, and investor briefs.</p>
+      <Link href="/pricing" className="r2-btn p">Upgrade to Professional</Link>
     </div>
   )
 }
 
 // ------------------------------------------------------------------
-// Premium content (professional+)
+// Types
 // ------------------------------------------------------------------
 
 type Signal = {
@@ -489,6 +380,16 @@ type ProgramLink = {
   membership_role: string | null
 }
 
+type BodyProps = {
+  venture: Venture
+  signals: Signal[]
+  founders: FounderLocal[]
+  programs: ProgramLink[]
+  profileData: OrganizationProfile | null
+  blurPremium: boolean
+  isAuthenticated: boolean
+}
+
 const PROGRAM_TYPE_LABELS: Record<string, string> = {
   accelerator: "Accelerator",
   incubator: "Incubator",
@@ -501,461 +402,220 @@ const PROGRAM_TYPE_LABELS: Record<string, string> = {
   other: "Program",
 }
 
-function PremiumContent({
-  venture,
-  signals,
-  founders,
-  programs,
-  profileData,
-  blurPremium = false,
-  isAuthenticated = true,
-}: {
-  venture: Venture
-  signals: Signal[]
-  founders: FounderLocal[]
-  programs: ProgramLink[]
-  profileData: OrganizationProfile | null
-  blurPremium?: boolean
-  isAuthenticated?: boolean
-}) {
-  const hasContact =
-    venture.website || venture.linkedin_url || venture.email || venture.phone
+/** Signals shown before the timeline is blurred for non-Professional readers */
+const FREE_SIGNALS = 2
+
+// ------------------------------------------------------------------
+// Main column: brief, timeline, product & market, strategy, legal
+// ------------------------------------------------------------------
+
+function MainColumn({ signals, profileData, blurPremium, isAuthenticated }: BodyProps) {
+  const pm = [
+    ["What they're building", profileData?.product_description],
+    ["Target market", profileData?.target_market],
+    ["Competitive landscape", profileData?.competitive_landscape],
+  ].filter(([, v]) => v) as [string, string][]
+  const strategy = [
+    ["Technical thesis", profileData?.technical_thesis],
+    ["Current strategy", profileData?.current_strategy],
+    ["Business model", profileData?.business_model_hypothesis],
+  ].filter(([, v]) => v) as [string, string][]
+  const gated = blurPremium && signals.length > FREE_SIGNALS
 
   return (
-    <div className="space-y-10">
-      {/* Investor Brief */}
+    <>
       {profileData?.investor_brief && (
-        <section>
-          <SectionHeader label="Investor Brief" />
-          <div className="mt-4 space-y-3 text-[14px] leading-relaxed text-foreground">
+        <section className="r2-sec">
+          <div className="r2-sec-h">Investor brief</div>
+          <div className="r2-prose">
             {profileData.investor_brief.split(/\n\n+/).map((para, i) => (
               <p key={i}><BlurredText blur={blurPremium}>{para}</BlurredText></p>
             ))}
           </div>
           {profileData.analyst_note && (
-            <div className="mt-4 border-l-2 border-l-accent-green bg-accent-green/5 px-4 py-3">
-              <p className="text-[12px] font-bold uppercase tracking-wide text-accent-green">
-                Why this matters
-              </p>
-              <p className="mt-1 text-[13px] leading-relaxed text-foreground">
-                <BlurredText blur={blurPremium}>{profileData.analyst_note}</BlurredText>
-              </p>
+            <div className="r2-why">
+              <div className="k">Why this matters</div>
+              <p><BlurredText blur={blurPremium}>{profileData.analyst_note}</BlurredText></p>
             </div>
           )}
         </section>
       )}
 
-      {/* Key Signals Timeline */}
       {signals.length > 0 && (
-        <section>
-          <SectionHeader label="Key Signals" />
-          <div className="mt-4 relative pl-4">
-            {/* Timeline vertical line */}
-            <div className="absolute left-0 top-2 bottom-2 w-px bg-border/40" />
-
-            <div className="space-y-6">
-              {signals.map((signal) => (
-                <div key={signal.id} className="relative pl-6">
-                  {/* Dot */}
-                  <div
-                    className={`absolute left-[-4.5px] top-[5px] h-[9px] w-[9px] rounded-full border-2 border-background ${SIGNAL_DOT[signalStrengthLabel(signal.strength)] ?? SIGNAL_DOT.neutral}`}
-                  />
-                  <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                    {formatDate(signal.signal_date)}
-                    {" · "}
-                    {SIGNAL_TYPE_LABELS[signal.signal_type] ?? signal.signal_type}
-                  </p>
-                  <p className="mt-0.5 font-serif text-[14px] font-semibold text-foreground">
-                    <BlurredText blur={blurPremium}>{signal.title}</BlurredText>
-                  </p>
-                  {signal.description && (
-                    <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-                      <BlurredText blur={blurPremium}>{signal.description}</BlurredText>
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Founders */}
-      {founders.length > 0 && (
-        <section>
-          <SectionHeader label="Founding Team" />
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {founders.map((founder) => (
-              <div
-                key={founder.id}
-                className="border-l-2 border-l-primary bg-accent p-4"
-              >
-                <div className="mb-2 flex items-start justify-between gap-2">
+        <section className="r2-sec">
+          <div className="r2-sec-h">Signal timeline</div>
+          <div className="r2-tl" style={gated ? { minHeight: 300 } : undefined}>
+            {signals.map((g, i) => {
+              const hidden = gated && i >= FREE_SIGNALS
+              return (
+                <div key={g.id} className={"r2-tl-row" + (hidden ? " r2-blur" : "")} aria-hidden={hidden || undefined}>
+                  <div className="dt">{formatDate(g.signal_date)}</div>
+                  <div className="r2-cat" style={{ color: signalColor(g.signal_type) }}>{signalLabel(g.signal_type)}</div>
                   <div>
-                    {founder.slug && !blurPremium ? (
-                      <Link
-                        href={`/founder/${founder.slug}`}
-                        className="font-serif text-[14px] font-bold text-foreground underline-offset-2 hover:underline"
-                      >
-                        {founder.full_name}
-                      </Link>
-                    ) : (
-                      <p className="font-serif text-[14px] font-bold text-foreground">
-                        <BlurredText blur={blurPremium}>{founder.full_name}</BlurredText>
-                      </p>
-                    )}
-                    {founder.role && (
-                      <p className="text-[12px] font-medium text-primary">
-                        <BlurredText blur={blurPremium}>{founder.role}</BlurredText>
-                      </p>
-                    )}
+                    <h4>{g.title}</h4>
+                    {g.description && <p>{g.description}</p>}
                   </div>
-                  {founder.linkedin_url && !blurPremium && (
-                    <a
-                      href={founder.linkedin_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                    >
-                      LinkedIn
-                    </a>
-                  )}
                 </div>
-
-                {founder.short_bio && (
-                  <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
-                    <BlurredText blur={blurPremium}>{founder.short_bio}</BlurredText>
-                  </p>
-                )}
-
-                {/* Pedigree summary */}
-                <div className="mt-3 space-y-1.5">
-                  {founder.big_tech_employer && (
-                    <p className="text-[12px] text-muted-foreground">
-                      <span className="font-medium text-foreground">Big Tech: </span>
-                      <BlurredText blur={blurPremium}>{founder.big_tech_employer}</BlurredText>
-                    </p>
-                  )}
-                  {founder.academic_lab && (
-                    <p className="text-[12px] text-muted-foreground">
-                      <span className="font-medium text-foreground">
-                        {founder.has_phd ? "PhD: " : "Lab: "}
-                      </span>
-                      <BlurredText blur={blurPremium}>{founder.academic_lab}</BlurredText>
-                    </p>
-                  )}
-                  {founder.previous_exits > 0 && (
-                    <p className="text-[12px] text-muted-foreground">
-                      <span className="font-medium text-foreground">Exits: </span>
-                      <BlurredText blur={blurPremium}>{founder.previous_exits}</BlurredText>
-                    </p>
-                  )}
-                </div>
-
+              )
+            })}
+            {gated && (
+              <div className="r2-gate">
+                <h5>{signals.length - FREE_SIGNALS} more signal{signals.length - FREE_SIGNALS !== 1 ? "s" : ""} on file</h5>
+                <p>Full timelines are part of the Professional plan.</p>
+                <Link href="/pricing" className="r2-btn p">See plans</Link>
               </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {pm.length > 0 && (
+        <section className="r2-sec">
+          <div className="r2-sec-h">Product &amp; market</div>
+          <div className={"r2-pm" + (pm.length === 2 ? " two" : "")}>
+            {pm.map(([k, v]) => (
+              <div key={k}><div className="r2-lbl">{k}</div><p><BlurredText blur={blurPremium}>{v}</BlurredText></p></div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Programs & Affiliations */}
-      {programs.length > 0 && (
-        <section>
-          <SectionHeader label="Programs & Affiliations" />
-          <div className="mt-4 space-y-2">
-            {programs.map((p) => (
-              <div key={p.id} className="flex items-center justify-between gap-3 border-l-2 border-l-border bg-accent p-3">
-                <div>
-                  <p className="text-[13px] font-semibold text-foreground">
-                    <BlurredText blur={blurPremium}>{p.program_name}</BlurredText>
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    <BlurredText blur={blurPremium}>
-                      {[PROGRAM_TYPE_LABELS[p.program_type] ?? p.program_type, p.edition_label, p.year, p.membership_role].filter(Boolean).join(" · ")}
-                    </BlurredText>
-                  </p>
-                </div>
-              </div>
+      {strategy.length > 0 && (
+        <section className="r2-sec">
+          <div className="r2-sec-h">Strategy</div>
+          <div className={"r2-pm" + (strategy.length === 2 ? " two" : "")}>
+            {strategy.map(([k, v]) => (
+              <div key={k}><div className="r2-lbl">{k}</div><p><BlurredText blur={blurPremium}>{v}</BlurredText></p></div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Product & Market */}
-      {(profileData?.product_description ||
-        profileData?.target_market ||
-        profileData?.competitive_landscape ||
-        profileData?.technical_thesis) && (
-        <section>
-          <SectionHeader label="Product & Market" />
-          <div className="mt-4 space-y-4 text-[14px] leading-relaxed">
-            {profileData.product_description && (
-              <p>
-                <strong className="font-semibold text-foreground">
-                  What they&apos;re building:{" "}
-                </strong>
-                <span className="text-muted-foreground">
-                  <BlurredText blur={blurPremium}>{profileData.product_description}</BlurredText>
-                </span>
-              </p>
-            )}
-            {profileData.target_market && (
-              <p>
-                <strong className="font-semibold text-foreground">
-                  Target market:{" "}
-                </strong>
-                <span className="text-muted-foreground">
-                  <BlurredText blur={blurPremium}>{profileData.target_market}</BlurredText>
-                </span>
-              </p>
-            )}
-            {profileData.competitive_landscape && (
-              <p>
-                <strong className="font-semibold text-foreground">
-                  Competitive landscape:{" "}
-                </strong>
-                <span className="text-muted-foreground">
-                  <BlurredText blur={blurPremium}>{profileData.competitive_landscape}</BlurredText>
-                </span>
-              </p>
-            )}
-            {profileData.technical_thesis && (
-              <p>
-                <strong className="font-semibold text-foreground">
-                  Technical thesis:{" "}
-                </strong>
-                <span className="text-muted-foreground">
-                  <BlurredText blur={blurPremium}>{profileData.technical_thesis}</BlurredText>
-                </span>
-              </p>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Strategy */}
-      {(profileData?.current_strategy ||
-        profileData?.business_model_hypothesis) && (
-        <section>
-          <SectionHeader label="Strategy" />
-          <div className="mt-4 space-y-4 text-[14px] leading-relaxed">
-            {profileData.current_strategy && (
-              <p>
-                <strong className="font-semibold text-foreground">
-                  Current strategy:{" "}
-                </strong>
-                <span className="text-muted-foreground">
-                  <BlurredText blur={blurPremium}>{profileData.current_strategy}</BlurredText>
-                </span>
-              </p>
-            )}
-            {profileData.business_model_hypothesis && (
-              <p>
-                <strong className="font-semibold text-foreground">
-                  Business model:{" "}
-                </strong>
-                <span className="text-muted-foreground">
-                  <BlurredText blur={blurPremium}>{profileData.business_model_hypothesis}</BlurredText>
-                </span>
-              </p>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Contact & Web Presence */}
-      {hasContact && (
-        <section>
-          <SectionHeader label="Contact & Web Presence" />
-          <div className="mt-4 flex flex-wrap gap-4">
-            {venture.website && (
-              <ContactItem
-                icon={
-                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 1.5C8 1.5 5.5 4.5 5.5 8s2.5 6.5 2.5 6.5M8 1.5C8 1.5 10.5 4.5 10.5 8S8 14.5 8 14.5M1.5 8h13"/></svg>
-                }
-                label="Website"
-                href={venture.website}
-                display={venture.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-                blur={blurPremium}
-              />
-            )}
-            {venture.linkedin_url && (
-              <ContactItem
-                icon={
-                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm1.3 2.5a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6zm-1 3.5h2V12h-2V7zm3 0h2v.7c.3-.5 1-1 2-1 2 0 2.5 1.4 2.5 3.1V12h-2V10c0-.8 0-1.7-1-1.7s-1.5.8-1.5 1.7v2h-2V7z"/></svg>
-                }
-                label="LinkedIn"
-                href={venture.linkedin_url}
-                display="View profile"
-                blur={blurPremium}
-              />
-            )}
-            {venture.email && (
-              <ContactItem
-                icon={
-                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="1.5" y="3.5" width="13" height="9" rx="1"/><path d="m1.5 4 6.5 5 6.5-5"/></svg>
-                }
-                label="Email"
-                href={`mailto:${venture.email}`}
-                display={venture.email}
-                blur={blurPremium}
-              />
-            )}
-            {venture.phone && (
-              <ContactItem
-                icon={
-                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M2 2.5A1.5 1.5 0 0 1 3.5 1h1a1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 0 1.5 1.5h2A1.5 1.5 0 0 0 11 2.5 1.5 1.5 0 0 1 12.5 1h1A1.5 1.5 0 0 1 15 2.5v1A12.5 12.5 0 0 1 2.5 16h-1A1.5 1.5 0 0 1 0 14.5v-1A1.5 1.5 0 0 1 1.5 12"/></svg>
-                }
-                label="Phone"
-                href={`tel:${venture.phone}`}
-                display={venture.phone}
-                blur={blurPremium}
-              />
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Funding */}
-      {(venture.total_raised_eur ||
-        venture.last_round ||
-        profileData?.est_next_raise ||
-        profileData?.fundraising_signal_summary) && (
-        <section>
-          <SectionHeader label="Funding" />
-          <div className="mt-4 data-card-compact bg-card p-5">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="metric-label">Total Raised</p>
-                <p className="metric-value mt-1 text-base">
-                  <BlurredText blur={blurPremium}>{formatEur(venture.total_raised_eur)}</BlurredText>
-                </p>
-              </div>
-              <div>
-                <p className="metric-label">Last Round</p>
-                <p className="metric-value mt-1 text-base">
-                  <BlurredText blur={blurPremium}>{venture.last_round ?? "—"}</BlurredText>
-                </p>
-              </div>
-              <div>
-                <p className="metric-label">Est. Next Raise</p>
-                <p className="metric-value mt-1 text-base">
-                  <BlurredText blur={blurPremium}>{profileData?.est_next_raise ?? "—"}</BlurredText>
-                </p>
-              </div>
-            </div>
-            {profileData?.fundraising_signal_summary && (
-              <>
-                <Separator className="my-4" />
-                <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  <BlurredText blur={blurPremium}>{profileData.fundraising_signal_summary}</BlurredText>
-                </p>
-              </>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Legal */}
       {profileData?.entity_complexity && (
-        <section>
-          <SectionHeader label="Legal" />
-          <div className="mt-4 text-[14px] leading-relaxed">
-            <p>
-              <strong className="font-semibold text-foreground">
-                Entity complexity:{" "}
-              </strong>
-              <span className="text-muted-foreground">
-                <BlurredText blur={blurPremium}>{profileData.entity_complexity}</BlurredText>
-              </span>
-            </p>
-          </div>
+        <section className="r2-sec">
+          <div className="r2-sec-h">Legal</div>
+          <div className="r2-prose"><p><BlurredText blur={blurPremium}>{profileData.entity_complexity}</BlurredText></p></div>
         </section>
       )}
 
-      {/* CTA banner */}
-      {blurPremium && (
-        <div className="mt-6 border-l-2 border-l-primary bg-card px-6 py-5 text-center">
+      {blurPremium && !gated && (
+        <div className="r2-upsell">
           {isAuthenticated ? (
             <>
-              <p className="mb-1 font-serif text-[14px] font-semibold text-foreground">
-                Unlock the full intelligence brief
-              </p>
-              <p className="mb-3 text-[13px] text-muted-foreground">
-                Upgrade to Professional for unblurred investor briefs, signal timelines, founder analysis, and contact details.
-              </p>
-              <Button size="sm" asChild>
-                <Link href="/pricing">Upgrade to Professional</Link>
-              </Button>
+              <h5>Unlock the full intelligence brief</h5>
+              <p>Upgrade to Professional for unblurred investor briefs, signal timelines, founder analysis, and contact details.</p>
+              <Link href="/pricing" className="r2-btn p">Upgrade to Professional</Link>
             </>
           ) : (
             <>
-              <p className="mb-1 font-serif text-[14px] font-semibold text-foreground">
-                Get the full picture on this startup
-              </p>
-              <p className="mb-3 text-[13px] text-muted-foreground">
-                Sign up for AI Radar to access investor briefs, signal timelines, founder intelligence, funding data, and more across the French AI ecosystem.
-              </p>
-              <div className="flex items-center justify-center gap-3">
-                <Button size="sm" asChild>
-                  <Link href="/pricing">View Plans</Link>
-                </Button>
-                <Button size="sm" variant="outline" asChild>
-                  <Link href="/auth/signup">Create Account</Link>
-                </Button>
+              <h5>Get the full picture on this startup</h5>
+              <p>Sign up for AI Radar to access investor briefs, signal timelines, founder intelligence, funding data, and more.</p>
+              <div className="flex items-center justify-center gap-2">
+                <Link href="/pricing" className="r2-btn p">View plans</Link>
+                <Link href="/auth/signup" className="r2-btn o">Create account</Link>
               </div>
             </>
           )}
         </div>
       )}
-    </div>
+    </>
   )
 }
 
-function ContactItem({
-  icon,
-  label,
-  href,
-  display,
-  blur = false,
-}: {
-  icon: React.ReactNode
-  label: string
-  href: string
-  display: string
-  blur?: boolean
-}) {
-  const Wrapper = blur ? "div" : "a"
-  const wrapperProps = blur
-    ? {}
-    : {
-        href,
-        target: href.startsWith("http") ? "_blank" as const : undefined,
-        rel: href.startsWith("http") ? "noopener noreferrer" : undefined,
-      }
+// ------------------------------------------------------------------
+// Right rail: founders, funding, programmes, facts on file
+// ------------------------------------------------------------------
+
+function Rail({ venture, founders, programs, profileData, blurPremium, sectorNames, place }: BodyProps & { sectorNames: string[]; place: string }) {
+  const hasFunding = venture.total_raised_eur || venture.last_round || profileData?.est_next_raise || profileData?.fundraising_signal_summary
+  const website = venture.website?.replace(/^https?:\/\//, "").replace(/\/$/, "")
 
   return (
-    <Wrapper
-      {...wrapperProps}
-      className="flex items-center gap-2 border-l-2 border-l-border bg-card px-4 py-3 text-[13px] transition-colors duration-300 hover:bg-accent"
-    >
-      <span className="shrink-0 text-muted-foreground">{icon}</span>
-      <div className="min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="truncate font-medium text-foreground">
-          <BlurredText blur={blur}>{display}</BlurredText>
-        </p>
+    <>
+      {founders.length > 0 && (
+        <div className="r2-box">
+          <div className="r2-box-h"><span className="r2-lbl">Founding team</span><span className="r2-mono-sm">{founders.length}</span></div>
+          <div className="r2-box-b">
+            {founders.map((f) => {
+              const tags = founderTags(f)
+              const inner = (
+                <>
+                  <Monogram name={f.full_name} tone="light" size="sm" round />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="nm"><BlurredText blur={blurPremium}>{f.full_name}</BlurredText></div>
+                    {f.role && <div className="rl"><BlurredText blur={blurPremium}>{f.role}</BlurredText></div>}
+                    {tags.length > 0 && <div className="tg">{tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>}
+                  </div>
+                </>
+              )
+              return f.slug && !blurPremium ? (
+                <Link key={f.id} href={`/founder/${f.slug}`} className="r2-person">
+                  {inner}
+                  <span style={{ color: "var(--muted-foreground)", paddingTop: 4 }}><Icon name="arrow" size={13} /></span>
+                </Link>
+              ) : (
+                <div key={f.id} className="r2-person">{inner}</div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {hasFunding && (
+        <div className="r2-box">
+          <div className="r2-box-h"><span className="r2-lbl">Funding</span></div>
+          <div className="r2-box-b">
+            <div className="r2-kv"><span className="k">Total raised</span><span className="v"><BlurredText blur={blurPremium}>{formatEur(venture.total_raised_eur)}</BlurredText></span></div>
+            <div className="r2-kv"><span className="k">Last round</span><span className="v"><BlurredText blur={blurPremium}>{venture.last_round ?? "—"}</BlurredText></span></div>
+            {profileData?.est_next_raise && (
+              <div className="r2-kv"><span className="k">Est. next raise</span><span className="v" style={{ color: "var(--clay-ink)" }}><BlurredText blur={blurPremium}>{profileData.est_next_raise}</BlurredText></span></div>
+            )}
+            {profileData?.fundraising_signal_summary && (
+              <p className="r2-note"><BlurredText blur={blurPremium}>{profileData.fundraising_signal_summary}</BlurredText></p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {programs.length > 0 && (
+        <div className="r2-box">
+          <div className="r2-box-h"><span className="r2-lbl">Programs &amp; affiliations</span></div>
+          <div className="r2-box-b">
+            {programs.map((p) => (
+              <div key={p.id} className="r2-related">
+                <div className="r2-lbl" style={{ marginBottom: 0 }}>{PROGRAM_TYPE_LABELS[p.program_type] ?? p.program_type}</div>
+                <div className="ttl"><BlurredText blur={blurPremium}>{p.program_name}</BlurredText></div>
+                {(p.edition_label || p.year || p.membership_role) && (
+                  <div className="r2-mono-sm" style={{ marginTop: 2 }}>{[p.edition_label, p.year, p.membership_role].filter(Boolean).join(" · ")}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="r2-box">
+        <div className="r2-box-h"><span className="r2-lbl">On file</span></div>
+        <div className="r2-box-b">
+          {place && <div className="r2-kv"><span className="k">Headquarters</span><span className="v">{place}, {venture.country}</span></div>}
+          {venture.first_seen_at && <div className="r2-kv"><span className="k">First seen</span><span className="v">{formatDate(venture.first_seen_at)}</span></div>}
+          {sectorNames.length > 0 && <div className="r2-kv"><span className="k">Sector</span><span className="v">{sectorNames.join(", ")}</span></div>}
+          {website && (
+            blurPremium
+              ? <div className="r2-kv"><span className="k">Website</span><span className="v"><BlurredText blur>{website}</BlurredText></span></div>
+              : <div className="r2-kv"><span className="k">Website</span><a className="v" href={venture.website!} target="_blank" rel="noopener noreferrer">{website}</a></div>
+          )}
+          {venture.linkedin_url && !blurPremium && (
+            <div className="r2-kv"><span className="k">LinkedIn</span><a className="v" href={venture.linkedin_url} target="_blank" rel="noopener noreferrer">View profile</a></div>
+          )}
+          {venture.email && (
+            <div className="r2-kv"><span className="k">Email</span>{blurPremium ? <span className="v"><BlurredText blur>{venture.email}</BlurredText></span> : <a className="v" href={`mailto:${venture.email}`}>{venture.email}</a>}</div>
+          )}
+          {venture.phone && (
+            <div className="r2-kv"><span className="k">Phone</span>{blurPremium ? <span className="v"><BlurredText blur>{venture.phone}</BlurredText></span> : <a className="v" href={`tel:${venture.phone}`}>{venture.phone}</a>}</div>
+          )}
+        </div>
       </div>
-    </Wrapper>
-  )
-}
-
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <div className="border-b border-border/40 pb-2">
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </p>
-    </div>
+    </>
   )
 }

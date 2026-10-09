@@ -11,9 +11,10 @@ interface Props {
   tier: string
   /** Remaining exports this month (null = unlimited) */
   remaining: number | null
+  className?: string
 }
 
-export function ExportCsvButton({ slug, isLoggedIn, tier, remaining }: Props) {
+export function ExportCsvButton({ slug, isLoggedIn, tier, remaining, className }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,7 +72,7 @@ export function ExportCsvButton({ slug, isLoggedIn, tier, remaining }: Props) {
       <Button
         variant="outline"
         size="sm"
-        className="text-[13px]"
+        className={className ?? "text-[13px]"}
         onClick={handleExport}
         disabled={loading || (isLoggedIn && exhausted)}
         title={tier === "free" ? "Upgrade to Explorer or Professional to export" : undefined}
