@@ -102,7 +102,7 @@ export function StartupRowV2({ s, saved, canShortlist }: { s: CardStartup; saved
 }
 
 /** Blurred stand-in for Professional-only text; the real value is never sent */
-function Redacted({ width }: { width: number }) {
+export function Redacted({ width }: { width: number }) {
   return (
     <span className="r2-redact" aria-label="Professional plan only" style={{ width }} />
   )

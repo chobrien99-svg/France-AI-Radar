@@ -1,11 +1,10 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { canAccessFullProfile, canAccessPremiumFields } from "@/lib/subscription"
-import { BlurredText } from "@/components/blurred-gate"
+import { canAccessPremiumFields } from "@/lib/subscription"
 import { Icon } from "@/components/radar/icons"
 import { Monogram } from "@/components/radar/monogram"
-import { StartupCardV2, type CardStartup } from "@/components/radar/cards"
+import { StartupCardV2, Redacted, type CardStartup } from "@/components/radar/cards"
 import { formatDate, founderTags, signalColor, signalLabel, stageFrom } from "@/lib/radar"
 import type { Profile } from "@/lib/types"
 
@@ -34,19 +33,21 @@ export default async function FounderProfilePage({
     data: { user },
   } = await supabase.auth.getUser()
 
-  let profile: Profile | null = null
+  let profile: (Profile & { is_admin?: boolean }) | null = null
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end")
+      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, is_admin")
       .eq("id", user.id)
       .single()
     profile = data
   }
 
-  const tier = profile?.subscription_tier ?? "explorer"
-  const canFull = canAccessFullProfile(tier)
-  const canPremium = canAccessPremiumFields(tier)
+  // Founder intelligence is Professional-only. Everyone else gets name + company,
+  // and the premium values are never rendered (not just blurred).
+  const isAdmin = !!profile?.is_admin
+  const hasActiveSub = profile?.subscription_status === "active"
+  const canPremium = isAdmin || (hasActiveSub && canAccessPremiumFields(profile?.subscription_tier ?? "explorer"))
 
   // Fetch founder by slug
   const { data: founderRaw } = await supabase
@@ -209,16 +210,20 @@ export default async function FounderProfilePage({
               <h1 className="r2-h1">{founder.full_name}</h1>
               {(primaryRole || company) && (
                 <p className="r2-lede">
-                  {primaryRole}
+                  {canPremium ? primaryRole : primaryRole ? <Redacted width={120} /> : null}
                   {primaryRole && company ? ", " : ""}
                   {company && <Link href={`/startup/${company.slug}`} className="r2-inline">{company.name as string}</Link>}
                 </p>
               )}
-              {tags.length > 0 && (
-                <div className="r2-tags" style={{ paddingTop: 18 }}>{tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>
+              {canPremium ? (
+                tags.length > 0 && (
+                  <div className="r2-tags" style={{ paddingTop: 18 }}>{tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>
+                )
+              ) : (
+                <div className="r2-tags" style={{ paddingTop: 18 }}><span className="r2-tag r2-tag-lock">Background · Professional</span></div>
               )}
             </div>
-            {links.length > 0 && (
+            {canPremium && links.length > 0 && (
               <div className="r2-ph-acts">
                 {links.map(([label, url]) => (
                   <a key={label} href={url} target="_blank" rel="noopener noreferrer" className="r2-btn s">
@@ -245,26 +250,34 @@ export default async function FounderProfilePage({
       {/* ---------------- Body ---------------- */}
       <div className="page-container r2-pbody">
         <div style={{ minWidth: 0 }}>
-          {(founder.bio || founder.short_bio) && (
-            <section className="r2-sec">
-              <div className="r2-sec-h">Profile</div>
-              <div className="r2-prose"><p>{founder.bio || founder.short_bio}</p></div>
-              {founder.email && (
-                <p className="text-[14px] text-muted-foreground">
-                  Contact: <BlurredText blur={!canPremium}>{canPremium ? <a href={`mailto:${founder.email}`}>{founder.email}</a> : founder.email}</BlurredText>
-                </p>
-              )}
-            </section>
-          )}
-
-          {!canFull ? (
-            <div className="r2-upsell" style={{ marginTop: 0 }}>
-              <h5>Full founder profile is Professional-only</h5>
-              <p>Upgrade to Professional for full founder backgrounds, exit history, and pedigree analysis.</p>
-              <Link href="/pricing" className="r2-btn p">Upgrade to Professional</Link>
-            </div>
+          {!canPremium ? (
+            <>
+              <section className="r2-sec">
+                <div className="r2-sec-h">Profile</div>
+                <div className="r2-prose">
+                  <p><Redacted width={520} /><br /><Redacted width={480} /><br /><Redacted width={300} /></p>
+                </div>
+              </section>
+              <div className="r2-upsell" style={{ marginTop: 0 }}>
+                <h5>Full founder profile is Professional-only</h5>
+                <p>Upgrade to Professional for founder biographies, career and education history, pedigree analysis and contact details.</p>
+                <Link href="/pricing" className="r2-btn p">Upgrade to Professional</Link>
+              </div>
+            </>
           ) : (
             <>
+              {(founder.bio || founder.short_bio) && (
+                <section className="r2-sec">
+                  <div className="r2-sec-h">Profile</div>
+                  <div className="r2-prose"><p>{founder.bio || founder.short_bio}</p></div>
+                  {founder.email && (
+                    <p className="text-[14px] text-muted-foreground">
+                      Contact: <a href={`mailto:${founder.email}`}>{founder.email}</a>
+                    </p>
+                  )}
+                </section>
+              )}
+
               {career.length > 0 && (
                 <section className="r2-sec">
                   <div className="r2-sec-h">Career</div>
@@ -312,7 +325,7 @@ export default async function FounderProfilePage({
                 {ventures.slice(1).map((v) => (
                   <Link key={v.org.id as string} href={`/startup/${v.org.slug}`} className="r2-person">
                     <Monogram name={v.org.name as string} tone="light" size="sm" imageUrl={v.org.logo_url as string | null} />
-                    <div style={{ flex: 1 }}><div className="nm">{v.org.name as string}</div>{v.role && <div className="rl">{v.role}</div>}</div>
+                    <div style={{ flex: 1 }}><div className="nm">{v.org.name as string}</div>{v.role && <div className="rl">{canPremium ? v.role : <Redacted width={90} />}</div>}</div>
                   </Link>
                 ))}
               </div>
@@ -327,7 +340,7 @@ export default async function FounderProfilePage({
                   const inner = (
                     <>
                       <Monogram name={p.full_name as string} tone="light" size="sm" round imageUrl={p.photo_url as string | null} />
-                      <div style={{ flex: 1 }}><div className="nm">{p.full_name as string}</div>{role && <div className="rl">{role}</div>}</div>
+                      <div style={{ flex: 1 }}><div className="nm">{p.full_name as string}</div>{role && <div className="rl">{canPremium ? role : <Redacted width={90} />}</div>}</div>
                     </>
                   )
                   return p.slug ? (
@@ -340,7 +353,7 @@ export default async function FounderProfilePage({
             </div>
           )}
 
-          {canFull && related.length > 0 && (
+          {related.length > 0 && (
             <div className="r2-box">
               <div className="r2-box-h"><span className="r2-lbl">Related signals</span></div>
               <div className="r2-box-b">
@@ -350,7 +363,7 @@ export default async function FounderProfilePage({
                       <span className="r2-cat" style={{ color: signalColor(g.signal_type) }}>{signalLabel(g.signal_type)}</span>
                       <span className="r2-mono-sm">{formatDate(g.signal_date, { day: "numeric", month: "short" })}</span>
                     </div>
-                    <div className="ttl"><BlurredText blur={!canPremium}>{g.title}</BlurredText></div>
+                    <div className="ttl">{canPremium ? g.title : <Redacted width={180} />}</div>
                   </div>
                 ))}
               </div>
