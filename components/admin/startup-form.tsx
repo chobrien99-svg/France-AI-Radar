@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { tagStrengthLabel } from "@/lib/types"
+import { LogoUpload } from "@/components/admin/logo-upload"
 
 // ------------------------------------------------------------------
 // Types
@@ -90,6 +91,7 @@ interface Props {
   initialValues?: Partial<StartupFormValues>
   initialTags?: TagRow[]
   startupId?: string // if set → PATCH; otherwise → POST
+  initialLogoUrl?: string | null
 }
 
 // ------------------------------------------------------------------
@@ -135,7 +137,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // Component
 // ------------------------------------------------------------------
 
-export function StartupForm({ initialValues, initialTags = [], startupId }: Props) {
+export function StartupForm({ initialValues, initialTags = [], startupId, initialLogoUrl = null }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<StartupFormValues>({ ...DEFAULTS, ...initialValues })
   const [tags, setTags] = useState<TagRow[]>(initialTags)
@@ -224,6 +226,11 @@ export function StartupForm({ initialValues, initialTags = [], startupId }: Prop
 
   return (
     <form onSubmit={submit} className="space-y-5">
+
+      {/* ── Logo ── */}
+      <Field label="Logo">
+        <LogoUpload startupId={startupId} name={form.name} initialUrl={initialLogoUrl} />
+      </Field>
 
       {/* ── Core ── */}
       <div className="grid gap-4 sm:grid-cols-2">
