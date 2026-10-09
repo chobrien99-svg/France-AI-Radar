@@ -181,6 +181,7 @@ export default async function EditStartupPage({
         initialValues={initialValues}
         initialTags={tags}
         startupId={id}
+        initialLogoUrl={(startup.logo_url as string | null) ?? null}
       />
 
       <LinkedFounders
