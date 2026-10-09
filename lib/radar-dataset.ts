@@ -20,7 +20,15 @@ type Named = { id: string; name: string }
 type Params = Record<string, string | string[] | undefined>
 
 export type StartupItem = CardStartup & { sectorId: string | null; cityId: string | null; firstSeen: string | null; activity: number; search: string }
-export type FounderItem = CardFounder & { sectorId: string | null; cityId: string | null; activity: number; search: string }
+export type FounderItem = CardFounder & {
+  sectorId: string | null
+  cityId: string | null
+  activity: number
+  /** Name, role, company and bio — Professional search */
+  search: string
+  /** Name and company only — what non-Professional tiers may search */
+  publicSearch: string
+}
 
 export type RadarDataset = {
   startups: StartupItem[]
@@ -35,6 +43,8 @@ export type DatabaseQuery = {
   q: string
   sort: string
   shortlistOnly: boolean
+  /** Can search founder roles and bios (Professional) */
+  premium: boolean
   sel: { sector: string[]; stage: string[]; signal: string[]; location: string[]; bg: string[]; time: string[] }
 }
 
@@ -51,8 +61,8 @@ const matches = (selected: string[], values: Array<string | null | undefined>) =
   selected.length === 0 || values.some((v) => v != null && selected.includes(v))
 
 /** Read the Database URL state. Filters the tier can't use are ignored. */
-export function parseDatabaseQuery(params: Params, opts: { advanced: boolean; canShortlist: boolean }): DatabaseQuery {
-  const { advanced, canShortlist } = opts
+export function parseDatabaseQuery(params: Params, opts: { advanced: boolean; canShortlist: boolean; premium: boolean }): DatabaseQuery {
+  const { advanced, canShortlist, premium } = opts
   const tab = paramOne(params.tab) === "founders" ? "founders" : "startups"
   const sortParam = paramOne(params.sort)
   return {
@@ -60,6 +70,7 @@ export function parseDatabaseQuery(params: Params, opts: { advanced: boolean; ca
     q: paramOne(params.q).trim().toLowerCase(),
     sort: SORTS[tab].some((o) => o.value === sortParam) ? sortParam : "latest",
     shortlistOnly: tab === "startups" && canShortlist && paramOne(params.shortlist) === "1",
+    premium,
     sel: {
       sector: advanced ? paramList(params.sector) : [],
       stage: advanced ? paramList(params.stage) : [],
@@ -183,8 +194,10 @@ export async function loadRadarDataset(svc: SupabaseClient, supabase: SupabaseCl
       cityId: company.cityId,
       activity: company.activity,
       search: "",
+      publicSearch: "",
     }
     f.search = [f.name, f.role, company.name, f.bio].join(" ").toLowerCase()
+    f.publicSearch = [f.name, company.name].join(" ").toLowerCase()
     founderMap.set(f.id, f)
   }
 
@@ -213,13 +226,13 @@ export function filterStartups(ds: RadarDataset, query: DatabaseQuery): StartupI
 
 /** Founders matching the query, in display order */
 export function filterFounders(ds: RadarDataset, query: DatabaseQuery): FounderItem[] {
-  const { sel, q, sort } = query
+  const { sel, q, sort, premium } = query
   const out = ds.founders.filter(
     (f) =>
       matches(sel.bg, f.tags) &&
       matches(sel.sector, [f.sectorId]) &&
       matches(sel.location, [f.cityId]) &&
-      (!q || f.search.includes(q))
+      (!q || (premium ? f.search : f.publicSearch).includes(q))
   )
   const bareName = (n: string) => n.replace(/^Dr\.?\s*/i, "")
   if (sort === "az") out.sort((a, b) => bareName(a.name).localeCompare(bareName(b.name)))

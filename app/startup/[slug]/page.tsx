@@ -546,7 +546,7 @@ function Rail({ venture, founders, programs, profileData, blurPremium, sectorNam
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="nm"><BlurredText blur={blurPremium}>{f.full_name}</BlurredText></div>
                     {f.role && <div className="rl"><BlurredText blur={blurPremium}>{f.role}</BlurredText></div>}
-                    {tags.length > 0 && <div className="tg">{tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>}
+                    {!blurPremium && tags.length > 0 && <div className="tg">{tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>}
                   </div>
                 </>
               )

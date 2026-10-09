@@ -68,7 +68,7 @@ export default async function DatabasePage({
   const canPremium = isAdmin || canAccessPremiumFields(tier)
 
   // URL state → filters, then the shared dataset (same semantics as the CSV export)
-  const query = parseDatabaseQuery(params, { advanced, canShortlist })
+  const query = parseDatabaseQuery(params, { advanced, canShortlist, premium: canPremium })
   const { tab, sort, shortlistOnly } = query
   const view = paramOne(params.view) === "list" ? "list" : "grid"
 
@@ -76,7 +76,8 @@ export default async function DatabasePage({
   const ds = await loadRadarDataset(svc, supabase, user.id)
   const { startups: allStartups, founders: allFounders, saved } = ds
   const startups = filterStartups(ds, query)
-  const founders = filterFounders(ds, query)
+  // Founder roles, bios and background are Professional intelligence: never send them otherwise
+  const founders = filterFounders(ds, query).map((f) => (canPremium ? f : { ...f, role: null, bio: null, tags: [] }))
 
   const visibleStartups = limit !== null ? startups.slice(0, limit) : startups
   const hiddenCount = startups.length - visibleStartups.length
@@ -184,9 +185,9 @@ export default async function DatabasePage({
               </div>
             )
           ) : view === "grid" ? (
-            <div className="r2-grid">{founders.map((f) => <FounderCardV2 key={f.id} f={f} />)}</div>
+            <div className="r2-grid">{founders.map((f) => <FounderCardV2 key={f.id} f={f} redacted={!canPremium} />)}</div>
           ) : (
-            <div className="r2-list">{founders.map((f) => <FounderRowV2 key={f.id} f={f} />)}</div>
+            <div className="r2-list">{founders.map((f) => <FounderRowV2 key={f.id} f={f} redacted={!canPremium} />)}</div>
           )}
 
           {tab === "startups" && hiddenCount > 0 && (

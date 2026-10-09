@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { getExportLimit, canUseAdvancedFilters, canSaveAndList } from "@/lib/subscription"
+import { getExportLimit, canUseAdvancedFilters, canSaveAndList, canAccessPremiumFields } from "@/lib/subscription"
 import { parseDatabaseQuery, loadRadarDataset, filterStartups } from "@/lib/radar-dataset"
 
 export const runtime = "nodejs"
@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
   const query = parseDatabaseQuery(params, {
     advanced: isAdmin || canUseAdvancedFilters(tier),
     canShortlist: isAdmin || canSaveAndList(tier),
+    premium: isAdmin || canAccessPremiumFields(tier),
   })
 
   const svc = await createServiceClient()
