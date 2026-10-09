@@ -1,12 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./radar-v2.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --font-sans: var(--font-public-sans);
   --font-serif: var(--font-newsreader);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-plex-mono);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -33,6 +34,16 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-clay: var(--clay);
+  --color-clay-ink: var(--clay-ink);
+  --color-e-blue: var(--e-blue);
+  --color-e-blue-soft: var(--e-blue-soft);
+  --color-border-strong: var(--border-strong);
+  --color-tx-d: var(--tx-d);
+  --color-tx-dm: var(--tx-dm);
+  --color-tx-dd: var(--tx-dd);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -54,49 +65,59 @@
 
 :root {
   --radius: 0px;
-  /* Institutional Ink Blue */
-  --primary: #114563;
+  /* Palette: AMI Labs "Instrument" — ink chrome, paper content, electric blue, clay */
+  --primary: #2e6bff;
   --primary-foreground: #ffffff;
-  --primary-container: #2f5d7c;
-  /* Warm Parchment */
-  --background: #fef9ee;
-  --foreground: #1d1c15;
-  /* White cards on parchment = natural lift */
+  --primary-container: #255ce0;
+  /* Paper */
+  --background: #f4f4f1;
+  --foreground: #181a1b;
   --card: #ffffff;
-  --card-foreground: #1d1c15;
+  --card-foreground: #181a1b;
   --popover: #ffffff;
-  --popover-foreground: #1d1c15;
-  /* Surface Container — secondary UI backgrounds */
-  --secondary: #f2ede2;
-  --secondary-foreground: #1d1c15;
-  --muted: #f2ede2;
-  --muted-foreground: #41474d;
-  /* Surface Container Low */
-  --accent: #f8f3e8;
-  --accent-foreground: #1d1c15;
-  /* Wax Seal Green — reserved for high-priority accents */
-  --accent-green: #3c6840;
-  /* Error */
-  --destructive: #ba1a1a;
+  --popover-foreground: #181a1b;
+  --secondary: #ecece7;
+  --secondary-foreground: #181a1b;
+  --muted: #ecece7;
+  --muted-foreground: #5f656a;
+  --accent: #f8f8f5;
+  --accent-foreground: #181a1b;
+  --accent-green: #4e7a63;
+  --destructive: #b23f3f;
   --destructive-foreground: #ffffff;
-  /* Status */
-  --success: #3c6840;
+  --success: #4e7a63;
   --success-foreground: #ffffff;
-  --warning: #8a6d00;
-  --warning-foreground: #1d1c15;
-  /* Borders — subtle tonal shifts, not hard lines */
-  --border: #e7e2d7;
-  --input: #c1c7ce;
-  --ring: #114563;
+  --warning: #8a6a12;
+  --warning-foreground: #181a1b;
+  --border: #e1e0db;
+  --border-strong: #d3d2cc;
+  --input: #d3d2cc;
+  --ring: #2e6bff;
+  /* Ink chrome (nav, page headers, footer) */
+  --ink: #0b0e13;
+  --panel: #1a2029;
+  --line-d: rgba(255, 255, 255, 0.09);
+  --tx-d: #e7ecf3;
+  --tx-dm: #93a0b4;
+  --tx-dd: #7d8aa0;
+  /* Accents */
+  --e-blue: #2e6bff;
+  --e-blue-soft: #6ea0ff;
+  --clay: #c96d3b;
+  --clay-ink: #b45e2e;
   /* Sidebar */
-  --sidebar: #f2ede2;
-  --sidebar-foreground: #1d1c15;
-  --sidebar-primary: #114563;
+  --sidebar: #ecece7;
+  --sidebar-foreground: #181a1b;
+  --sidebar-primary: #2e6bff;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f8f3e8;
-  --sidebar-accent-foreground: #1d1c15;
-  --sidebar-border: #e7e2d7;
-  --sidebar-ring: #114563;
+  --sidebar-accent: #f8f8f5;
+  --sidebar-accent-foreground: #181a1b;
+  --sidebar-border: #e1e0db;
+  --sidebar-ring: #2e6bff;
+  /* Type stacks for plain-CSS components (next/font variables live on <html>) */
+  --r2-serif: var(--font-newsreader), Georgia, serif;
+  --r2-sans: var(--font-public-sans), system-ui, sans-serif;
+  --r2-mono: var(--font-plex-mono), ui-monospace, Menlo, monospace;
 }
 
 @layer base {
@@ -121,7 +142,7 @@
 
   .badge-signal { @apply inline-flex items-center border-l-2 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide; }
   .badge-signal-positive { @apply border-l-accent-green bg-accent-green/10 text-accent-green; }
-  .badge-signal-warning { @apply border-l-[#8a6d00] bg-[#8a6d00]/10 text-[#8a6d00]; }
+  .badge-signal-warning { @apply border-l-warning bg-warning/10 text-warning; }
   .badge-signal-risk { @apply border-l-destructive bg-destructive/10 text-destructive; }
   .badge-signal-neutral { @apply border-l-[#72787e] bg-[#72787e]/10 text-[#72787e]; }
 

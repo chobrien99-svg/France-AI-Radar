@@ -93,7 +93,6 @@ export default async function ConfirmPage({
           <div className="inline-flex items-center gap-2">
             <div
               className="flex h-8 w-8 items-center justify-center bg-primary text-[13px] font-bold text-primary-foreground"
-              style={{ background: "linear-gradient(135deg, #114563 0%, #2f5d7c 100%)" }}
             >
               AR
             </div>

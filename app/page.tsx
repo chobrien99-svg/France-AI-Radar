@@ -1,4 +1,6 @@
 import Link from "next/link"
+import { AppNav } from "@/components/app-nav"
+import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
 import { createServiceClient } from "@/lib/supabase/server"
 import { tagStrengthLabel } from "@/lib/types"
@@ -121,51 +123,7 @@ export default async function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* -- NAV -- */}
-      <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-md" style={{ borderBottom: '1px solid rgba(193, 199, 206, 0.25)' }}>
-        <div className="page-container flex h-14 items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center bg-primary text-[12px] font-extrabold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
-              AR
-            </div>
-            <span className="font-serif text-[15px] font-bold tracking-tight text-foreground">
-              AI Radar
-            </span>
-          </Link>
-
-          {/* Nav links */}
-          <div className="hidden items-center gap-1 md:flex">
-            <Link
-              href="/"
-              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
-            >
-              Home
-            </Link>
-            <Link
-              href="/database"
-              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
-            >
-              Database
-            </Link>
-            <Link
-              href="/pricing"
-              className="px-3.5 py-1.5 text-[13px] font-medium uppercase tracking-wide text-muted-foreground transition-colors duration-300 hover:text-foreground"
-            >
-              Pricing
-            </Link>
-          </div>
-
-          {/* Right actions */}
-          <div className="flex items-center gap-2.5">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/auth/login">Log in</Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link href="/pricing">Get Access</Link>
-            </Button>
-          </div>
-        </div>
-      </nav>
+      <AppNav activePage="home" />
 
       <div className="page-container">
         {/* -- HERO -- */}
@@ -340,17 +298,7 @@ export default async function LandingPage() {
       </div>
 
       {/* -- FOOTER -- */}
-      <footer className="py-6" style={{ borderTop: '1px solid rgba(193, 199, 206, 0.25)' }}>
-        <div className="page-container flex flex-col items-center justify-between gap-2 text-[12px] text-muted-foreground md:flex-row">
-          <span>France AI Radar by French Tech Journal</span>
-          <div className="flex items-center gap-4">
-            <Link href="/privacy" className="hover:text-foreground transition-colors duration-300">Privacy</Link>
-            <Link href="/terms" className="hover:text-foreground transition-colors duration-300">Terms</Link>
-            <Link href="/contact" className="hover:text-foreground transition-colors duration-300">Contact</Link>
-            <span>© 2026</span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

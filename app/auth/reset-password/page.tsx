@@ -15,7 +15,7 @@ export default async function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center bg-primary text-[13px] font-bold text-primary-foreground" style={{ background: 'linear-gradient(135deg, #114563 0%, #2f5d7c 100%)' }}>
+            <div className="flex h-8 w-8 items-center justify-center bg-primary text-[13px] font-bold text-primary-foreground">
               AR
             </div>
             <span className="font-serif text-sm font-semibold text-foreground">AI Radar</span>
