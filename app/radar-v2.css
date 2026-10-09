@@ -230,3 +230,7 @@ a.r2-person:hover .nm { color: var(--primary); }
 .r2-btn.s { background: transparent; }
 .r2-chip { color: var(--foreground); font-weight: 500; cursor: pointer; }
 .r2-chip:hover { border-color: #9c9a93; }
+
+/* Placeholder for Professional-only text (no real value is rendered) */
+.r2-redact { display: inline-block; height: 0.8em; border-radius: 3px; background: #d9d8d2; filter: blur(2px); vertical-align: middle; }
+.r2-tag-lock { color: var(--muted-foreground); border-style: dashed; }

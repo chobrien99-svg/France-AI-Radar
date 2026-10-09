@@ -402,8 +402,8 @@ const PROGRAM_TYPE_LABELS: Record<string, string> = {
   other: "Program",
 }
 
-/** Signals shown before the timeline is blurred for non-Professional readers */
-const FREE_SIGNALS = 2
+/** Signals shown before the timeline is blurred for non-Professional readers (0 = whole timeline) */
+const FREE_SIGNALS = 0
 
 // ------------------------------------------------------------------
 // Main column: brief, timeline, product & market, strategy, legal
@@ -460,7 +460,9 @@ function MainColumn({ signals, profileData, blurPremium, isAuthenticated }: Body
             })}
             {gated && (
               <div className="r2-gate">
-                <h5>{signals.length - FREE_SIGNALS} more signal{signals.length - FREE_SIGNALS !== 1 ? "s" : ""} on file</h5>
+                <h5>
+                  {signals.length - FREE_SIGNALS}{FREE_SIGNALS > 0 ? " more" : ""} signal{signals.length - FREE_SIGNALS !== 1 ? "s" : ""} on file
+                </h5>
                 <p>Full timelines are part of the Professional plan.</p>
                 <Link href="/pricing" className="r2-btn p">See plans</Link>
               </div>
@@ -544,7 +546,7 @@ function Rail({ venture, founders, programs, profileData, blurPremium, sectorNam
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="nm"><BlurredText blur={blurPremium}>{f.full_name}</BlurredText></div>
                     {f.role && <div className="rl"><BlurredText blur={blurPremium}>{f.role}</BlurredText></div>}
-                    {tags.length > 0 && <div className="tg">{tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>}
+                    {!blurPremium && tags.length > 0 && <div className="tg">{tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>}
                   </div>
                 </>
               )

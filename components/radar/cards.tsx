@@ -101,12 +101,19 @@ export function StartupRowV2({ s, saved, canShortlist }: { s: CardStartup; saved
   )
 }
 
+/** Blurred stand-in for Professional-only text; the real value is never sent */
+export function Redacted({ width }: { width: number }) {
+  return (
+    <span className="r2-redact" aria-label="Professional plan only" style={{ width }} />
+  )
+}
+
 function founderHref(f: CardFounder): string | null {
   if (f.slug) return `/founder/${f.slug}`
   return f.company ? `/startup/${f.company.slug}` : null
 }
 
-export function FounderCardV2({ f }: { f: CardFounder }) {
+export function FounderCardV2({ f, redacted = false }: { f: CardFounder; redacted?: boolean }) {
   const href = founderHref(f)
   return (
     <div className="r2-card" style={{ minHeight: 220 }}>
@@ -117,28 +124,38 @@ export function FounderCardV2({ f }: { f: CardFounder }) {
         {href ? <Link href={href} className="r2-stretch">{f.name}</Link> : f.name}
       </h3>
       <div className="r2-sub">
-        {f.role}
-        {f.role && f.company ? " · " : ""}
+        {redacted ? <Redacted width={90} /> : f.role}
+        {(f.role || redacted) && f.company ? " · " : ""}
         {f.company && <b>{f.company.name}</b>}
       </div>
-      {f.bio && <p className="r2-one">{f.bio}</p>}
-      <div className="r2-tags">{f.tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>
+      {redacted ? (
+        <p className="r2-one"><Redacted width={220} /><br /><Redacted width={160} /></p>
+      ) : (
+        f.bio && <p className="r2-one">{f.bio}</p>
+      )}
+      <div className="r2-tags">
+        {redacted
+          ? <span className="r2-tag r2-tag-lock">Background · Professional</span>
+          : f.tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}
+      </div>
     </div>
   )
 }
 
-export function FounderRowV2({ f }: { f: CardFounder }) {
+export function FounderRowV2({ f, redacted = false }: { f: CardFounder; redacted?: boolean }) {
   const href = founderHref(f)
   return (
     <div className="r2-row">
       <Monogram name={f.name} tone="light" size="sm" round imageUrl={f.photoUrl} />
       <div style={{ minWidth: 0 }}>
         {href ? <Link href={href} className="r2-stretch nm">{f.name}</Link> : <span className="nm">{f.name}</span>}
-        <div className="ds">{f.role}</div>
+        <div className="ds">{redacted ? <Redacted width={110} /> : f.role}</div>
       </div>
       <div className="hide-sm" style={{ fontWeight: 600, fontSize: 14 }}>{f.company?.name}</div>
       <div className="hide-sm" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {f.tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}
+        {redacted
+          ? <span className="r2-tag r2-tag-lock">Background · Professional</span>
+          : f.tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}
       </div>
       <span style={{ color: "var(--muted-foreground)" }}><Icon name="arrow" size={14} /></span>
     </div>
