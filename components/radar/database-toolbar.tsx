@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { Icon } from "./icons"
 import { ExportButton } from "@/components/database/export-button"
+import { FILTERS_RESET_EVENT } from "./filter-sidebar"
 import { SORTS } from "@/lib/radar"
 
 export function DatabaseSearch({ tab, defaultValue }: { tab: "startups" | "founders"; defaultValue: string }) {
@@ -14,6 +15,36 @@ export function DatabaseSearch({ tab, defaultValue }: { tab: "startups" | "found
   const [value, setValue] = useState(defaultValue)
   const inputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The query string we last wrote, so our own update coming back isn't treated as external
+  const qs = searchParams.toString()
+  const sent = useRef(qs)
+
+  // URL changed from elsewhere (filter Reset, back/forward): drop any pending
+  // keystrokes and show the URL's query
+  useEffect(() => {
+    if (qs === sent.current) return
+    sent.current = qs
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = null
+    // Syncing from an external source (the URL). Deriving during render instead would also
+    // fire on our own debounced writes and clobber keystrokes typed since.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValue(new URLSearchParams(qs).get("q") ?? "")
+  }, [qs])
+
+  // Reset clears the box at once — its navigation can land after a pending debounce otherwise
+  useEffect(() => {
+    function onReset() {
+      if (timer.current) clearTimeout(timer.current)
+      timer.current = null
+      setValue("")
+    }
+    window.addEventListener(FILTERS_RESET_EVENT, onReset)
+    return () => {
+      window.removeEventListener(FILTERS_RESET_EVENT, onReset)
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [])
 
   // "/" jumps to the search box
   useEffect(() => {
@@ -33,9 +64,11 @@ export function DatabaseSearch({ tab, defaultValue }: { tab: "startups" | "found
     setValue(v)
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => {
+      timer.current = null
       const params = new URLSearchParams(searchParams.toString())
       if (v.trim()) params.set("q", v.trim())
       else params.delete("q")
+      sent.current = params.toString()
       startTransition(() => router.replace(`${pathname}?${params.toString()}`, { scroll: false }))
     }, 250)
   }

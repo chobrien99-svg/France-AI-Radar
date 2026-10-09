@@ -1,24 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { getExportLimit } from "@/lib/subscription"
+import { getExportLimit, canUseAdvancedFilters, canSaveAndList } from "@/lib/subscription"
+import { parseDatabaseQuery, loadRadarDataset, filterStartups } from "@/lib/radar-dataset"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
-
-function parseList(val: string | null): string[] {
-  if (!val) return []
-  return val.split(",").filter(Boolean)
-}
-
-function cutoffDate(time: string): string | null {
-  const now = new Date()
-  if (time === "7d") { now.setDate(now.getDate() - 7); return now.toISOString() }
-  if (time === "14d") { now.setDate(now.getDate() - 14); return now.toISOString() }
-  if (time === "30d") { now.setDate(now.getDate() - 30); return now.toISOString() }
-  if (time === "90d") { now.setDate(now.getDate() - 90); return now.toISOString() }
-  if (time === "12m") { now.setFullYear(now.getFullYear() - 1); return now.toISOString() }
-  return null
-}
 
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return ""
@@ -56,66 +42,36 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  // Same filters, search and order as the /database page the user is looking at
+  const params: Record<string, string[]> = {}
+  for (const key of new Set(request.nextUrl.searchParams.keys())) {
+    params[key] = request.nextUrl.searchParams.getAll(key)
+  }
+  delete params.tab // the export is always the Startups tab
+  const query = parseDatabaseQuery(params, {
+    advanced: isAdmin || canUseAdvancedFilters(tier),
+    canShortlist: isAdmin || canSaveAndList(tier),
+  })
+
   const svc = await createServiceClient()
+  const ds = await loadRadarDataset(svc, supabase, user.id)
+  const matched = filterStartups(ds, query)
+  const order = new Map(matched.map((s, i) => [s.id, i]))
 
-  const { data: aiRadarOrgs } = await svc
-    .from("product_organizations")
-    .select("organization_id, product_catalog!inner(slug)")
-    .eq("product_catalog.slug", "ai-radar")
-  const orgIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
-
-  if (orgIds.length === 0) {
-    return NextResponse.json({ error: "No startups found." }, { status: 404 })
-  }
-
-  const { searchParams } = request.nextUrl
-  const q = searchParams.get("q") ?? ""
-  const locations = parseList(searchParams.get("location"))
-  const sectors = parseList(searchParams.get("sector"))
-  const times = parseList(searchParams.get("time"))
-
-  let query = svc
-    .from("organizations")
-    .select(
-      "id, name, slug, description, founded_date, first_seen_at, technology_layer, total_raised_eur, last_round, fundraising_status, website, linkedin_url, signal_count, last_signal_date, updated_at, cities!organizations_city_id_fkey(name, country)"
-    )
-    .in("id", orgIds)
-    .eq("status", "active")
-
-  if (q) {
-    query = query.or(`name.ilike.%${q}%,description.ilike.%${q}%`)
-  }
-
-  if (locations.length > 0) {
-    query = query.in("city_id", locations)
-  }
-
-  let sectorFilterOrgIds: Set<string> | null = null
-  if (sectors.length > 0) {
-    const { data: sectorOrgRows } = await svc
-      .from("organization_sectors")
-      .select("organization_id")
-      .in("sector_id", sectors)
-    sectorFilterOrgIds = new Set((sectorOrgRows ?? []).map((r: { organization_id: string }) => r.organization_id))
-  }
-
-  const latestTime = times[times.length - 1]
-  if (latestTime && latestTime !== "all") {
-    const cutoff = cutoffDate(latestTime)
-    if (cutoff) query = query.gte("first_seen_at", cutoff)
-  }
-
-  query = query.order("updated_at", { ascending: false })
-
-  const { data: rows, error } = await query
+  // Full CSV columns for the matched startups
+  const { data: rows, error } = matched.length > 0
+    ? await svc
+        .from("organizations")
+        .select(
+          "id, name, slug, description, founded_date, first_seen_at, technology_layer, total_raised_eur, last_round, fundraising_status, website, linkedin_url, signal_count, last_signal_date, updated_at, cities!organizations_city_id_fkey(name, country)"
+        )
+        .in("id", matched.map((s) => s.id))
+    : { data: [], error: null }
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  let ventures = rows ?? []
-  if (sectorFilterOrgIds) {
-    ventures = ventures.filter((v: { id: string }) => sectorFilterOrgIds!.has(v.id))
-  }
+  const ventures = ((rows ?? []) as Array<{ id: string }>).filter((r) => order.has(r.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
 
   const ventureIds = ventures.map((v: { id: string }) => v.id)
   const { data: allOrgSectors } = ventureIds.length > 0

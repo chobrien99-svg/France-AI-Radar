@@ -11,6 +11,9 @@ export type FilterGroupDef = {
   locked?: boolean
 }
 
+/** Fired on Reset so the search box can drop keystrokes not yet written to the URL */
+export const FILTERS_RESET_EVENT = "radar:filters-reset"
+
 /** Keys that are view settings rather than filters — kept on reset */
 const KEEP_ON_RESET = ["tab", "view", "sort"]
 
@@ -37,6 +40,7 @@ export function FilterSidebarV2({ groups }: { groups: FilterGroupDef[] }) {
   }
 
   function reset() {
+    window.dispatchEvent(new Event(FILTERS_RESET_EVENT))
     const params = new URLSearchParams()
     for (const k of KEEP_ON_RESET) {
       const v = searchParams.get(k)
