@@ -62,28 +62,38 @@ export function LogoUpload({
     }
 
     setBusy(true)
-    const body = new FormData()
-    body.append("file", file)
-    const res = await fetch(`/api/admin/startups/${startupId}/logo`, { method: "POST", body })
-    const data = await res.json().catch(() => ({}))
-    setBusy(false)
-    if (!res.ok) return setMessage({ kind: "error", text: data.error ?? "Upload failed." })
-    setUrl(data.logo_url)
-    setMessage({ kind: "ok", text: "Logo saved." })
-    router.refresh()
+    try {
+      const body = new FormData()
+      body.append("file", file)
+      const res = await fetch(`/api/admin/startups/${startupId}/logo`, { method: "POST", body })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return setMessage({ kind: "error", text: data.error ?? "Upload failed." })
+      setUrl(data.logo_url)
+      setMessage({ kind: "ok", text: "Logo saved." })
+      router.refresh()
+    } catch {
+      setMessage({ kind: "error", text: "Upload failed. Check your connection and try again." })
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function remove() {
     if (!startupId) return
     setBusy(true)
     setMessage(null)
-    const res = await fetch(`/api/admin/startups/${startupId}/logo`, { method: "DELETE" })
-    const data = await res.json().catch(() => ({}))
-    setBusy(false)
-    if (!res.ok) return setMessage({ kind: "error", text: data.error ?? "Could not remove the logo." })
-    setUrl(null)
-    setMessage({ kind: "ok", text: "Logo removed. The initials will show instead." })
-    router.refresh()
+    try {
+      const res = await fetch(`/api/admin/startups/${startupId}/logo`, { method: "DELETE" })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return setMessage({ kind: "error", text: data.error ?? "Could not remove the logo." })
+      setUrl(null)
+      setMessage({ kind: "ok", text: "Logo removed. The initials will show instead." })
+      router.refresh()
+    } catch {
+      setMessage({ kind: "error", text: "Could not remove the logo. Check your connection and try again." })
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
