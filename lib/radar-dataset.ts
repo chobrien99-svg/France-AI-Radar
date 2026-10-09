@@ -19,7 +19,15 @@ type Row = Record<string, unknown>
 type Named = { id: string; name: string }
 type Params = Record<string, string | string[] | undefined>
 
-export type StartupItem = CardStartup & { sectorId: string | null; cityId: string | null; firstSeen: string | null; activity: number; search: string }
+export type StartupItem = CardStartup & {
+  sectorId: string | null
+  cityId: string | null
+  firstSeen: string | null
+  /** When it was added to the Radar (first seen, else created), for "Most recent" */
+  added: number
+  activity: number
+  search: string
+}
 export type FounderItem = CardFounder & {
   sectorId: string | null
   cityId: string | null
@@ -161,6 +169,7 @@ export async function loadRadarDataset(svc: SupabaseClient, supabase: SupabaseCl
       signalCount: (o.signal_count as number | null) ?? 0,
       latestSignal: latest,
       firstSeen: (o.first_seen_at as string | null) ?? null,
+      added: new Date(((o.first_seen_at as string | null) ?? (o.created_at as string)) || 0).getTime() || 0,
       activity: latestDate ? new Date(latestDate).getTime() : 0,
       search: "",
     }
@@ -220,6 +229,7 @@ export function filterStartups(ds: RadarDataset, query: DatabaseQuery): StartupI
   )
   if (sort === "az") out.sort((a, b) => a.name.localeCompare(b.name))
   else if (sort === "signals") out.sort((a, b) => b.signalCount - a.signalCount || b.activity - a.activity)
+  else if (sort === "recent") out.sort((a, b) => b.added - a.added || a.name.localeCompare(b.name))
   else out.sort((a, b) => b.activity - a.activity)
   return out
 }

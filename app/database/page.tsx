@@ -87,8 +87,12 @@ export default async function DatabasePage({
   const groups: FilterGroupDef[] =
     tab === "startups"
       ? [
+          {
+            key: "time",
+            label: "Added to the Radar",
+            options: TIME_OPTIONS.map((t) => ({ value: t.value, label: t.label, n: allStartups.filter((s) => withinTime(s.firstSeen, t.days)).length })),
+          },
           { key: "sector", label: "Sector", locked: !advanced, options: tally(allStartups, (s) => idOpt(s.sectorId, s.sector)) },
-          { key: "stage", label: "Stage", locked: !advanced, options: tally(allStartups, (s) => [{ value: s.stage, label: s.stage }]) },
           {
             key: "signal",
             label: "Latest signal",
@@ -96,11 +100,7 @@ export default async function DatabasePage({
             options: tally(allStartups, (s) => (s.latestSignal ? [{ value: s.latestSignal.type, label: signalLabel(s.latestSignal.type) }] : [])),
           },
           { key: "location", label: "City", locked: !advanced, options: tally(allStartups, (s) => idOpt(s.cityId, s.city)) },
-          {
-            key: "time",
-            label: "Added to the Radar",
-            options: TIME_OPTIONS.map((t) => ({ value: t.value, label: t.label, n: allStartups.filter((s) => withinTime(s.firstSeen, t.days)).length })),
-          },
+          { key: "stage", label: "Stage", locked: !advanced, options: tally(allStartups, (s) => [{ value: s.stage, label: s.stage }]) },
         ]
       : [
           { key: "bg", label: "Background", locked: !advanced, options: tally(allFounders, (f) => f.tags.map((t) => ({ value: t, label: t }))) },
