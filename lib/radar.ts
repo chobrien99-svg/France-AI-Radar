@@ -125,6 +125,7 @@ export function paramOne(val: string | string[] | undefined): string {
 export const SORTS = {
   startups: [
     { value: "latest", label: "Latest signal" },
+    { value: "recent", label: "Most recent" },
     { value: "az", label: "A–Z" },
     { value: "signals", label: "Most signals" },
   ],

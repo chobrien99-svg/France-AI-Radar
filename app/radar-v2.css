@@ -234,3 +234,8 @@ a.r2-person:hover .nm { color: var(--primary); }
 /* Placeholder for Professional-only text (no real value is rendered) */
 .r2-redact { display: inline-block; height: 0.8em; border-radius: 3px; background: #d9d8d2; filter: blur(2px); vertical-align: middle; }
 .r2-tag-lock { color: var(--muted-foreground); border-style: dashed; }
+
+/* Signal source link on the timeline */
+.r2-src { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-family: var(--r2-mono); font-size: 11px; letter-spacing: 0.02em; color: var(--muted-foreground); }
+a.r2-src { color: var(--primary); }
+a.r2-src:hover { color: var(--primary-container); text-decoration: underline; text-underline-offset: 2px; }

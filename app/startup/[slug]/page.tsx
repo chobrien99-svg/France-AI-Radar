@@ -120,7 +120,7 @@ export default async function StartupProfilePage({
   // Fetch signals (auth-gated at RLS level)
   const { data: signalsRaw } = await supabase
     .from("signals")
-    .select("id, organization_id, signal_date, signal_type, strength, title, description")
+    .select("id, organization_id, signal_date, signal_type, strength, title, description, source_name, source_url")
     .eq("organization_id", venture.id)
     .order("signal_date", { ascending: false })
 
@@ -353,6 +353,22 @@ type Signal = {
   strength: number
   title: string
   description: string | null
+  source_name?: string | null
+  source_url?: string | null
+}
+
+/** Only link out to real web pages */
+function safeUrl(url: string | null | undefined): string | null {
+  return url && /^https?:\/\//i.test(url.trim()) ? url.trim() : null
+}
+
+function sourceLabel(g: Signal, url: string): string {
+  if (g.source_name) return g.source_name
+  try {
+    return new URL(url).hostname.replace(/^www\./, "")
+  } catch {
+    return "Source"
+  }
 }
 
 type FounderLocal = {
@@ -454,6 +470,13 @@ function MainColumn({ signals, profileData, blurPremium, isAuthenticated }: Body
                   <div>
                     <h4>{g.title}</h4>
                     {g.description && <p>{g.description}</p>}
+                    {!hidden && (safeUrl(g.source_url) ? (
+                      <a className="r2-src" href={safeUrl(g.source_url)!} target="_blank" rel="noopener noreferrer">
+                        Source: {sourceLabel(g, safeUrl(g.source_url)!)} <Icon name="external" size={11} />
+                      </a>
+                    ) : g.source_name ? (
+                      <span className="r2-src">Source: {g.source_name}</span>
+                    ) : null)}
                   </div>
                 </div>
               )
