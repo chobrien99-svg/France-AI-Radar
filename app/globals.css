@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./radar-v2.css";
+@import "./home-v2.css";
 
 @custom-variant dark (&:is(.dark *));
 

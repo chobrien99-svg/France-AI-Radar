@@ -1,303 +1,235 @@
 import Link from "next/link"
+import { createServiceClient } from "@/lib/supabase/server"
 import { AppNav } from "@/components/app-nav"
 import { SiteFooter } from "@/components/site-footer"
-import { Button } from "@/components/ui/button"
-import { createServiceClient } from "@/lib/supabase/server"
-import { tagStrengthLabel } from "@/lib/types"
+import { Icon } from "@/components/radar/icons"
+import { FranceMap } from "@/components/home/france-map"
+import { RadarDish } from "@/components/home/radar-dish"
+import { relativeDate, stageFrom } from "@/lib/radar"
 
-type SampleCard = {
-  id: string
-  meta: string
-  sector: string | null
-  badges: { label: string; strength: string }[]
-  description: string | null
-  signalCount: number
-  signalDot: "green" | "amber" | "red"
+type Row = Record<string, unknown>
+const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] : v) ?? null
+
+/** Start of the current calendar quarter (UTC) */
+function quarterStart(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), Math.floor(now.getUTCMonth() / 3) * 3, 1))
 }
 
-const signalDotClass: Record<string, string> = {
-  green: "bg-accent-green",
-  amber: "bg-[#8a6d00]",
-  red: "bg-destructive",
+/** "04:12 CEST" if it was today in Paris, otherwise "9 Oct" */
+function updatedLabel(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  const day = (x: Date) => x.toLocaleDateString("en-GB", { timeZone: "Europe/Paris" })
+  if (day(d) === day(new Date())) {
+    return d.toLocaleTimeString("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", timeZoneName: "short" })
+  }
+  return d.toLocaleDateString("en-GB", { timeZone: "Europe/Paris", day: "numeric", month: "short" })
 }
 
-const badgeClass: Record<string, string> = {
-  positive: "badge-signal badge-signal-positive",
-  warning: "badge-signal badge-signal-warning",
-  risk: "badge-signal badge-signal-risk",
-  neutral: "badge-signal badge-signal-neutral",
-}
-
-function foundedLabel(date: string | null): string {
-  if (!date) return ""
-  const d = new Date(date)
-  return `Founded ${d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })}`
-}
-
-function signalDotFor(count: number): SampleCard["signalDot"] {
-  if (count >= 3) return "green"
-  if (count >= 1) return "amber"
-  return "red"
-}
+const foundedLabel = (iso: string | null) =>
+  iso ? `Founded ${new Date(iso).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}` : null
 
 export const dynamic = "force-dynamic"
 
 export default async function LandingPage() {
   const svc = await createServiceClient()
 
-  // Fetch live stats
+  // ---------------- Live data (AI Radar startups only) ----------------
   const { data: aiRadarOrgs } = await svc
     .from("product_organizations")
     .select("organization_id, product_catalog!inner(slug)")
     .eq("product_catalog.slug", "ai-radar")
-  const orgIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
+  const radarIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
+  const idFilter = radarIds.length > 0 ? radarIds : ["00000000-0000-0000-0000-000000000000"]
 
-  const { count: startupCount } = await svc
-    .from("organizations")
-    .select("id", { count: "exact", head: true })
-    .in("id", orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"])
-    .eq("status", "active")
+  const [{ data: orgRows }, { data: sectorRows }, { data: signalRows }, { data: founderRows }] = await Promise.all([
+    svc
+      .from("organizations")
+      .select("id, slug, description, short_description, founded_date, last_round, signal_count, last_signal_date, updated_at, cities!organizations_city_id_fkey(name)")
+      .in("id", idFilter)
+      .eq("status", "active"),
+    svc.from("organization_sectors").select("organization_id, is_primary, sectors(id, name)").in("organization_id", idFilter),
+    svc.from("signals").select("organization_id, signal_date").in("organization_id", idFilter),
+    svc.from("organization_people").select("person_id").in("organization_id", idFilter).eq("is_founder", true),
+  ])
 
-  const { count: signalCount } = await svc
-    .from("signals")
-    .select("id", { count: "exact", head: true })
-    .in("organization_id", orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"])
+  const orgs = (orgRows ?? []) as Row[]
+  const activeIds = new Set(orgs.map((o) => o.id as string))
 
-  const { data: sectorRows } = await svc
-    .from("organization_sectors")
-    .select("sector_id")
-    .in("organization_id", orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"])
-  const uniqueSectors = new Set((sectorRows ?? []).map((r: { sector_id: string }) => r.sector_id))
-
-  // Sample cards: 3 recent active AI Radar startups, name hidden, no link
-  const { data: sampleRows } = orgIds.length > 0
-    ? await svc
-        .from("organizations")
-        .select(
-          "id, description, founded_date, signal_count, cities!organizations_city_id_fkey(name), organization_tags(id, tag, strength)"
-        )
-        .in("id", orgIds)
-        .eq("status", "active")
-        .order("updated_at", { ascending: false })
-        .limit(3)
-    : { data: [] }
-
-  const sampleIds = (sampleRows ?? []).map((r: { id: string }) => r.id)
-  const { data: sampleSectorRows } = sampleIds.length > 0
-    ? await svc
-        .from("organization_sectors")
-        .select("organization_id, sectors(name)")
-        .in("organization_id", sampleIds)
-    : { data: [] }
-  const sectorByOrg = new Map<string, string>()
-  for (const row of (sampleSectorRows ?? []) as Array<{ organization_id: string; sectors: { name: string } | { name: string }[] | null }>) {
-    const sec = Array.isArray(row.sectors) ? row.sectors[0] : row.sectors
-    if (sec && !sectorByOrg.has(row.organization_id)) sectorByOrg.set(row.organization_id, sec.name)
+  const sectorBy = new Map<string, { id: string; name: string }>()
+  for (const r of (sectorRows ?? []) as Row[]) {
+    const s = one(r.sectors as { id: string; name: string } | { id: string; name: string }[] | null)
+    const id = r.organization_id as string
+    if (s && activeIds.has(id) && (!sectorBy.has(id) || r.is_primary)) sectorBy.set(id, s)
   }
 
-  const sampleCards: SampleCard[] = (sampleRows ?? []).map((row: {
-    id: string
-    description: string | null
-    founded_date: string | null
-    signal_count: number
-    cities: { name: string } | { name: string }[] | null
-    organization_tags: { id: string; tag: string; strength: number }[]
-  }) => {
-    const city = Array.isArray(row.cities) ? row.cities[0] : row.cities
-    const meta = [city?.name, foundedLabel(row.founded_date)].filter(Boolean).join(" · ")
-    const badges = row.organization_tags.slice(0, 2).map((t) => ({
-      label: t.tag,
-      strength: tagStrengthLabel(t.strength),
-    }))
+  const signals = ((signalRows ?? []) as Row[]).filter((s) => activeIds.has(s.organization_id as string))
+  const latestBy = new Map<string, string>()
+  for (const s of signals) {
+    const id = s.organization_id as string, d = s.signal_date as string | null
+    if (d && (!latestBy.has(id) || d > latestBy.get(id)!)) latestBy.set(id, d)
+  }
+  const qStart = quarterStart(new Date()).toISOString().slice(0, 10)
+
+  const activity = (o: Row) => (latestBy.get(o.id as string) ?? (o.last_signal_date as string | null) ?? (o.updated_at as string | null) ?? "")
+  const byActivity = [...orgs].sort((a, b) => activity(b).localeCompare(activity(a)))
+
+  const stats = [
+    { n: orgs.length, l: "Startups on Radar" },
+    { n: signals.filter((s) => ((s.signal_date as string | null) ?? "") >= qStart).length, l: "Signals this quarter" },
+    { n: new Set([...sectorBy.values()].map((s) => s.id)).size, l: "Sectors covered" },
+    { n: new Set(((founderRows ?? []) as Row[]).map((r) => r.person_id as string)).size, l: "Founders tracked" },
+  ]
+
+  // Cities on the map, most startups first
+  const cityCount = new Map<string, number>()
+  for (const o of orgs) {
+    const c = one(o.cities as { name: string } | { name: string }[] | null)?.name
+    if (c) cityCount.set(c, (cityCount.get(c) ?? 0) + 1)
+  }
+  const mapCities = [...cityCount.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c)
+
+  const updated = updatedLabel(orgs.map((o) => o.updated_at as string | null).filter(Boolean).sort().pop() ?? null)
+  const sampleHref = byActivity[0] ? `/startup/${byActivity[0].slug}` : "/pricing"
+
+  // "This week on the Radar": anonymous cards, the 3 most recently active startups
+  const cards = byActivity.slice(0, 3).map((o) => {
+    const id = o.id as string
+    const city = one(o.cities as { name: string } | { name: string }[] | null)?.name
+    const stage = stageFrom(o.last_round as string | null)
     return {
-      id: row.id,
-      meta: meta || "France",
-      sector: sectorByOrg.get(row.id) ?? null,
-      badges,
-      description: row.description,
-      signalCount: row.signal_count ?? 0,
-      signalDot: signalDotFor(row.signal_count ?? 0),
+      id,
+      heading: sectorBy.get(id)?.name ?? "AI startup",
+      meta: [city, foundedLabel(o.founded_date as string | null)].filter(Boolean).join(" · ") || "France",
+      stage: stage === "Undisclosed" || stage === "Other" ? null : stage,
+      description: (o.short_description as string | null) || (o.description as string | null),
+      signalCount: (o.signal_count as number | null) ?? 0,
+      last: latestBy.get(id) ?? (o.last_signal_date as string | null),
     }
   })
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* -- NAV -- */}
+    <div className="min-h-screen bg-ink">
       <AppNav activePage="home" />
-
-      <div className="page-container">
-        {/* -- HERO -- */}
-        <section className="py-20 text-center md:py-24">
-          {/* Kicker */}
-          <div className="mb-6 inline-flex items-center gap-2 border-l-2 border-l-primary bg-primary/10 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-primary">
-            Investor Intelligence Platform
+      <div className="lp">
+        {/* ---------------- Hero ---------------- */}
+        <section className="lp-hero">
+          <div className="lp-bg" aria-hidden="true">
+            <FranceMap cities={mapCities} />
+            <RadarDish />
+            <div className="lp-vig" />
           </div>
-
-          <h1 className="mb-4 font-serif text-[clamp(32px,5vw,52px)] font-bold leading-[1.1] tracking-[-0.02em] text-foreground">
-            The France AI Radar
-            <br />
-            <span className="text-primary">Discover AI startups before the market.</span>
-          </h1>
-
-          <p className="mx-auto mb-8 max-w-[560px] text-[17px] leading-[1.65] text-muted-foreground">
-            We detect AI startups across France at their earliest signal - when they are incorporated, still in stealth, or just beginning to leave a public trace. Structured intelligence built from administrative filings, founder activity, and ecosystem signals, designed for VCs, corporate strategists, and LPs.
-          </p>
-
-          <div className="flex items-center justify-center gap-3">
-            <Button size="lg" asChild>
-              <Link href="/database">Explore the Radar</Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/pricing">View Pricing</Link>
-            </Button>
+          <div className="page-container lp-hero-in">
+            <div className="lp-eye">
+              <span className="bk" />
+              Investor intelligence{updated ? ` · Updated ${updated}` : ""}
+            </div>
+            <h1 className="lp-h1">France <em style={{ fontStyle: "normal" }}>AI</em> Radar</h1>
+            <div className="lp-sub">Discover French AI startups before the market.</div>
+            <p className="lp-p">
+              AI startups across France at their earliest signal: at incorporation, in stealth, or at their first
+              public trace. Built from filings, founder activity and ecosystem signals.
+            </p>
+            <div className="lp-ctas">
+              <Link href="/database" className="lp-btn pri">Explore the Database <Icon name="arrow" size={13} /></Link>
+              <Link href={sampleHref} className="lp-btn out">View sample report</Link>
+            </div>
+          </div>
+          <div className="page-container" style={{ position: "relative", width: "100%" }}>
+            <div className="lp-stats">
+              {stats.map((s) => (
+                <div key={s.l} className="lp-stat"><b>{s.n}</b><span>{s.l}</span></div>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* -- PROOF BAR -- */}
-        <section className="mb-[72px]">
-          <div className="mx-auto grid max-w-[720px] grid-cols-4 overflow-hidden bg-card">
-            {[
-              { num: String(startupCount ?? 0), label: "Startups Tracked" },
-              { num: String(signalCount ?? 0), label: "Signals Detected" },
-              { num: String(uniqueSectors.size), label: "Sectors Covered" },
-              { num: "Weekly", label: "Updated" },
-            ].map((item, idx) => (
-              <div
-                key={item.label}
-                className={`px-4 py-5 text-center ${idx > 0 ? "border-l border-border/40" : ""}`}
-              >
-                <div className="font-serif text-[22px] font-bold tracking-tight text-foreground">
-                  {item.num}
-                </div>
-                <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {item.label}
-                </div>
+        {/* ---------------- Why the Radar ---------------- */}
+        <section className="lp-sec">
+          <div className="page-container">
+            <div className="lp-why">
+              <div>
+                <div className="lp-kick">Why the Radar</div>
+                <h2 className="lp-h2">Intelligence,<br />not noise.</h2>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* -- VALUE PROPS -- */}
-        <section className="py-[72px]">
-          <p className="section-kicker mb-2 text-center">Why France AI Radar</p>
-          <h2 className="mb-2 text-center font-serif text-2xl font-bold tracking-[-0.02em] text-foreground">
-            Intelligence, Not Noise
-          </h2>
-          <p className="mb-12 text-center text-[15px] text-muted-foreground">
-            What separates France AI Radar from startup directories and news feeds.
-          </p>
-
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-            {[
-              {
-                icon: "⚡",
-                title: "Signal Detection",
-                body: "Fundraising moves, corporate restructuring, key hires, and pivots — detected and surfaced before they hit the press. Know what's happening, not what happened.",
-              },
-              {
-                icon: "👤",
-                title: "Founder Intelligence",
-                body: "Big Tech alumni, repeat founders, academic spinouts, and corporate reboots — every founder's background mapped and scored for signal strength.",
-              },
-              {
-                icon: "◎",
-                title: "Sector Mapping",
-                body: "AI Agents, Robotics, BioAI, DeepTech, and 44 more sectors — filterable, exportable, and always current. See the full landscape, not just the loudest startups.",
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="border-l-2 border-l-primary bg-card p-7 transition-colors duration-300 hover:bg-accent"
-              >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center bg-primary/10 text-[18px]">
-                  {card.icon}
+              <p>
+                Directories aggregate the loud. News feeds rehash the announced. The Radar reads what companies{" "}
+                <em>do</em> before they <em>say</em>: filings, hiring velocity, patents, founder movements, weighed as
+                signal strength.
+              </p>
+            </div>
+            <div className="lp-cols">
+              {[
+                ["01", "Signal detection", "Fundraising moves, restructuring, key hires and pivots, surfaced before they hit the press."],
+                ["02", "Founder intelligence", "Big Tech alumni, repeat founders, academic spinouts: every background mapped and scored."],
+                ["03", "Sector mapping", "AI Agents, Robotics, BioAI, DeepTech and more. Filterable, exportable, always current."],
+              ].map(([n, t, b]) => (
+                <div key={n} className="lp-col">
+                  <div className="n">№ {n}</div>
+                  <h3>{t}</h3>
+                  <p>{b}</p>
                 </div>
-                <h3 className="mb-2 font-serif text-[15px] font-bold tracking-tight text-foreground">
-                  {card.title}
-                </h3>
-                <p className="text-[13px] leading-relaxed text-muted-foreground">
-                  {card.body}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* -- SAMPLE CARDS -- */}
-        <section className="pb-[72px]">
-          <p className="section-kicker mb-2 text-center">Live from the database</p>
-          <h2 className="mb-2 text-center font-serif text-xl font-bold tracking-[-0.02em] text-foreground">
-            See What&apos;s Inside
-          </h2>
-          <p className="mb-8 text-center text-[14px] text-muted-foreground">
-            Real intelligence cards from this week&apos;s updates.
-          </p>
-
-          <div className="mx-auto grid max-w-[960px] grid-cols-1 gap-4 md:grid-cols-3">
-            {sampleCards.map((card) => (
-              <div key={card.id} className="data-card p-5">
-                {/* Header */}
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-serif text-[15px] font-bold tracking-tight text-foreground">
-                      Stealth Startup
+        {/* ---------------- This week on the Radar ---------------- */}
+        {cards.length > 0 && (
+          <section className="lp-sec">
+            <div className="page-container">
+              <div className="lp-head">
+                <div>
+                  <div className="lp-kick">Live from the database</div>
+                  <h2 className="lp-h2">This week on the Radar</h2>
+                </div>
+                <Link href="/database" className="lp-link">
+                  See all {orgs.length} files <Icon name="arrow" size={12} />
+                </Link>
+              </div>
+              <div className="lp-cards">
+                {cards.map((c) => (
+                  <div key={c.id} className="lp-card">
+                    <div className="t">
+                      <div>
+                        <div className="nm">{c.heading}</div>
+                        <div className="mt">{c.meta}</div>
+                      </div>
+                      {c.stage && <span className="sec">{c.stage}</span>}
                     </div>
-                    <div className="mt-0.5 text-[12px] text-muted-foreground">
-                      {card.meta}
+                    {c.description && <p className="d">{c.description}</p>}
+                    <div className="ft">
+                      <i />
+                      {c.signalCount} signal{c.signalCount !== 1 ? "s" : ""}
+                      {c.last ? ` · ${relativeDate(c.last)}` : ""}
                     </div>
                   </div>
-                  {card.sector && (
-                    <span className="badge-signal badge-signal-neutral whitespace-nowrap">
-                      {card.sector}
-                    </span>
-                  )}
-                </div>
-
-                {/* Badges */}
-                {card.badges.length > 0 && (
-                  <div className="mb-3 flex flex-wrap gap-1.5">
-                    {card.badges.map((b) => (
-                      <span key={b.label} className={badgeClass[b.strength] ?? badgeClass.neutral}>
-                        {b.label}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Body */}
-                {card.description && (
-                  <p className="mb-1.5 text-[13px] leading-snug text-foreground line-clamp-3">
-                    {card.description}
-                  </p>
-                )}
-
-                {/* Signal footer */}
-                <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-3 text-[12px] text-muted-foreground">
-                  <span
-                    className={`h-[7px] w-[7px] shrink-0 rounded-full ${signalDotClass[card.signalDot]}`}
-                  />
-                  {card.signalCount} signal{card.signalCount !== 1 ? "s" : ""} tracked
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
-        {/* -- BOTTOM CTA -- */}
-        <section className="pb-20 text-center">
-          <h2 className="mb-3 font-serif text-2xl font-bold tracking-[-0.02em] text-foreground">
-            Ready to see the full picture?
-          </h2>
-          <p className="mb-6 text-[15px] text-muted-foreground">
-            Join investors who track the French AI ecosystem with clarity.
-          </p>
-          <Button size="lg" asChild>
-            <Link href="/pricing">View Pricing</Link>
-          </Button>
+        {/* ---------------- CTA ---------------- */}
+        <section className="lp-sec">
+          <div className="page-container lp-cta">
+            <div>
+              <div className="lp-kick">Ready to see the full picture</div>
+              <h2 className="lp-h2">Join investors tracking the French AI ecosystem with clarity.</h2>
+            </div>
+            <div>
+              <p>
+                Professional access: unlimited profiles, full signal timelines, founder analysis, investor briefs, CSV
+                exports and alerts.
+              </p>
+              <div className="lp-ctas" style={{ justifyContent: "flex-start" }}>
+                <Link href="/pricing" className="lp-btn pri">View pricing</Link>
+                <Link href={sampleHref} className="lp-btn out">Read a sample report</Link>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
-
-      {/* -- FOOTER -- */}
       <SiteFooter />
     </div>
   )
