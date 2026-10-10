@@ -254,7 +254,7 @@ export async function GET(
     for (const r of fundingData) {
       lines.push([
         csvEscape(r.stage),
-        csvEscape(r.amount_eur ? formatEur(r.amount_eur) : ""),
+        csvEscape(r.amount_eur ? formatEur(r.amount_eur * 1_000_000) : ""), // stored in €M
         csvEscape(formatDate(r.announced_date)),
         csvEscape(r.source_name),
         csvEscape(r.is_estimated ? "Yes" : "No"),

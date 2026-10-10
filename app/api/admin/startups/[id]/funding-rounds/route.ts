@@ -4,6 +4,10 @@ import { createServiceClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
 
+// funding_rounds.amount_eur is shared with Navigator and stored in millions
+// of euros (5 = €5M). The admin form takes the full euro amount.
+const AMOUNT_MULTIPLIER = 1_000_000
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,7 +24,7 @@ export async function POST(
     .insert({
       organization_id,
       stage: body.stage,
-      amount_eur: body.amount_eur ? Number(body.amount_eur) : null,
+      amount_eur: body.amount_eur ? Number(body.amount_eur) / AMOUNT_MULTIPLIER : null,
       announced_date: body.announced_date || null,
       source_url: body.source_url || null,
       source_name: body.source_name || null,

@@ -78,7 +78,7 @@ export function LinkedFundingRounds({ organizationId, rounds: initial }: Props) 
     }
 
     const data = await res.json()
-    setRounds((prev) => [...prev, { ...form, id: data.id, amount_eur: form.amount_eur ? Number(form.amount_eur) : null } as FundingRound])
+    setRounds((prev) => [...prev, { ...form, id: data.id, amount_eur: form.amount_eur ? Number(form.amount_eur) / 1_000_000 : null } as FundingRound])
     setForm({ stage: "seed", amount_eur: "", announced_date: "", source_url: "", source_name: "", notes: "", is_estimated: false })
     setShowForm(false)
     setLoading(false)
@@ -93,8 +93,11 @@ export function LinkedFundingRounds({ organizationId, rounds: initial }: Props) 
     router.refresh()
   }
 
-  function formatEur(amount: number | null) {
-    if (!amount) return ""
+  // amount_eur is stored in millions of euros (5 = €5M)
+  function formatEur(amountInMillions: number | null) {
+    if (!amountInMillions) return ""
+    const amount = amountInMillions * 1_000_000
+    if (amount >= 1_000_000_000) return `€${(amount / 1_000_000_000).toFixed(1)}B`
     if (amount >= 1_000_000) return `€${(amount / 1_000_000).toFixed(1)}M`
     if (amount >= 1_000) return `€${(amount / 1_000).toFixed(0)}K`
     return `€${amount}`
@@ -153,7 +156,7 @@ export function LinkedFundingRounds({ organizationId, rounds: initial }: Props) 
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </Select>
-            <Input type="number" className="text-[13px]" placeholder="Amount (EUR)" value={form.amount_eur} onChange={(e) => setForm((p) => ({ ...p, amount_eur: e.target.value }))} />
+            <Input type="number" className="text-[13px]" placeholder="Amount (EUR, e.g. 5000000)" value={form.amount_eur} onChange={(e) => setForm((p) => ({ ...p, amount_eur: e.target.value }))} />
             <Input type="date" className="text-[13px]" value={form.announced_date} onChange={(e) => setForm((p) => ({ ...p, announced_date: e.target.value }))} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
