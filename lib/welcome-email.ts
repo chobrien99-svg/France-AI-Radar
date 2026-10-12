@@ -18,6 +18,10 @@ function escapeHtml(value: string) {
  * not break sign-in. Requires RESEND_API_KEY; WELCOME_EMAIL_FROM sets the sender.
  */
 export async function sendWelcomeEmailOnce(user: WelcomeUser) {
+  // Set once the send is claimed; any failure after that releases the claim
+  // so the next sign-in retries.
+  let releaseClaim: (() => Promise<unknown>) | null = null
+
   try {
     if (!user.email || !user.email_confirmed_at) return
 
@@ -44,6 +48,8 @@ export async function sendWelcomeEmailOnce(user: WelcomeUser) {
     }
     // Already sent, or no profile row.
     if (!profile) return
+    releaseClaim = async () =>
+      supabase.from("profiles").update({ welcome_email_sent_at: null }).eq("id", user.id)
     // Admin-created and already-paying accounts don't need the "choose a plan" email.
     if (profile.is_admin || profile.subscription_status === "active") return
 
@@ -54,6 +60,7 @@ export async function sendWelcomeEmailOnce(user: WelcomeUser) {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(10_000),
       body: JSON.stringify({
         from: process.env.WELCOME_EMAIL_FROM || "AI Radar <noreply@franceairadar.com>",
         to: user.email,
@@ -82,10 +89,11 @@ French Tech Journal`,
 
     if (!res.ok) {
       console.error("[welcome-email] Resend error", res.status, await res.text())
-      // Release the claim so the next sign-in retries.
-      await supabase.from("profiles").update({ welcome_email_sent_at: null }).eq("id", user.id)
+      await releaseClaim()
     }
   } catch (err) {
+    // e.g. a network error reaching Resend after the claim was taken.
     console.error("[welcome-email] failed:", err)
+    if (releaseClaim) await releaseClaim().catch(() => {})
   }
 }
