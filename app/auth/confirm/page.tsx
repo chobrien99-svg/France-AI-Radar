@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation"
+import { after } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import type { EmailOtpType } from "@supabase/supabase-js"
+import { sendWelcomeEmailOnce } from "@/lib/welcome-email"
 
 export const dynamic = "force-dynamic"
 
@@ -30,10 +32,13 @@ async function confirmAction(formData: FormData) {
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.verifyOtp({ type: typeRaw as EmailOtpType, token_hash })
+  const { data, error } = await supabase.auth.verifyOtp({ type: typeRaw as EmailOtpType, token_hash })
   if (error) {
     redirect(`/auth/login?error=${encodeURIComponent(error.message)}`)
   }
+  // First confirmed sign-in: send the one-time welcome email.
+  const confirmedUser = data.user
+  if (confirmedUser) after(() => sendWelcomeEmailOnce(confirmedUser))
   redirect(next)
 }
 

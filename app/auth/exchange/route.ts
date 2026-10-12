@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server"
+import { after, NextResponse, type NextRequest } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { sendWelcomeEmailOnce } from "@/lib/welcome-email"
 
 // Exchanges a PKCE ?code= for a session. This must be a Route Handler, not a
 // page: Next.js only lets Route Handlers and Server Functions set cookies, so
@@ -28,6 +29,11 @@ export async function GET(request: NextRequest) {
   if (redirectType === "PASSWORD_RECOVERY") {
     return NextResponse.redirect(`${origin}/auth/reset-password`)
   }
+
+  // First confirmed sign-in (Google, or an email confirmation link): send the
+  // one-time welcome email without delaying the redirect.
+  const signedInUser = data.user
+  after(() => sendWelcomeEmailOnce(signedInUser))
 
   // OAuth sign-ins create the account on first use. Send brand-new users via
   // /auth/welcome, which records the signup before continuing to `next` (which
