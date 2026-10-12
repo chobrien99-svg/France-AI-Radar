@@ -1,14 +1,49 @@
 import { AppNav } from "@/components/app-nav"
 import { SiteFooter } from "@/components/site-footer"
+import { createClient } from "@/lib/supabase/server"
 import { PricingCards } from "./pricing-cards"
 
-export default function PricingPage() {
+export const dynamic = "force-dynamic"
+
+export default async function PricingPage() {
+  // Signed-in users without an active plan (e.g. just signed up) get a note
+  // confirming their account exists and that a plan unlocks the database.
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  let showWelcome = false
+  let firstName = ""
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, subscription_status, is_admin")
+      .eq("id", user.id)
+      .maybeSingle()
+    showWelcome = !profile?.is_admin && profile?.subscription_status !== "active"
+    firstName = (profile?.full_name ?? "").trim().split(/\s+/)[0]
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <AppNav activePage="pricing" />
 
       <div className="page-container py-16 pb-24">
+        {showWelcome && (
+          <div
+            role="status"
+            className="mx-auto mb-10 max-w-[600px] border-l-2 border-l-accent-green bg-card px-6 py-4"
+          >
+            <p className="font-serif text-[15px] font-semibold text-foreground">
+              {firstName ? `Welcome, ${firstName}! ` : "Welcome! "}Your account is ready.
+            </p>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+              Choose a plan below to unlock the AI Radar database.
+            </p>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-12 text-center">
           <p className="section-kicker mb-3">Pricing</p>
