@@ -11,7 +11,7 @@ import { DeleteListButton } from "@/components/account/delete-list-button"
 import { ProfileEditor } from "@/components/account/profile-editor"
 import { ChangePassword } from "@/components/account/change-password"
 import { WatchlistView } from "@/components/account/watchlist-view"
-import { isTrialActive } from "@/lib/subscription"
+import { hasActiveAccess, isTrialActive } from "@/lib/subscription"
 
 const TIER_LABEL: Record<string, string> = {
   explorer: "Explorer",
@@ -75,8 +75,11 @@ export default async function AccountPage() {
 
   if (!profile) redirect("/auth/login")
 
-  const tier = profile.subscription_tier ?? "explorer"
-  const canUpgrade = tier === "explorer"
+  const planTier = profile.subscription_tier ?? "explorer"
+  // Features follow the plan only while it's usable (paid, or a trial that
+  // hasn't ended); otherwise the account is treated as having no plan.
+  const tier = hasActiveAccess(profile) ? planTier : "none"
+  const canUpgrade = tier === "explorer" || tier === "none"
   const canManageBilling = !!profile.stripe_customer_id
 
   const { data: savedSearches } = await supabase
@@ -393,7 +396,7 @@ export default async function AccountPage() {
               <p className="metric-label mb-2">Subscription</p>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-serif text-[18px] font-bold text-foreground">
-                  {TIER_LABEL[tier] ?? tier} Plan
+                  {TIER_LABEL[planTier] ?? planTier} Plan
                 </h2>
                 <span
                   className={
@@ -442,7 +445,7 @@ export default async function AccountPage() {
               {canUpgrade && (
                 <Button size="sm" asChild>
                   <Link href="/pricing">
-                    {tier === "explorer" ? "Upgrade to Pro →" : "Upgrade Plan →"}
+                    {tier === "explorer" ? "Upgrade to Pro →" : "Choose a Plan →"}
                   </Link>
                 </Button>
               )}
@@ -455,7 +458,7 @@ export default async function AccountPage() {
           <div className="grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
             <FeatureStat
               label="Profile views"
-              value={tier === "explorer" ? "3 / month" : "Unlimited"}
+              value={tier === "none" ? "—" : tier === "explorer" ? "3 / month" : "Unlimited"}
             />
             <FeatureStat
               label="Investor briefs"

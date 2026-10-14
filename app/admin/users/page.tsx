@@ -15,6 +15,7 @@ type UserProfile = {
   subscription_period_end: string | null
   trial_ends_at: string | null
   stripe_customer_id: string | null
+  stripe_subscription_id: string | null
   is_admin: boolean
   created_at: string
   updated_at: string
@@ -50,7 +51,7 @@ export default async function AdminUsersPage() {
 
   const { data: usersRaw } = await supabase
     .from("profiles")
-    .select("id, email, full_name, subscription_tier, subscription_status, subscription_period_end, trial_ends_at, stripe_customer_id, is_admin, created_at, updated_at")
+    .select("id, email, full_name, subscription_tier, subscription_status, subscription_period_end, trial_ends_at, stripe_customer_id, stripe_subscription_id, is_admin, created_at, updated_at")
     .order("created_at", { ascending: false })
 
   const users = (usersRaw ?? []) as UserProfile[]
@@ -119,6 +120,7 @@ export default async function AdminUsersPage() {
                 periodEnd={u.subscription_period_end}
                 trialEndsAt={u.trial_ends_at}
                 hasStripe={!!u.stripe_customer_id}
+                hasStripeSubscription={!!u.stripe_subscription_id}
                 isAdmin={u.is_admin}
               />
             ))}

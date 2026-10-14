@@ -40,6 +40,7 @@ interface Props {
   periodEnd: string | null
   trialEndsAt: string | null
   hasStripe: boolean
+  hasStripeSubscription: boolean
   isAdmin: boolean
 }
 
@@ -53,6 +54,7 @@ export function UserRow({
   periodEnd,
   trialEndsAt,
   hasStripe,
+  hasStripeSubscription,
   isAdmin: initialIsAdmin,
 }: Props) {
   const router = useRouter()
@@ -93,10 +95,11 @@ export function UserRow({
     if (!ok) setTier(prev)
   }
 
-  const isTrial = status === "trialing"
-  const trialExpired = isTrial && !!trialEndsAt && new Date(trialEndsAt) <= new Date()
-  // Paying Stripe customers can't be put on a trial (the API refuses too).
-  const canGiveTrial = !(status === "active" && hasStripe)
+  // Admin-granted trials carry an end date; Stripe trials don't and are managed in Stripe.
+  const isTrial = status === "trialing" && !!trialEndsAt
+  const trialExpired = isTrial && new Date(trialEndsAt!) <= new Date()
+  // Live Stripe subscriptions can't be put on a trial (the API refuses too).
+  const canGiveTrial = !(hasStripeSubscription && ["active", "trialing", "past_due"].includes(status))
 
   async function handleStartTrial() {
     const ok = await updateUser({ trial_days: trialDays, subscription_tier: trialTier })
