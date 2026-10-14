@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
+import { after, NextRequest, NextResponse } from "next/server"
 import { getAdminUser } from "@/lib/admin"
 import { createClient } from "@supabase/supabase-js"
 import { createServiceClient } from "@/lib/supabase/server"
+import { sendTrialStartedEmail } from "@/lib/trial-emails"
 
 export const runtime = "nodejs"
 
@@ -56,6 +57,9 @@ export async function PATCH(
     trialAction = "start"
     updateFields.subscription_status = "trialing"
     updateFields.trial_ends_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+    // New end date: the reminder and "ended" emails apply afresh.
+    updateFields.trial_reminder_sent_at = null
+    updateFields.trial_ended_email_sent_at = null
   } else if (body.end_trial === true) {
     trialAction = "end"
     updateFields.subscription_status = "inactive"
@@ -81,7 +85,7 @@ export async function PATCH(
   }
 
   const { data, error } = await query
-    .select("id, email, subscription_tier, is_admin, subscription_status, trial_ends_at")
+    .select("id, email, full_name, subscription_tier, is_admin, subscription_status, trial_ends_at")
     .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -99,6 +103,13 @@ export async function PATCH(
     }
     return NextResponse.json({ error: "User not found" }, { status: 404 })
   }
+
+  // Tell the user about their trial without delaying the admin's response.
+  if (trialAction === "start") {
+    const trialUser = data
+    after(() => sendTrialStartedEmail(trialUser))
+  }
+
   return NextResponse.json(data)
 }
 
