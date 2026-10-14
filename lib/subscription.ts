@@ -142,3 +142,28 @@ export function sectorLabel(sector: string): string {
 export function stageLabel(stage: string): string {
   return STAGE_LABELS[stage] ?? stage
 }
+
+// ------------------------------------------------------------------
+// Access: paid subscription, or a free trial that hasn't ended
+// ------------------------------------------------------------------
+
+type AccessProfile = {
+  subscription_status?: string | null
+  trial_ends_at?: string | null
+  is_admin?: boolean | null
+}
+
+/** True while a free trial is running (status trialing, end date in the future). */
+export function isTrialActive(profile: AccessProfile | null | undefined, now: Date = new Date()): boolean {
+  if (profile?.subscription_status !== "trialing") return false
+  // Stripe-managed trials have no trial_ends_at; Stripe moves them on when they end.
+  if (!profile.trial_ends_at) return true
+  return new Date(profile.trial_ends_at) > now
+}
+
+/** Whether the user can use the paid product: admin, active subscription, or running trial. */
+export function hasActiveAccess(profile: AccessProfile | null | undefined): boolean {
+  if (!profile) return false
+  if (profile.is_admin) return true
+  return profile.subscription_status === "active" || isTrialActive(profile)
+}

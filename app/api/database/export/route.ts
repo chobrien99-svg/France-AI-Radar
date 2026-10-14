@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { getExportLimit, canUseAdvancedFilters, canSaveAndList, canAccessPremiumFields } from "@/lib/subscription"
+import { getExportLimit, canUseAdvancedFilters, canSaveAndList, canAccessPremiumFields, hasActiveAccess } from "@/lib/subscription"
 import { parseDatabaseQuery, loadRadarDataset, filterStartups } from "@/lib/radar-dataset"
 
 export const runtime = "nodejs"
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("subscription_tier, subscription_status, is_admin")
+    .select("subscription_tier, subscription_status, trial_ends_at, is_admin")
     .eq("id", user.id)
     .single()
 
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
   const tier = profile?.subscription_tier ?? "explorer"
   const limit = getExportLimit(tier)
 
-  if (!isAdmin && (profile?.subscription_status !== "active" || limit === 0)) {
+  if (!isAdmin && (!hasActiveAccess(profile) || limit === 0)) {
     return NextResponse.json(
       { error: "Export requires an active Professional or Enterprise subscription." },
       { status: 403 }

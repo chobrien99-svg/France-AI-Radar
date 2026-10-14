@@ -14,7 +14,7 @@ function getAdminSupabase() {
 
 const ALLOWED_TIERS = ["explorer", "professional", "enterprise"]
 
-/** Update a user's tier, admin status, or subscription status */
+/** Update a user's tier, admin status, subscription status, or free trial */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -44,6 +44,32 @@ export async function PATCH(
     updateFields.full_name = body.full_name || null
   }
 
+  // Free trial: { trial_days: n } starts (or extends) a trial ending n days
+  // from now; { end_trial: true } ends it immediately.
+  if (body.trial_days !== undefined) {
+    const days = Number(body.trial_days)
+    if (!Number.isInteger(days) || days < 1 || days > 365) {
+      return NextResponse.json({ error: "Trial length must be 1–365 days" }, { status: 400 })
+    }
+    const { data: current } = await supabase
+      .from("profiles")
+      .select("subscription_status, stripe_subscription_id")
+      .eq("id", id)
+      .single()
+    // A trial would replace a paid plan and then expire, cutting off a paying customer.
+    if (current?.subscription_status === "active" && current.stripe_subscription_id) {
+      return NextResponse.json(
+        { error: "This user already has a paid Stripe subscription" },
+        { status: 400 }
+      )
+    }
+    updateFields.subscription_status = "trialing"
+    updateFields.trial_ends_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+  } else if (body.end_trial === true) {
+    updateFields.subscription_status = "inactive"
+    updateFields.trial_ends_at = null
+  }
+
   if (Object.keys(updateFields).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
   }
@@ -54,7 +80,7 @@ export async function PATCH(
     .from("profiles")
     .update(updateFields)
     .eq("id", id)
-    .select("id, email, subscription_tier, is_admin, subscription_status")
+    .select("id, email, subscription_tier, is_admin, subscription_status, trial_ends_at")
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

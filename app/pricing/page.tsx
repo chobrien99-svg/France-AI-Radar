@@ -1,6 +1,7 @@
 import { AppNav } from "@/components/app-nav"
 import { SiteFooter } from "@/components/site-footer"
 import { createClient } from "@/lib/supabase/server"
+import { hasActiveAccess } from "@/lib/subscription"
 import { PricingCards } from "./pricing-cards"
 
 export const dynamic = "force-dynamic"
@@ -17,10 +18,10 @@ export default async function PricingPage() {
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name, subscription_status, is_admin")
+      .select("full_name, subscription_status, trial_ends_at, is_admin")
       .eq("id", user.id)
       .maybeSingle()
-    showWelcome = !profile?.is_admin && profile?.subscription_status !== "active"
+    showWelcome = !hasActiveAccess(profile)
     firstName = (profile?.full_name ?? "").trim().split(/\s+/)[0]
   }
 

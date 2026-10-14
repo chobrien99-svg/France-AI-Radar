@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { canAccessFullProfile, canAccessPremiumFields, getProfileViewLimit, getExportLimit, canSaveAndList, canSetAlerts } from "@/lib/subscription"
+import { canAccessFullProfile, canAccessPremiumFields, getProfileViewLimit, getExportLimit, canSaveAndList, canSetAlerts, hasActiveAccess } from "@/lib/subscription"
 import type { OrganizationProfile } from "@/lib/types"
 import { AddToListButton } from "@/components/startup/add-to-list-button"
 import { ExportCsvButton } from "@/components/startup/export-csv-button"
@@ -44,14 +44,14 @@ export default async function StartupProfilePage({
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, is_admin")
+      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, trial_ends_at, is_admin")
       .eq("id", user.id)
       .single()
     profile = data
   }
 
   const isAdmin = !!(profile as Record<string, unknown> | null)?.is_admin
-  const hasActiveSub = isAdmin || profile?.subscription_status === "active"
+  const hasActiveSub = hasActiveAccess(profile)
   const tier = hasActiveSub ? (profile?.subscription_tier ?? "explorer") : "none"
   const canFull = hasActiveSub && canAccessFullProfile(tier)
   const canPremium = isAdmin || canAccessPremiumFields(tier)
