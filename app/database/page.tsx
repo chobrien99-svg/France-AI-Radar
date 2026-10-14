@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { getStartupLimit, getExportLimit, canUseAdvancedFilters, canSaveAndList, canAccessPremiumFields } from "@/lib/subscription"
+import { getStartupLimit, getExportLimit, canUseAdvancedFilters, canSaveAndList, canAccessPremiumFields, hasActiveAccess } from "@/lib/subscription"
 import { paramOne, signalLabel } from "@/lib/radar"
 import { TIME_OPTIONS, withinTime, parseDatabaseQuery, loadRadarDataset, filterStartups, filterFounders } from "@/lib/radar-dataset"
 import { FilterSidebarV2, type FilterGroupDef } from "@/components/radar/filter-sidebar"
@@ -50,14 +50,14 @@ export default async function DatabasePage({
 
   const { data: profileRow } = await supabase
     .from("profiles")
-    .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, is_admin")
+    .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, trial_ends_at, is_admin")
     .eq("id", user.id)
     .single()
   const profile = profileRow as (Profile & { is_admin?: boolean }) | null
 
   // Require active subscription (admins always have access)
   const isAdmin = !!profile?.is_admin
-  if (!isAdmin && profile?.subscription_status !== "active") redirect("/pricing")
+  if (!hasActiveAccess(profile)) redirect("/pricing")
 
   const tier = profile?.subscription_tier ?? "explorer"
   const limit = isAdmin ? null : getStartupLimit(tier)

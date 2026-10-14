@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { getExportLimit, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
+import { getExportLimit, hasActiveAccess, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
 
 export const runtime = "nodejs"
 
@@ -42,14 +42,15 @@ export async function GET(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("subscription_tier")
+    .select("subscription_tier, subscription_status, trial_ends_at, is_admin")
     .eq("id", user.id)
     .single()
 
   const tier = profile?.subscription_tier ?? "explorer"
   const limit = getExportLimit(tier)
 
-  if (limit === 0) {
+  // Same rule as the database export: an active plan or running trial is required.
+  if (!hasActiveAccess(profile) || limit === 0) {
     return NextResponse.json(
       { error: "CSV export requires a Professional subscription." },
       { status: 403 }

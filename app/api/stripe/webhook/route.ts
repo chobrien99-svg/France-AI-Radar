@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
             stripe_subscription_id: subscriptionId,
             subscription_tier: tier,
             subscription_status: "active",
+            trial_ends_at: null,
           })
           .eq("id", userId)
 

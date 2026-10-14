@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GoogleSignInButton } from "@/components/auth/google-sign-in-button"
+import { hasActiveAccess } from "@/lib/subscription"
 
 export function LoginForm() {
   const router = useRouter()
@@ -45,11 +46,11 @@ export function LoginForm() {
     if (user) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("subscription_status, is_admin")
+        .select("subscription_status, trial_ends_at, is_admin")
         .eq("id", user.id)
         .single()
 
-      if (profile?.is_admin || profile?.subscription_status === "active") {
+      if (hasActiveAccess(profile)) {
         router.push("/database")
       } else {
         router.push("/pricing")

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { canAccessPremiumFields } from "@/lib/subscription"
+import { canAccessPremiumFields, hasActiveAccess } from "@/lib/subscription"
 import { Icon } from "@/components/radar/icons"
 import { Monogram } from "@/components/radar/monogram"
 import { StartupCardV2, Redacted, type CardStartup } from "@/components/radar/cards"
@@ -37,7 +37,7 @@ export default async function FounderProfilePage({
   if (user) {
     const { data } = await supabase
       .from("profiles")
-      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, is_admin")
+      .select("id, email, full_name, subscription_tier, subscription_status, stripe_customer_id, subscription_period_end, trial_ends_at, is_admin")
       .eq("id", user.id)
       .single()
     profile = data
@@ -46,7 +46,7 @@ export default async function FounderProfilePage({
   // Founder intelligence is Professional-only. Everyone else gets name + company,
   // and the premium values are never rendered (not just blurred).
   const isAdmin = !!profile?.is_admin
-  const hasActiveSub = profile?.subscription_status === "active"
+  const hasActiveSub = hasActiveAccess(profile)
   const canPremium = isAdmin || (hasActiveSub && canAccessPremiumFields(profile?.subscription_tier ?? "explorer"))
 
   // Fetch founder by slug

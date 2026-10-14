@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server"
+import { hasActiveAccess } from "@/lib/subscription"
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.franceairadar.com"
 
@@ -39,7 +40,7 @@ export async function sendWelcomeEmailOnce(user: WelcomeUser) {
       .update({ welcome_email_sent_at: new Date().toISOString() })
       .eq("id", user.id)
       .is("welcome_email_sent_at", null)
-      .select("full_name, subscription_status, is_admin")
+      .select("full_name, subscription_status, trial_ends_at, is_admin")
       .maybeSingle()
 
     if (claimError) {
@@ -50,8 +51,8 @@ export async function sendWelcomeEmailOnce(user: WelcomeUser) {
     if (!profile) return
     releaseClaim = async () =>
       supabase.from("profiles").update({ welcome_email_sent_at: null }).eq("id", user.id)
-    // Admin-created and already-paying accounts don't need the "choose a plan" email.
-    if (profile.is_admin || profile.subscription_status === "active") return
+    // Admins, paying and trial accounts don't need the "choose a plan" email.
+    if (hasActiveAccess(profile)) return
 
     const firstName = (profile.full_name ?? "").trim().split(/\s+/)[0]
     const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,"

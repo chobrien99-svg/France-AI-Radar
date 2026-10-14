@@ -11,6 +11,7 @@ import { DeleteListButton } from "@/components/account/delete-list-button"
 import { ProfileEditor } from "@/components/account/profile-editor"
 import { ChangePassword } from "@/components/account/change-password"
 import { WatchlistView } from "@/components/account/watchlist-view"
+import { hasActiveAccess, isTrialActive } from "@/lib/subscription"
 
 const TIER_LABEL: Record<string, string> = {
   explorer: "Explorer",
@@ -26,6 +27,7 @@ const TIER_CLASS: Record<string, string> = {
 
 const STATUS_CLASS: Record<string, string> = {
   active: "badge-signal badge-signal-positive",
+  trialing: "badge-signal badge-signal-positive",
   past_due: "badge-signal badge-signal-warning",
   canceled: "badge-signal badge-signal-risk",
   inactive: "badge-signal badge-signal-neutral",
@@ -66,15 +68,18 @@ export default async function AccountPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "id, email, full_name, title, company, user_type, subscription_tier, subscription_status, subscription_period_end, stripe_customer_id, is_admin"
+      "id, email, full_name, title, company, user_type, subscription_tier, subscription_status, subscription_period_end, trial_ends_at, stripe_customer_id, is_admin"
     )
     .eq("id", user.id)
     .single()
 
   if (!profile) redirect("/auth/login")
 
-  const tier = profile.subscription_tier ?? "explorer"
-  const canUpgrade = tier === "explorer"
+  const planTier = profile.subscription_tier ?? "explorer"
+  // Features follow the plan only while it's usable (paid, or a trial that
+  // hasn't ended); otherwise the account is treated as having no plan.
+  const tier = hasActiveAccess(profile) ? planTier : "none"
+  const canUpgrade = tier === "explorer" || tier === "none"
   const canManageBilling = !!profile.stripe_customer_id
 
   const { data: savedSearches } = await supabase
@@ -391,18 +396,30 @@ export default async function AccountPage() {
               <p className="metric-label mb-2">Subscription</p>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-serif text-[18px] font-bold text-foreground">
-                  {TIER_LABEL[tier] ?? tier} Plan
+                  {TIER_LABEL[planTier] ?? planTier} Plan
                 </h2>
                 <span
                   className={
-                    STATUS_CLASS[profile.subscription_status ?? "inactive"] ??
-                    STATUS_CLASS.inactive
+                    profile.subscription_status === "trialing" && !isTrialActive(profile)
+                      ? STATUS_CLASS.inactive
+                      : STATUS_CLASS[profile.subscription_status ?? "inactive"] ?? STATUS_CLASS.inactive
                   }
                 >
-                  {profile.subscription_status ?? "inactive"}
+                  {profile.subscription_status === "trialing"
+                    ? isTrialActive(profile)
+                      ? "free trial"
+                      : "trial ended"
+                    : profile.subscription_status ?? "inactive"}
                 </span>
               </div>
-              {profile.subscription_period_end && (
+              {profile.subscription_status === "trialing" && profile.trial_ends_at && (
+                <p className="mt-1.5 text-[13px] text-muted-foreground">
+                  {isTrialActive(profile)
+                    ? `Free trial until ${formatDate(profile.trial_ends_at)}. Choose a plan to keep access after that.`
+                    : `Your free trial ended on ${formatDate(profile.trial_ends_at)}. Choose a plan to regain access.`}
+                </p>
+              )}
+              {profile.subscription_status !== "trialing" && profile.subscription_period_end && (
                 <p className="mt-1.5 text-[13px] text-muted-foreground">
                   Next billing date: {formatDate(profile.subscription_period_end)}
                 </p>
@@ -428,7 +445,7 @@ export default async function AccountPage() {
               {canUpgrade && (
                 <Button size="sm" asChild>
                   <Link href="/pricing">
-                    {tier === "explorer" ? "Upgrade to Pro →" : "Upgrade Plan →"}
+                    {tier === "explorer" ? "Upgrade to Pro →" : "Choose a Plan →"}
                   </Link>
                 </Button>
               )}
@@ -441,7 +458,7 @@ export default async function AccountPage() {
           <div className="grid grid-cols-2 gap-3 text-[13px] sm:grid-cols-4">
             <FeatureStat
               label="Profile views"
-              value={tier === "explorer" ? "3 / month" : "Unlimited"}
+              value={tier === "none" ? "—" : tier === "explorer" ? "3 / month" : "Unlimited"}
             />
             <FeatureStat
               label="Investor briefs"
