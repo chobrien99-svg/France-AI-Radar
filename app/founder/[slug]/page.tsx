@@ -49,8 +49,12 @@ export default async function FounderProfilePage({
   const hasActiveSub = hasActiveAccess(profile)
   const canPremium = isAdmin || (hasActiveSub && canAccessPremiumFields(profile?.subscription_tier ?? "explorer"))
 
+  // Founder data is read with the service client (the tables aren't publicly
+  // readable); premium values are gated by canPremium below.
+  const svc = await createServiceClient()
+
   // Fetch founder by slug
-  const { data: founderRaw } = await supabase
+  const { data: founderRaw } = await svc
     .from("people")
     .select("*")
     .eq("slug", slug)
@@ -81,12 +85,12 @@ export default async function FounderProfilePage({
 
   // Companies this person founded, plus prior experience
   const [{ data: ventureLinksRaw }, { data: experienceRaw }] = await Promise.all([
-    supabase
+    svc
       .from("organization_people")
       .select("role, organizations(id, name, slug, description, short_description, logo_url, last_round, signal_count, founded_date, first_seen_at, cities!organizations_city_id_fkey(name))")
       .eq("person_id", founder.id)
       .eq("is_founder", true),
-    supabase
+    svc
       .from("person_experience")
       .select("id, company_name, role, title, start_date, end_date, is_current, organizations(name, slug)")
       .eq("person_id", founder.id)
@@ -105,16 +109,15 @@ export default async function FounderProfilePage({
   const primaryRole = primary?.role ?? null
 
   // Company context: sector, signals, co-founders
-  const svc = await createServiceClient()
   const [{ data: sectorRows }, { data: signalRows }, { data: coRows }] = companyId
     ? await Promise.all([
         svc.from("organization_sectors").select("is_primary, sectors(name)").eq("organization_id", companyId),
-        supabase
+        svc
           .from("signals")
           .select("id, signal_type, title, signal_date")
           .eq("organization_id", companyId)
           .order("signal_date", { ascending: false, nullsFirst: false }),
-        supabase
+        svc
           .from("organization_people")
           .select("role, people(id, full_name, slug, photo_url)")
           .eq("organization_id", companyId)
