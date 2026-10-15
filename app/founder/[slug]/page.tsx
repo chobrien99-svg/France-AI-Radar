@@ -49,6 +49,8 @@ export default async function FounderProfilePage({
   const isAdmin = !!profile?.is_admin
   const hasActiveSub = hasActiveAccess(profile)
   const canPremium = isAdmin || (hasActiveSub && canAccessPremiumFields(profile?.subscription_tier ?? "explorer"))
+  // Names and photos: any member with an active plan (as in the Database); blurred for everyone else.
+  const showName = isAdmin || hasActiveSub
 
   // Founder data is read with the service client (the tables aren't publicly
   // readable); premium values are gated by canPremium below.
@@ -211,11 +213,11 @@ export default async function FounderProfilePage({
             <Link href="/database?tab=founders" className="r2-back"><Icon name="back" size={13} /> Founders</Link>
           )}
           <div className="r2-ph">
-            {/* Names and photos are Professional-only, as on startup pages; the rest of the page still identifies the company. */}
-            <Monogram name={canPremium ? founder.full_name : "· ·"} tone="dark" size="xl" round imageUrl={canPremium ? founder.photo_url : null} />
+            {/* Names and photos need an active plan, as on startup pages; the rest of the page still identifies the company. */}
+            <Monogram name={showName ? founder.full_name : "· ·"} tone="dark" size="xl" round imageUrl={showName ? founder.photo_url : null} />
             <div style={{ minWidth: 0 }}>
               <div className="r2-eyebrow"><span className="bk" />Founder{company ? ` · ${company.name as string}` : ""}</div>
-              <h1 className="r2-h1"><BlurredText blur={!canPremium}>{founder.full_name}</BlurredText></h1>
+              <h1 className="r2-h1"><BlurredText blur={!showName}>{founder.full_name}</BlurredText></h1>
               {(primaryRole || company) && (
                 <p className="r2-lede">
                   {canPremium ? primaryRole : primaryRole ? <Redacted width={120} /> : null}
@@ -347,12 +349,12 @@ export default async function FounderProfilePage({
                 {coFounders.map(({ p, role }) => {
                   const inner = (
                     <>
-                      <Monogram name={canPremium ? (p.full_name as string) : "· ·"} tone="light" size="sm" round imageUrl={canPremium ? (p.photo_url as string | null) : null} />
-                      <div style={{ flex: 1 }}><div className="nm"><BlurredText blur={!canPremium}>{p.full_name as string}</BlurredText></div>{role && <div className="rl">{canPremium ? role : <Redacted width={90} />}</div>}</div>
+                      <Monogram name={showName ? (p.full_name as string) : "· ·"} tone="light" size="sm" round imageUrl={showName ? (p.photo_url as string | null) : null} />
+                      <div style={{ flex: 1 }}><div className="nm"><BlurredText blur={!showName}>{p.full_name as string}</BlurredText></div>{role && <div className="rl">{canPremium ? role : <Redacted width={90} />}</div>}</div>
                     </>
                   )
-                  // Founder URLs are name-based, so only link them for Professional viewers.
-                  return p.slug && canPremium ? (
+                  // Founder URLs are name-based, so only link them when names are shown.
+                  return p.slug && showName ? (
                     <Link key={p.id as string} href={`/founder/${p.slug}`} className="r2-person">{inner}</Link>
                   ) : (
                     <div key={p.id as string} className="r2-person">{inner}</div>
