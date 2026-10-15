@@ -25,11 +25,11 @@ function plan(user: TrialUser) {
   return TIER_LABEL[user.subscription_tier ?? ""] ?? "AI Radar"
 }
 
-/** "Your free trial has started", sent when an admin starts or extends a trial. */
-export async function sendTrialStartedEmail(user: TrialUser) {
-  if (!user.email || !user.trial_ends_at) return false
-  const ends = formatEmailDate(user.trial_ends_at)
-  const { html, text } = renderSimpleEmail({
+function startedEmail(user: TrialUser) {
+  const ends = formatEmailDate(user.trial_ends_at!)
+  return {
+    subject: "Your free AI Radar trial has started",
+    ...renderSimpleEmail({
     name: user.full_name,
     paragraphs: [
       `You've been given free access to AI Radar ${plan(user)} until ${ends}.`,
@@ -37,8 +37,8 @@ export async function sendTrialStartedEmail(user: TrialUser) {
     ],
     button: { label: "Open the database", url: `${SITE_URL}/database` },
     note: `Sign in with ${user.email}. Your access ends automatically on ${ends}; you won't be charged.`,
-  })
-  return sendEmail({ to: user.email, subject: "Your free AI Radar trial has started", html, text })
+    }),
+  }
 }
 
 function reminderEmail(user: TrialUser) {
@@ -71,7 +71,7 @@ function endedEmail(user: TrialUser) {
   }
 }
 
-type Column = "trial_reminder_sent_at" | "trial_ended_email_sent_at"
+type Column = "trial_started_email_sent_at" | "trial_reminder_sent_at" | "trial_ended_email_sent_at"
 
 /**
  * Claims each row (sets `column` where it is still NULL) before sending, so
@@ -91,6 +91,9 @@ async function sendBatch(
       .update({ [column]: new Date().toISOString() })
       .eq("id", user.id)
       .is(column, null)
+      // Still the same trial we selected (not subscribed, ended or restarted since).
+      .eq("subscription_status", "trialing")
+      .eq("trial_ends_at", user.trial_ends_at!)
       .select("id")
       .maybeSingle()
     if (!claimed) continue
@@ -102,11 +105,28 @@ async function sendBatch(
   return sent
 }
 
-/** Daily job: "ends soon" reminders and "has ended" emails for admin trials. */
+/**
+ * "Your free trial has started": sent right after an admin starts or extends a
+ * trial. If it fails, the daily job retries it (see sendDueTrialEmails).
+ */
+export async function sendTrialStartedEmail(user: TrialUser) {
+  if (!user.email || !user.trial_ends_at) return 0
+  const supabase = await createServiceClient()
+  return sendBatch(supabase, [user], "trial_started_email_sent_at", startedEmail)
+}
+
+/** Daily job: retried "started" emails, "ends soon" reminders and "has ended" emails. */
 export async function sendDueTrialEmails(now = new Date()) {
   const supabase = await createServiceClient()
   const fields = "id, email, full_name, subscription_tier, trial_ends_at"
   const nowIso = now.toISOString()
+
+  const { data: notStarted, error: e0 } = await supabase
+    .from("profiles")
+    .select(fields)
+    .eq("subscription_status", "trialing")
+    .gt("trial_ends_at", nowIso)
+    .is("trial_started_email_sent_at", null)
 
   const { data: endingSoon, error: e1 } = await supabase
     .from("profiles")
@@ -124,9 +144,10 @@ export async function sendDueTrialEmails(now = new Date()) {
     .gt("trial_ends_at", new Date(now.getTime() - ENDED_LOOKBACK_MS).toISOString())
     .is("trial_ended_email_sent_at", null)
 
-  if (e1 || e2) throw new Error((e1 ?? e2)!.message)
+  if (e0 || e1 || e2) throw new Error((e0 ?? e1 ?? e2)!.message)
 
+  const started = await sendBatch(supabase, notStarted ?? [], "trial_started_email_sent_at", startedEmail)
   const reminders = await sendBatch(supabase, endingSoon ?? [], "trial_reminder_sent_at", reminderEmail)
   const endedSent = await sendBatch(supabase, ended ?? [], "trial_ended_email_sent_at", endedEmail)
-  return { reminders, ended: endedSent }
+  return { started, reminders, ended: endedSent }
 }

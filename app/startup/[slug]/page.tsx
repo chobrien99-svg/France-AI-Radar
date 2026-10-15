@@ -117,8 +117,9 @@ export default async function StartupProfilePage({
     exportRemaining = null
   }
 
-  // Fetch signals (auth-gated at RLS level)
-  const { data: signalsRaw } = await supabase
+  // Startup data is read with the service client: the tables aren't publicly
+  // readable, and what each visitor sees is gated below (blurPremium etc.).
+  const { data: signalsRaw } = await svcForRead
     .from("signals")
     .select("id, organization_id, signal_date, signal_type, strength, title, description, source_name, source_url")
     .eq("organization_id", venture.id)
@@ -127,14 +128,14 @@ export default async function StartupProfilePage({
   const signals = signalsRaw ?? []
 
   // Fetch founders via junction table
-  const { data: foundersRaw } = await supabase
+  const { data: foundersRaw } = await svcForRead
     .from("organization_people")
     .select("role, people(*)")
     .eq("organization_id", venture.id)
     .eq("is_founder", true)
 
   // Fetch programs
-  const { data: programsRaw } = await supabase
+  const { data: programsRaw } = await svcForRead
     .from("program_organizations")
     .select("id, membership_role, notes, program_editions(name, cohort_label, year, programs(name, program_type))")
     .eq("organization_id", venture.id)
@@ -322,8 +323,9 @@ export default async function StartupProfilePage({
             <>
               {/* Filler only: related startups' names and descriptions aren't sent to visitors without access. */}
               <div className="r2-grid" aria-hidden>
-                {related.map((r) => (
-                  <div key={r.id} className="r2-card r2-blur">
+                {related.map((_, i) => (
+                  // Position keys: the real IDs would identify the hidden startups.
+                  <div key={i} className="r2-card r2-blur">
                     <div className="r2-card-top"><Monogram name="· ·" tone="light" /></div>
                     <h3 className="r2-name">Lorem ipsum</h3>
                     <p className="r2-one">Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>

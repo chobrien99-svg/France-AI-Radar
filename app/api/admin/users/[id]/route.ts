@@ -58,6 +58,7 @@ export async function PATCH(
     updateFields.subscription_status = "trialing"
     updateFields.trial_ends_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
     // New end date: the reminder and "ended" emails apply afresh.
+    updateFields.trial_started_email_sent_at = null
     updateFields.trial_reminder_sent_at = null
     updateFields.trial_ended_email_sent_at = null
   } else if (body.end_trial === true) {
