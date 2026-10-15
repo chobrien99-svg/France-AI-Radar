@@ -86,9 +86,10 @@ async function sendBatch(
   let sent = 0
   for (const user of users) {
     if (!user.email) continue
+    const claimedAt = new Date().toISOString()
     const { data: claimed } = await supabase
       .from("profiles")
-      .update({ [column]: new Date().toISOString() })
+      .update({ [column]: claimedAt })
       .eq("id", user.id)
       .is(column, null)
       // Still the same trial we selected (not subscribed, ended or restarted since).
@@ -100,7 +101,15 @@ async function sendBatch(
 
     const ok = await sendEmail({ to: user.email, ...build(user) })
     if (ok) sent++
-    else await supabase.from("profiles").update({ [column]: null }).eq("id", user.id)
+    // Release only our own claim: if the trial was extended meanwhile, a newer
+    // claim (or a new end date) must be left alone.
+    else
+      await supabase
+        .from("profiles")
+        .update({ [column]: null })
+        .eq("id", user.id)
+        .eq(column, claimedAt)
+        .eq("trial_ends_at", user.trial_ends_at!)
   }
   return sent
 }

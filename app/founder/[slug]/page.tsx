@@ -112,11 +112,14 @@ export default async function FounderProfilePage({
   const [{ data: sectorRows }, { data: signalRows }, { data: coRows }] = companyId
     ? await Promise.all([
         svc.from("organization_sectors").select("is_primary, sectors(name)").eq("organization_id", companyId),
-        svc
-          .from("signals")
-          .select("id, signal_type, title, signal_date")
-          .eq("organization_id", companyId)
-          .order("signal_date", { ascending: false, nullsFirst: false }),
+        // Signals are premium: not even loaded (type/date included) for other visitors.
+        canPremium
+          ? svc
+              .from("signals")
+              .select("id, signal_type, title, signal_date")
+              .eq("organization_id", companyId)
+              .order("signal_date", { ascending: false, nullsFirst: false })
+          : Promise.resolve({ data: [] }),
         svc
           .from("organization_people")
           .select("role, people(id, full_name, slug, photo_url)")
