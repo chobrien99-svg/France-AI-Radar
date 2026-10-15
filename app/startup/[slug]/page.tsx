@@ -463,20 +463,33 @@ function MainColumn({ signals, profileData, blurPremium, isAuthenticated }: Body
           <div className="r2-tl" style={gated ? { minHeight: 300 } : undefined}>
             {signals.map((g, i) => {
               const hidden = gated && i >= FREE_SIGNALS
+              // Gated rows are filler only: the real signal never leaves the server.
+              if (hidden) {
+                return (
+                  <div key={g.id} className="r2-tl-row r2-blur" aria-hidden>
+                    <div className="dt">Lorem 2026</div>
+                    <div className="r2-cat">Lorem ipsum</div>
+                    <div>
+                      <h4>Lorem ipsum dolor sit amet consectetur</h4>
+                      <p>Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor.</p>
+                    </div>
+                  </div>
+                )
+              }
               return (
-                <div key={g.id} className={"r2-tl-row" + (hidden ? " r2-blur" : "")} aria-hidden={hidden || undefined}>
+                <div key={g.id} className="r2-tl-row">
                   <div className="dt">{formatDate(g.signal_date)}</div>
                   <div className="r2-cat" style={{ color: signalColor(g.signal_type) }}>{signalLabel(g.signal_type)}</div>
                   <div>
                     <h4>{g.title}</h4>
                     {g.description && <p>{g.description}</p>}
-                    {!hidden && (safeUrl(g.source_url) ? (
+                    {safeUrl(g.source_url) ? (
                       <a className="r2-src" href={safeUrl(g.source_url)!} target="_blank" rel="noopener noreferrer">
                         Source: {sourceLabel(g, safeUrl(g.source_url)!)} <Icon name="external" size={11} />
                       </a>
                     ) : g.source_name ? (
                       <span className="r2-src">Source: {g.source_name}</span>
-                    ) : null)}
+                    ) : null}
                   </div>
                 </div>
               )
@@ -565,7 +578,8 @@ function Rail({ venture, founders, programs, profileData, blurPremium, sectorNam
               const tags = founderTags(f)
               const inner = (
                 <>
-                  <Monogram name={f.full_name} tone="light" size="sm" round />
+                  {/* Initials would reveal the gated name, so show neutral dots instead. */}
+                  <Monogram name={blurPremium ? "· ·" : f.full_name} tone="light" size="sm" round />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="nm"><BlurredText blur={blurPremium}>{f.full_name}</BlurredText></div>
                     {f.role && <div className="rl"><BlurredText blur={blurPremium}>{f.role}</BlurredText></div>}
@@ -611,7 +625,10 @@ function Rail({ venture, founders, programs, profileData, blurPremium, sectorNam
                 <div className="r2-lbl" style={{ marginBottom: 0 }}>{PROGRAM_TYPE_LABELS[p.program_type] ?? p.program_type}</div>
                 <div className="ttl"><BlurredText blur={blurPremium}>{p.program_name}</BlurredText></div>
                 {(p.edition_label || p.year || p.membership_role) && (
-                  <div className="r2-mono-sm" style={{ marginTop: 2 }}>{[p.edition_label, p.year, p.membership_role].filter(Boolean).join(" · ")}</div>
+                  <div className="r2-mono-sm" style={{ marginTop: 2 }}>
+                    {/* The edition label usually contains the programme name, so it's gated too. */}
+                    <BlurredText blur={blurPremium}>{[p.edition_label, p.year, p.membership_role].filter(Boolean).join(" · ")}</BlurredText>
+                  </div>
                 )}
               </div>
             ))}
