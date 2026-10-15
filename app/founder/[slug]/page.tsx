@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { canAccessPremiumFields, hasActiveAccess } from "@/lib/subscription"
 import { Icon } from "@/components/radar/icons"
 import { Monogram } from "@/components/radar/monogram"
+import { BlurredText } from "@/components/blurred-gate"
 import { StartupCardV2, Redacted, type CardStartup } from "@/components/radar/cards"
 import { formatDate, founderTags, signalColor, signalLabel, stageFrom } from "@/lib/radar"
 import type { Profile } from "@/lib/types"
@@ -48,6 +49,8 @@ export default async function FounderProfilePage({
   const isAdmin = !!profile?.is_admin
   const hasActiveSub = hasActiveAccess(profile)
   const canPremium = isAdmin || (hasActiveSub && canAccessPremiumFields(profile?.subscription_tier ?? "explorer"))
+  // Names and photos: any member with an active plan (as in the Database); blurred for everyone else.
+  const showName = isAdmin || hasActiveSub
 
   // Founder data is read with the service client (the tables aren't publicly
   // readable); premium values are gated by canPremium below.
@@ -210,10 +213,11 @@ export default async function FounderProfilePage({
             <Link href="/database?tab=founders" className="r2-back"><Icon name="back" size={13} /> Founders</Link>
           )}
           <div className="r2-ph">
-            <Monogram name={founder.full_name} tone="dark" size="xl" round imageUrl={founder.photo_url} />
+            {/* Names and photos need an active plan, as on startup pages; the rest of the page still identifies the company. */}
+            <Monogram name={showName ? founder.full_name : "· ·"} tone="dark" size="xl" round imageUrl={showName ? founder.photo_url : null} />
             <div style={{ minWidth: 0 }}>
               <div className="r2-eyebrow"><span className="bk" />Founder{company ? ` · ${company.name as string}` : ""}</div>
-              <h1 className="r2-h1">{founder.full_name}</h1>
+              <h1 className="r2-h1"><BlurredText blur={!showName}>{founder.full_name}</BlurredText></h1>
               {(primaryRole || company) && (
                 <p className="r2-lede">
                   {canPremium ? primaryRole : primaryRole ? <Redacted width={120} /> : null}
@@ -345,11 +349,12 @@ export default async function FounderProfilePage({
                 {coFounders.map(({ p, role }) => {
                   const inner = (
                     <>
-                      <Monogram name={p.full_name as string} tone="light" size="sm" round imageUrl={p.photo_url as string | null} />
-                      <div style={{ flex: 1 }}><div className="nm">{p.full_name as string}</div>{role && <div className="rl">{canPremium ? role : <Redacted width={90} />}</div>}</div>
+                      <Monogram name={showName ? (p.full_name as string) : "· ·"} tone="light" size="sm" round imageUrl={showName ? (p.photo_url as string | null) : null} />
+                      <div style={{ flex: 1 }}><div className="nm"><BlurredText blur={!showName}>{p.full_name as string}</BlurredText></div>{role && <div className="rl">{canPremium ? role : <Redacted width={90} />}</div>}</div>
                     </>
                   )
-                  return p.slug ? (
+                  // Founder URLs are name-based, so only link them when names are shown.
+                  return p.slug && showName ? (
                     <Link key={p.id as string} href={`/founder/${p.slug}`} className="r2-person">{inner}</Link>
                   ) : (
                     <div key={p.id as string} className="r2-person">{inner}</div>

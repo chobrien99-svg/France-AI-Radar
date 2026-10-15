@@ -226,8 +226,10 @@ export default async function StartupProfilePage({
   const place = [venture.cities?.name, secondaryCity].filter(Boolean).join(" & ")
   const lastSignal = signals[0]?.signal_date ?? venture.last_signal_date
   const blurPremium = !canFull || !canPremium
+  // Founder names: any member with an active plan (as in the Database); blurred for everyone else.
+  const blurNames = !(isAdmin || hasActiveSub)
   const limitHit = canFull && !hasViewAccess
-  const bodyProps = { venture, signals, founders, programs, profileData, blurPremium, isAuthenticated: !!user }
+  const bodyProps = { venture, signals, founders, programs, profileData, blurPremium, blurNames, isAuthenticated: !!user }
 
   return (
     <main>
@@ -424,6 +426,8 @@ type BodyProps = {
   programs: ProgramLink[]
   profileData: OrganizationProfile | null
   blurPremium: boolean
+  /** Founder names and links: blurred without an active plan */
+  blurNames: boolean
   isAuthenticated: boolean
 }
 
@@ -585,7 +589,7 @@ function MainColumn({ signals, profileData, blurPremium, isAuthenticated }: Body
 // Right rail: founders, funding, programmes, facts on file
 // ------------------------------------------------------------------
 
-function Rail({ venture, founders, programs, profileData, blurPremium, sectorNames, place }: BodyProps & { sectorNames: string[]; place: string }) {
+function Rail({ venture, founders, programs, profileData, blurPremium, blurNames, sectorNames, place }: BodyProps & { sectorNames: string[]; place: string }) {
   const hasFunding = venture.total_raised_eur || venture.last_round || profileData?.est_next_raise || profileData?.fundraising_signal_summary
   const website = venture.website?.replace(/^https?:\/\//, "").replace(/\/$/, "")
 
@@ -600,15 +604,15 @@ function Rail({ venture, founders, programs, profileData, blurPremium, sectorNam
               const inner = (
                 <>
                   {/* Initials would reveal the gated name, so show neutral dots instead. */}
-                  <Monogram name={blurPremium ? "· ·" : f.full_name} tone="light" size="sm" round />
+                  <Monogram name={blurNames ? "· ·" : f.full_name} tone="light" size="sm" round />
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div className="nm"><BlurredText blur={blurPremium}>{f.full_name}</BlurredText></div>
+                    <div className="nm"><BlurredText blur={blurNames}>{f.full_name}</BlurredText></div>
                     {f.role && <div className="rl"><BlurredText blur={blurPremium}>{f.role}</BlurredText></div>}
                     {!blurPremium && tags.length > 0 && <div className="tg">{tags.map((t) => <span key={t} className="r2-tag">{t}</span>)}</div>}
                   </div>
                 </>
               )
-              return f.slug && !blurPremium ? (
+              return f.slug && !blurNames ? (
                 <Link key={f.id} href={`/founder/${f.slug}`} className="r2-person">
                   {inner}
                   <span style={{ color: "var(--muted-foreground)", paddingTop: 4 }}><Icon name="arrow" size={13} /></span>
