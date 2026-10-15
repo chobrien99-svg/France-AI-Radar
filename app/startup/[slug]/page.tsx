@@ -312,11 +312,30 @@ export default async function StartupProfilePage({
             <h3>More on the Radar</h3>
             <Link href="/database" className="r2-f-reset">All startups →</Link>
           </div>
-          <div className="r2-grid">
-            {related.map((r) => (
-              <StartupCardV2 key={r.id} s={r} saved={false} canShortlist={false} showSignalTitle={canPremium} />
-            ))}
-          </div>
+          {hasActiveSub ? (
+            <div className="r2-grid">
+              {related.map((r) => (
+                <StartupCardV2 key={r.id} s={r} saved={false} canShortlist={false} showSignalTitle={canPremium} />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Filler only: related startups' names and descriptions aren't sent to visitors without access. */}
+              <div className="r2-grid" aria-hidden>
+                {related.map((r) => (
+                  <div key={r.id} className="r2-card r2-blur">
+                    <div className="r2-card-top"><Monogram name="· ·" tone="light" /></div>
+                    <h3 className="r2-name">Lorem ipsum</h3>
+                    <p className="r2-one">Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                    <div className="r2-tags"><span className="r2-tag">Lorem</span></div>
+                  </div>
+                ))}
+              </div>
+              <p className="r2-note" style={{ marginTop: 12, textAlign: "center" }}>
+                Related startups are part of every AI Radar plan. <Link href="/pricing">See plans →</Link>
+              </p>
+            </>
+          )}
         </div>
       )}
     </main>
