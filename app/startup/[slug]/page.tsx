@@ -12,6 +12,8 @@ import { StartupCardV2 } from "@/components/radar/cards"
 import { ShortlistButton, AlertToggle, ShareButtonV2 } from "@/components/radar/profile-actions"
 import { formatDate, formatEur, founderTags, relativeDate, signalColor, signalLabel, stageFrom, toneFor } from "@/lib/radar"
 import { loadRelatedStartups } from "@/lib/radar-data"
+import { loadTechnicalProfile, type TechnicalProfile, type TermLink } from "@/lib/technical-profile"
+import { CLAIMS, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, familyLabel, labelFor } from "@/lib/taxonomy"
 import { AnalyticsPageTrack } from "@/components/analytics-page-track"
 import { AnalyticsIdentifier } from "@/components/analytics-identifier"
 import type { Venture, Profile } from "@/lib/types"
@@ -213,9 +215,10 @@ export default async function StartupProfilePage({
   }>
 
   // Primary sector + related startups
-  const [{ data: sectorRows }, related] = await Promise.all([
+  const [{ data: sectorRows }, related, tech] = await Promise.all([
     svcForRead.from("organization_sectors").select("is_primary, sectors(name)").eq("organization_id", venture.id),
     loadRelatedStartups(svcForRead, venture.id, venture.city_id),
+    loadTechnicalProfile(svcForRead, venture.id),
   ])
   const sectorNames = ((sectorRows ?? []) as Array<{ is_primary: boolean; sectors: { name: string } | { name: string }[] | null }>)
     .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
@@ -229,7 +232,7 @@ export default async function StartupProfilePage({
   // Founder names: any member with an active plan (as in the Database); blurred for everyone else.
   const blurNames = !(isAdmin || hasActiveSub)
   const limitHit = canFull && !hasViewAccess
-  const bodyProps = { venture, signals, founders, programs, profileData, blurPremium, blurNames, isAuthenticated: !!user }
+  const bodyProps = { venture, signals, founders, programs, profileData, tech, blurPremium, blurNames, isAuthenticated: !!user }
 
   return (
     <main>
@@ -425,6 +428,7 @@ type BodyProps = {
   founders: FounderLocal[]
   programs: ProgramLink[]
   profileData: OrganizationProfile | null
+  tech: TechnicalProfile
   blurPremium: boolean
   /** Founder names and links: blurred without an active plan */
   blurNames: boolean
@@ -450,7 +454,7 @@ const FREE_SIGNALS = 0
 // Main column: brief, timeline, product & market, strategy, legal
 // ------------------------------------------------------------------
 
-function MainColumn({ signals, profileData, blurPremium, isAuthenticated }: BodyProps) {
+function MainColumn({ signals, profileData, tech, blurPremium, isAuthenticated }: BodyProps) {
   const pm = [
     ["What they're building", profileData?.product_description],
     ["Target market", profileData?.target_market],
@@ -532,6 +536,8 @@ function MainColumn({ signals, profileData, blurPremium, isAuthenticated }: Body
         </section>
       )}
 
+      <TechnicalSection tech={tech} profileData={profileData} blurPremium={blurPremium} />
+
       {pm.length > 0 && (
         <section className="r2-sec">
           <div className="r2-sec-h">Product &amp; market</div>
@@ -586,10 +592,105 @@ function MainColumn({ signals, profileData, blurPremium, isAuthenticated }: Body
 }
 
 // ------------------------------------------------------------------
+// Technical profile: layers, positioning, grouped term chips, claims.
+// Shown only once something is classified; unknown stays unknown.
+// ------------------------------------------------------------------
+
+/** Marks a chip that is used rather than developed, or not yet verified */
+function termNote(t: TermLink): string | null {
+  const notes = [
+    t.kind !== "develops" ? t.kind : null,
+    t.evidenceStatus === "inferred" || t.evidenceStatus === "unverified" ? t.evidenceStatus : null,
+  ].filter(Boolean)
+  return notes.length ? notes.join(", ") : null
+}
+
+function TechnicalSection({ tech, profileData, blurPremium }: { tech: TechnicalProfile; profileData: OrganizationProfile | null; blurPremium: boolean }) {
+  const facts = [
+    ["Positioning", labelFor(POSITIONINGS, profileData?.technology_positioning)],
+    ["Product role", labelFor(PRODUCT_ROLES, profileData?.ai_product_role)],
+    ["Maturity", labelFor(MATURITIES, profileData?.technology_maturity)],
+  ].filter(([, v]) => v) as [string, string][]
+  const groups = FACETS.map((f) => ({ ...f, links: tech.terms.filter((t) => t.term.facet === f.value) })).filter((g) => g.links.length > 0)
+  const differentiation = profileData?.technology_differentiation
+  if (!tech.primary && tech.secondary.length === 0 && groups.length === 0 && tech.claims.length === 0 && facts.length === 0 && !differentiation) return null
+
+  const unverified = (e: { evidenceStatus: string }) => e.evidenceStatus === "inferred" || e.evidenceStatus === "unverified"
+
+  return (
+    <section className="r2-sec">
+      <div className="r2-sec-h">Technical profile</div>
+      <div className="r2-pm two">
+        <div>
+          <div className="r2-lbl">Primary technical layer</div>
+          <p style={{ fontWeight: 600 }}>
+            {tech.primary?.layer.label ?? "Not yet classified"}
+            {tech.primary && unverified(tech.primary) && <span className="r2-mono-sm"> · {tech.primary.evidenceStatus}</span>}
+          </p>
+          {tech.secondary.length > 0 && (
+            <>
+              <div className="r2-lbl" style={{ marginTop: 12 }}>Secondary layers</div>
+              <p>{tech.secondary.map((l) => l.layer.label).join(" · ")}</p>
+            </>
+          )}
+        </div>
+        {facts.length > 0 && (
+          <div>
+            {facts.map(([k, v]) => (
+              <div key={k} className="r2-kv"><span className="k">{k}</span><span className="v">{v}</span></div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {groups.map((g) => (
+        <div key={g.value} style={{ marginTop: 18 }}>
+          <div className="r2-lbl">{g.label}</div>
+          <div className="r2-tags" style={{ paddingTop: 6 }}>
+            {g.links.map((t) => {
+              const note = termNote(t)
+              return (
+                <span
+                  key={t.id}
+                  className="r2-tag"
+                  title={[g.value === "specialization" ? familyLabel(t.term.family) : null, t.term.definition, t.isCore ? "Core to the product" : null].filter(Boolean).join(" · ") || undefined}
+                >
+                  {t.term.label}{t.isCore ? " ★" : ""}{note ? ` (${note})` : ""}
+                </span>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {tech.claims.length > 0 && (
+        <div style={{ marginTop: 18 }}>
+          <div className="r2-lbl">Proprietary technology (claimed)</div>
+          <div className="r2-tags" style={{ paddingTop: 6 }}>
+            {tech.claims.map((c) => (
+              <span key={c.id} className="r2-tag">
+                <BlurredText blur={blurPremium}>{labelFor(CLAIMS, c.claim)}{unverified(c) ? ` (${c.evidenceStatus})` : ""}</BlurredText>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {differentiation && (
+        <div style={{ marginTop: 18 }}>
+          <div className="r2-lbl">Technology differentiation</div>
+          <p><BlurredText blur={blurPremium}>{differentiation}</BlurredText></p>
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ------------------------------------------------------------------
 // Right rail: founders, funding, programmes, facts on file
 // ------------------------------------------------------------------
 
-function Rail({ venture, founders, programs, profileData, blurPremium, blurNames, sectorNames, place }: BodyProps & { sectorNames: string[]; place: string }) {
+function Rail({ venture, founders, programs, profileData, tech, blurPremium, blurNames, sectorNames, place }: BodyProps & { sectorNames: string[]; place: string }) {
   const hasFunding = venture.total_raised_eur || venture.last_round || profileData?.est_next_raise || profileData?.fundraising_signal_summary
   const website = venture.website?.replace(/^https?:\/\//, "").replace(/\/$/, "")
 
@@ -667,6 +768,7 @@ function Rail({ venture, founders, programs, profileData, blurPremium, blurNames
           {place && <div className="r2-kv"><span className="k">Headquarters</span><span className="v">{place}, {venture.country}</span></div>}
           {venture.first_seen_at && <div className="r2-kv"><span className="k">First seen</span><span className="v">{formatDate(venture.first_seen_at)}</span></div>}
           {sectorNames.length > 0 && <div className="r2-kv"><span className="k">Sector</span><span className="v">{sectorNames.join(", ")}</span></div>}
+          <div className="r2-kv"><span className="k">Technical layer</span><span className="v">{tech.primary?.layer.label ?? "Not yet classified"}</span></div>
           {website && (
             blurPremium
               ? <div className="r2-kv"><span className="k">Website</span><span className="v"><BlurredText blur>{website}</BlurredText></span></div>

@@ -1,5 +1,6 @@
 "use client"
 
+import { Fragment } from "react"
 import Link from "next/link"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { Events } from "@/lib/analytics"
@@ -7,7 +8,8 @@ import { Events } from "@/lib/analytics"
 export type FilterGroupDef = {
   key: string
   label: string
-  options: { value: string; label: string; n: number }[]
+  /** `section` starts a sub-heading (options arrive grouped); `hint` is a hover tooltip; no `n` hides the count */
+  options: { value: string; label: string; n?: number; section?: string; hint?: string }[]
   locked?: boolean
 }
 
@@ -72,17 +74,22 @@ export function FilterSidebarV2({ groups }: { groups: FilterGroupDef[] }) {
           ) : g.options.length === 0 ? (
             <p className="text-[12px] text-muted-foreground">Nothing to filter yet.</p>
           ) : (
-            g.options.map((o) => (
-              <label key={o.value} className="r2-f-opt">
-                <input
-                  type="checkbox"
-                  className="r2-check"
-                  checked={selected(g.key).includes(o.value)}
-                  onChange={() => toggle(g.key, o.value)}
-                />
-                <span>{o.label}</span>
-                <span className="n">{o.n}</span>
-              </label>
+            g.options.map((o, i) => (
+              <Fragment key={o.value}>
+                {o.section && o.section !== g.options[i - 1]?.section && (
+                  <div className="r2-f-sub">{o.section}</div>
+                )}
+                <label className="r2-f-opt" title={o.hint}>
+                  <input
+                    type="checkbox"
+                    className="r2-check"
+                    checked={selected(g.key).includes(o.value)}
+                    onChange={() => toggle(g.key, o.value)}
+                  />
+                  <span>{o.label}</span>
+                  {o.n !== undefined && <span className="n">{o.n}</span>}
+                </label>
+              </Fragment>
             ))
           )}
         </div>

@@ -4,7 +4,8 @@ import { redirect } from "next/navigation"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { getStartupLimit, getExportLimit, canUseAdvancedFilters, canSaveAndList, canAccessPremiumFields, hasActiveAccess } from "@/lib/subscription"
 import { paramOne, signalLabel } from "@/lib/radar"
-import { TIME_OPTIONS, withinTime, parseDatabaseQuery, loadRadarDataset, filterStartups, filterFounders } from "@/lib/radar-dataset"
+import { TIME_OPTIONS, withinTime, parseDatabaseQuery, loadRadarDataset, filterStartups, filterFounders, technicalFilterOptions } from "@/lib/radar-dataset"
+import { FACETS } from "@/lib/taxonomy"
 import { FilterSidebarV2, type FilterGroupDef } from "@/components/radar/filter-sidebar"
 import { DatabaseSearch, DatabaseToolbar } from "@/components/radar/database-toolbar"
 import { StartupCardV2, StartupRowV2, FounderCardV2, FounderRowV2 } from "@/components/radar/cards"
@@ -84,6 +85,20 @@ export default async function DatabasePage({
 
   // ---------------- Filter groups (counts over the whole Radar) ----------------
   const idOpt = (id: string | null, name: string | null) => (id && name ? [{ value: id, label: name }] : [])
+
+  // Technical taxonomy: a group appears once some startup is classified on it
+  const tech = technicalFilterOptions(ds)
+  const technicalGroups: FilterGroupDef[] = [
+    { key: "layer", label: "Primary technical layer", locked: !advanced, options: tech.layer },
+    ...(tech.layer.length > 0
+      ? [{ key: "layerscope", label: "Layer match", locked: !advanced, options: [{ value: "any", label: "Include secondary layers" }] }]
+      : []),
+    ...FACETS.map((f) => ({ key: f.param, label: f.label, locked: !advanced, options: tech[f.value] })),
+    ...(tech.specialization.length > 0 || tech.method.length > 0
+      ? [{ key: "develops", label: "Technology match", locked: !advanced, options: [{ value: "1", label: "Develops it (not just uses it)", hint: "Specializations and methods only match companies that develop or research them" }] }]
+      : []),
+  ].filter((g) => g.options.length > 0)
+
   const groups: FilterGroupDef[] =
     tab === "startups"
       ? [
@@ -101,6 +116,7 @@ export default async function DatabasePage({
           },
           { key: "location", label: "City", locked: !advanced, options: tally(allStartups, (s) => idOpt(s.cityId, s.city)) },
           { key: "stage", label: "Stage", locked: !advanced, options: tally(allStartups, (s) => [{ value: s.stage, label: s.stage }]) },
+          ...technicalGroups,
         ]
       : [
           { key: "bg", label: "Background", locked: !advanced, options: tally(allFounders, (f) => f.tags.map((t) => ({ value: t, label: t }))) },

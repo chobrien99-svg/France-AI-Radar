@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { tagStrengthLabel } from "@/lib/types"
+import { MATURITIES, POSITIONINGS, PRODUCT_ROLES } from "@/lib/taxonomy"
 import { LogoUpload } from "@/components/admin/logo-upload"
 
 // ------------------------------------------------------------------
@@ -45,8 +46,11 @@ export type StartupFormValues = {
   product_description: string
   target_market: string
   competitive_landscape: string
-  technology_layer: string
   technical_thesis: string
+  ai_product_role: string
+  technology_positioning: string
+  technology_maturity: string
+  technology_differentiation: string
   // Strategy
   current_strategy: string
   business_model_hypothesis: string
@@ -67,7 +71,8 @@ const DEFAULTS: StartupFormValues = {
   website: "", linkedin_url: "", email: "", phone: "",
   description: "",
   product_description: "", target_market: "", competitive_landscape: "",
-  technology_layer: "", technical_thesis: "",
+  technical_thesis: "",
+  ai_product_role: "", technology_positioning: "", technology_maturity: "", technology_differentiation: "",
   current_strategy: "", business_model_hypothesis: "",
   total_raised_eur: "", last_round: "", est_next_raise: "",
   fundraising_status: "unknown", fundraising_signal_summary: "",
@@ -186,7 +191,6 @@ export function StartupForm({ initialValues, initialTags = [], startupId, initia
       total_raised_eur: form.total_raised_eur ? Number(form.total_raised_eur) : null,
       founded_date: form.founded_date || null,
       first_seen_at: form.first_seen_at || null,
-      technology_layer: form.technology_layer || null,
       tags,
     }
 
@@ -333,16 +337,36 @@ export function StartupForm({ initialValues, initialTags = [], startupId, initia
           <Textarea className={textareaClass} value={form.competitive_landscape} onChange={(e) => set("competitive_landscape", e.target.value)} />
         </Field>
       </div>
-      <Field label="Technology layer">
-        <Select className={inputClass} value={form.technology_layer} onChange={(e) => set("technology_layer", e.target.value)}>
-          <option value="">— None —</option>
-          <option value="infrastructure">Infrastructure</option>
-          <option value="model">Model</option>
-          <option value="application">Application</option>
-          <option value="tooling">Tooling</option>
-          <option value="data">Data</option>
-          <option value="other">Other</option>
-        </Select>
+      {/* Layers, specializations, methods, modalities and domains are edited under
+          "Technical classification" below; these are the single-value fields. */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Technology positioning">
+          <Select className={inputClass} value={form.technology_positioning} onChange={(e) => set("technology_positioning", e.target.value)}>
+            <option value="">— Unknown —</option>
+            {POSITIONINGS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Select>
+        </Field>
+        <Field label="AI product role">
+          <Select className={inputClass} value={form.ai_product_role} onChange={(e) => set("ai_product_role", e.target.value)}>
+            <option value="">— Unknown —</option>
+            {PRODUCT_ROLES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Select>
+        </Field>
+        <Field label="Technology maturity">
+          <Select className={inputClass} value={form.technology_maturity} onChange={(e) => set("technology_maturity", e.target.value)}>
+            <option value="">— Unknown —</option>
+            {MATURITIES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </Select>
+        </Field>
+      </div>
+      <Field label="Technology differentiation">
+        <Textarea
+          className="min-h-[70px] text-[13px]"
+          maxLength={1000}
+          value={form.technology_differentiation}
+          onChange={(e) => set("technology_differentiation", e.target.value)}
+          placeholder="What the company builds that is technically distinctive (short)…"
+        />
       </Field>
       <Field label="Technical thesis">
         <Textarea className={textareaClass} value={form.technical_thesis} onChange={(e) => set("technical_thesis", e.target.value)} />

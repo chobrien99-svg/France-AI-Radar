@@ -12,6 +12,8 @@ import { LinkedFundingRounds } from "@/components/admin/linked-funding-rounds"
 import { LinkedPrograms } from "@/components/admin/linked-programs"
 import { LinkedLegalEntities } from "@/components/admin/linked-legal-entities"
 import { LinkedSectors } from "@/components/admin/linked-sectors"
+import { TechnicalClassification } from "@/components/admin/technical-classification"
+import { loadTechnicalProfile, loadVocabulary } from "@/lib/technical-profile"
 
 export default async function EditStartupPage({
   params,
@@ -33,6 +35,7 @@ export default async function EditStartupPage({
     { data: legalEntitiesRaw },
     { data: sectorLinksRaw },
     { data: allSectorsRaw },
+    vocab,
   ] = await Promise.all([
     supabase.from("organizations").select("*, cities!organizations_city_id_fkey(name), secondary_city:cities!organizations_secondary_city_id_fkey(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
     supabase.from("organization_people").select("role, people(id, full_name, slug)").eq("organization_id", id),
@@ -44,9 +47,12 @@ export default async function EditStartupPage({
     supabase.from("legal_entities").select("*").eq("organization_id", id),
     supabase.from("organization_sectors").select("id, is_primary, sectors(name)").eq("organization_id", id),
     supabase.from("sectors").select("id, name").order("name"),
+    loadVocabulary(supabase),
   ])
 
   if (!startup) notFound()
+
+  const technicalProfile = await loadTechnicalProfile(supabase, id, vocab)
 
   const linkedFounders = (linkedRaw ?? []).map((row: { role: string | null; people: unknown }) => {
     const f = row.people as { id: string; full_name: string; slug: string | null }
@@ -138,8 +144,11 @@ export default async function EditStartupPage({
     product_description: profile?.product_description ?? "",
     target_market: profile?.target_market ?? "",
     competitive_landscape: profile?.competitive_landscape ?? "",
-    technology_layer: startup.technology_layer ?? "",
     technical_thesis: profile?.technical_thesis ?? "",
+    ai_product_role: profile?.ai_product_role ?? "",
+    technology_positioning: profile?.technology_positioning ?? "",
+    technology_maturity: profile?.technology_maturity ?? "",
+    technology_differentiation: profile?.technology_differentiation ?? "",
     current_strategy: profile?.current_strategy ?? "",
     business_model_hypothesis: profile?.business_model_hypothesis ?? "",
     total_raised_eur: startup.total_raised_eur != null ? String(startup.total_raised_eur) : "",
@@ -219,6 +228,12 @@ export default async function EditStartupPage({
         organizationId={id}
         sectors={sectorLinks}
         allSectors={allSectors}
+      />
+
+      <TechnicalClassification
+        organizationId={id}
+        profile={technicalProfile}
+        vocab={vocab}
       />
     </div>
   )

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
+import { loadTechnicalProfile, type Evidence } from "@/lib/technical-profile"
+import { CLAIMS, EVIDENCE_STATUSES, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, RELATIONSHIP_KINDS, labelFor } from "@/lib/taxonomy"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { getExportLimit, hasActiveAccess, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
 
@@ -101,6 +103,7 @@ export async function GET(
     { data: programsData },
     { data: legalData },
     { data: sectorsData },
+    techProfile,
   ] = await Promise.all([
     svc.from("organization_profiles").select("*").eq("organization_id", orgId).maybeSingle(),
     svc.from("organization_tags").select("tag, strength").eq("organization_id", orgId),
@@ -111,6 +114,7 @@ export async function GET(
     svc.from("program_organizations").select("membership_role, program_editions(name, cohort_label, year, programs(name, program_type))").eq("organization_id", orgId),
     svc.from("legal_entities").select("*").eq("organization_id", orgId),
     svc.from("organization_sectors").select("sectors(name)").eq("organization_id", orgId),
+    loadTechnicalProfile(svc, orgId),
   ])
 
   // Increment export usage
@@ -144,7 +148,7 @@ export async function GET(
     ["Email", startup.email ?? ""],
     ["Phone", startup.phone ?? ""],
     ["Description", startup.description ?? ""],
-    ["Technology Layer", startup.technology_layer ?? ""],
+    ["Technology Layer (legacy)", startup.technology_layer ?? ""],
     ["Fundraising Status", startup.fundraising_status ?? ""],
     ["Total Raised (EUR)", startup.total_raised_eur ? formatEur(startup.total_raised_eur) : ""],
     ["Last Round", startup.last_round ?? ""],
@@ -182,6 +186,40 @@ export async function GET(
     lines.push(profileHeaders.map(csvEscape).join(","))
     for (const [field, value] of profileRows) {
       lines.push(`${csvEscape(field)},${csvEscape(value)}`)
+    }
+  }
+
+  // === TECHNICAL PROFILE ===
+  const evidence = (e: Evidence) => [labelFor(EVIDENCE_STATUSES, e.evidenceStatus) ?? "", e.sourceUrl ?? "", e.sourceNote ?? ""]
+  const techRows: string[][] = [
+    ...(techProfile.primary ? [["Primary technical layer", techProfile.primary.layer.label, "", "", ...evidence(techProfile.primary)]] : []),
+    ...techProfile.secondary.map((l) => ["Secondary technical layer", l.layer.label, "", "", ...evidence(l)]),
+    ...techProfile.terms.map((t) => [
+      FACETS.find((f) => f.value === t.term.facet)?.label ?? t.term.facet,
+      t.term.label,
+      labelFor(RELATIONSHIP_KINDS, t.kind) ?? "",
+      t.isCore ? "Yes" : "",
+      ...evidence(t),
+    ]),
+    ...techProfile.claims.map((c) => ["Proprietary technology", labelFor(CLAIMS, c.claim) ?? c.claim, "", "", ...evidence(c)]),
+  ]
+  const techFields: [string, string | null][] = [
+    ["AI Product Role", labelFor(PRODUCT_ROLES, profileData?.ai_product_role)],
+    ["Technology Positioning", labelFor(POSITIONINGS, profileData?.technology_positioning)],
+    ["Technology Maturity", labelFor(MATURITIES, profileData?.technology_maturity)],
+    ["Technology Differentiation", profileData?.technology_differentiation ?? null],
+  ]
+  if (techRows.length > 0 || techFields.some(([, v]) => v)) {
+    lines.push("")
+    lines.push("=== TECHNICAL PROFILE ===")
+    lines.push("")
+    for (const [field, value] of techFields) {
+      if (value) lines.push(`${csvEscape(field)},${csvEscape(value)}`)
+    }
+    if (techRows.length > 0) {
+      lines.push("")
+      lines.push(["Dimension", "Value", "Relationship", "Core", "Evidence", "Source URL", "Source Note"].map(csvEscape).join(","))
+      for (const row of techRows) lines.push(row.map(csvEscape).join(","))
     }
   }
 
