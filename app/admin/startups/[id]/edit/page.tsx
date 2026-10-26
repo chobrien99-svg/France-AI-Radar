@@ -191,6 +191,9 @@ export default async function EditStartupPage({
         initialTags={tags}
         startupId={id}
         initialLogoUrl={(startup.logo_url as string | null) ?? null}
+        technicalClassification={
+          <TechnicalClassification organizationId={id} profile={technicalProfile} vocab={vocab} />
+        }
       />
 
       <LinkedFounders
@@ -228,12 +231,6 @@ export default async function EditStartupPage({
         organizationId={id}
         sectors={sectorLinks}
         allSectors={allSectors}
-      />
-
-      <TechnicalClassification
-        organizationId={id}
-        profile={technicalProfile}
-        vocab={vocab}
       />
     </div>
   )

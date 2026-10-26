@@ -97,6 +97,8 @@ interface Props {
   initialTags?: TagRow[]
   startupId?: string // if set → PATCH; otherwise → POST
   initialLogoUrl?: string | null
+  /** Layers, specializations, methods, modalities, domains and claims; needs a saved startup */
+  technicalClassification?: React.ReactNode
 }
 
 // ------------------------------------------------------------------
@@ -142,7 +144,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 // Component
 // ------------------------------------------------------------------
 
-export function StartupForm({ initialValues, initialTags = [], startupId, initialLogoUrl = null }: Props) {
+export function StartupForm({ initialValues, initialTags = [], startupId, initialLogoUrl = null, technicalClassification }: Props) {
   const router = useRouter()
   const [form, setForm] = useState<StartupFormValues>({ ...DEFAULTS, ...initialValues })
   const [tags, setTags] = useState<TagRow[]>(initialTags)
@@ -337,8 +339,20 @@ export function StartupForm({ initialValues, initialTags = [], startupId, initia
           <Textarea className={textareaClass} value={form.competitive_landscape} onChange={(e) => set("competitive_landscape", e.target.value)} />
         </Field>
       </div>
-      {/* Layers, specializations, methods, modalities and domains are edited under
-          "Technical classification" below; these are the single-value fields. */}
+      {/* ── Technical profile ── */}
+      {technicalClassification ?? (
+        <div className="border-l-2 border-l-primary/30 bg-accent px-4 py-3">
+          <p className="text-[12px] font-semibold text-foreground">Technical classification</p>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Save the startup first. You can then add its primary and secondary technical layers, technical
+            specializations, core AI methods, data modalities, target domains and proprietary technology here.
+          </p>
+        </div>
+      )}
+      <div>
+        <p className="mb-1 text-[12px] font-semibold text-foreground">Technology profile</p>
+        <p className="text-[12px] text-muted-foreground">Saved with the &ldquo;Save&rdquo; button at the bottom of the form.</p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Technology positioning">
           <Select className={inputClass} value={form.technology_positioning} onChange={(e) => set("technology_positioning", e.target.value)}>
