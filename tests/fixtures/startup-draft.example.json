@@ -1,0 +1,111 @@
+{
+  "schema": "france-ai-radar/startup-draft@1",
+  "company": {
+    "name": "Exemple Biosystèmes",
+    "slug": "exemple-biosystemes",
+    "primary_city": "Lyon",
+    "secondary_city": null,
+    "country": "France",
+    "founded_date": "2025-03-14",
+    "first_seen_at": "2025-04-02",
+    "website": "https://www.example.com",
+    "linkedin_url": "https://www.linkedin.com/company/example",
+    "email": "contact@example.com",
+    "phone": null,
+    "description": "Lyon-based startup building mechanistic AI models of the gut microbiome to predict patient response to therapies."
+  },
+  "product": {
+    "product_description": "A platform that combines microbiome sequencing with clinical records to predict which patients will respond to a therapy. Hospital research teams upload stool sequencing data; the model returns response predictions with the biological pathways behind them.",
+    "target_market": "Pharmaceutical R&D teams and university hospitals running clinical trials in gastroenterology, initially in France and Germany.",
+    "competitive_landscape": "Competes with generic bioinformatics pipelines and with microbiome analytics providers; differs by modelling biological mechanisms rather than correlations (deck, slide 9).",
+    "technical_thesis": "Analysis: mechanism-based models should generalise better than correlation-based ones on small clinical cohorts, which is the main constraint in microbiome trials."
+  },
+  "technical": {
+    "primary_layer": { "layer": "AI-Native Applications", "evidence_status": "Reported", "source_url": null, "source_note": "Deck_2026.pdf, slide 3" },
+    "secondary_layers": [],
+    "specializations": [
+      { "term": "Bioinformatics", "relationship": "Develops", "core": true, "evidence_status": "Reported", "source_url": null, "source_note": "Deck_2026.pdf, slide 5" },
+      { "term": "Mechanistic Biology", "relationship": "Develops", "core": true, "evidence_status": "Verified", "source_url": "https://arxiv.org/abs/0000.00000", "source_note": "Founders' preprint" },
+      { "term": "Microbiome Analysis", "relationship": "Develops", "core": false, "evidence_status": "Reported", "source_url": null, "source_note": "Website, product page" }
+    ],
+    "methods": [
+      { "term": "Predictive Modeling", "relationship": "Uses", "core": true, "evidence_status": "Reported", "source_url": null, "source_note": "Deck_2026.pdf, slide 6" },
+      { "term": "Explainability / Interpretability", "relationship": "Uses", "core": false, "evidence_status": "Inferred", "source_url": null, "source_note": "Product returns the pathways behind each prediction (deck, slide 7)" }
+    ],
+    "modalities": [
+      { "term": "Microbiome / Metagenomic", "relationship": "Uses", "core": true, "evidence_status": "Reported", "source_url": null, "source_note": "Deck_2026.pdf, slide 5" },
+      { "term": "Clinical Records", "relationship": "Uses", "core": false, "evidence_status": "Reported", "source_url": null, "source_note": "Deck_2026.pdf, slide 5" }
+    ],
+    "domains": [
+      { "term": "Computational Biology", "relationship": "Develops", "core": false, "evidence_status": "Reported", "source_url": null, "source_note": "Website, about page" }
+    ],
+    "proprietary_technology": [
+      { "claim": "Proprietary algorithm", "evidence_status": "Reported", "source_url": null, "source_note": "Deck_2026.pdf, slide 8" },
+      { "claim": "Proprietary dataset", "evidence_status": "Unverified", "source_url": null, "source_note": "Deck mentions 'unique cohort data' without detail" }
+    ],
+    "ai_product_role": "Application",
+    "technology_differentiation": "Models microbial metabolic pathways explicitly instead of learning correlations, so predictions come with a biological explanation.",
+    "technology_maturity": "Beta",
+    "technology_positioning": "Research commercialization"
+  },
+  "strategy": {
+    "current_strategy": "Paid pilots with two university hospitals in 2026, then licensing to pharma trial teams.",
+    "business_model_hypothesis": "Hypothesis: per-study licence fees plus usage-based pricing per analysed sample."
+  },
+  "fundraising": {
+    "total_raised_eur": 1500000,
+    "last_round": "Pre-seed – €1.5M (2026-01)",
+    "est_next_raise": "Seed, H1 2027 (founder interview)",
+    "fundraising_status": "Exploring",
+    "fundraising_signal_summary": "Founders said they will open a seed round after the hospital pilots report results."
+  },
+  "signal_tags": [
+    { "tag": "Lab spin-off", "strength": "Strong" },
+    { "tag": "Clinical pilots", "strength": "Moderate" }
+  ],
+  "legal": { "entity_complexity": "Single French SAS." },
+  "investor_brief": {
+    "investor_brief": "Exemple Biosystèmes is a Lyon spin-off modelling the gut microbiome mechanistically to predict therapy response.\n\nIt is running paid pilots with two university hospitals and plans a seed round in 2027.",
+    "analyst_note": "One of few French teams combining mechanistic biology with clinical microbiome data."
+  },
+  "founders": [
+    {
+      "full_name": "Camille Exemple",
+      "role": "CEO & co-founder",
+      "first_name": "Camille",
+      "last_name": "Exemple",
+      "email": null,
+      "linkedin_url": "https://www.linkedin.com/in/example",
+      "twitter_url": null,
+      "github_url": null,
+      "google_scholar_url": null,
+      "personal_website_url": null,
+      "photo_url": null,
+      "short_bio": "Computational biologist, former researcher at a French public lab.",
+      "bio": "Camille holds a PhD in computational biology and spent five years modelling microbial communities before founding the company.",
+      "notable_publications": null,
+      "big_tech_employer": null,
+      "academic_lab": "Example public research lab",
+      "previous_exits": 0,
+      "has_phd": "Yes",
+      "is_repeat_founder": "No",
+      "has_big_tech_background": "No"
+    }
+  ],
+  "signals": [
+    { "signal_type": "Fundraising", "signal_date": "2026-01-20", "strength": 4, "title": "Raises €1.5M pre-seed", "description": "Pre-seed round led by a regional fund.", "source_url": "https://www.example.com/press", "source_name": "Company press release" }
+  ],
+  "grants": [
+    { "grant_name": "Bourse French Tech", "granting_body": "Bpifrance", "amount_eur": 30000, "awarded_date": "2025-06", "program": null, "description": null, "source_url": null }
+  ],
+  "funding_rounds": [
+    { "stage": "Pre-Seed", "amount_eur": 1500000, "announced_date": "2026-01-20", "is_estimated": false, "notes": "Investors: a regional seed fund and business angels.", "source_url": "https://www.example.com/press", "source_name": "Company press release" }
+  ],
+  "programs": [
+    { "program_name": "Example Incubator", "program_type": "Incubator", "edition_label": "2025 cohort", "year": 2025, "role": "member" }
+  ],
+  "legal_entities": [
+    { "legal_name": "EXEMPLE BIOSYSTEMES", "legal_form": "SAS", "siren": null, "siret": null, "capital_eur": 10000, "incorporation_date": "2025-03-14", "registered_city": "Lyon", "naf_code": "72.11Z", "naf_label": "Recherche-développement en biotechnologie" }
+  ],
+  "sectors": { "primary": "TechBio", "others": ["HealthTech"] }
+}

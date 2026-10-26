@@ -42,9 +42,14 @@ export default async function AdminStartupsPage() {
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Admin</p>
           <h1 className="mt-0.5 font-serif text-[24px] font-bold text-foreground">Startups</h1>
         </div>
-        <Button asChild>
-          <Link href="/admin/startups/new">+ Add Startup</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/admin/startups/import">Import from Claude draft</Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/startups/new">+ Add Startup</Link>
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-hidden border border-border/40">
