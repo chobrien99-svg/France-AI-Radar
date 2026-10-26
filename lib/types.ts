@@ -1,12 +1,12 @@
 export type SignalStrength = "positive" | "warning" | "risk" | "neutral"
 
+/** Legacy single layer (organizations.technology_layer), kept during the move to the technical taxonomy */
 export type TechnologyLayer =
-  | "perception"
-  | "robotics"
-  | "agent_platform"
-  | "orchestration"
-  | "vertical_ai"
   | "infrastructure"
+  | "model"
+  | "application"
+  | "tooling"
+  | "data"
   | "other"
 
 export type ProductModality = "software" | "hardware" | "hybrid"
@@ -43,6 +43,11 @@ export type OrganizationProfile = {
   fundraising_signal_summary: string | null
   est_next_raise: string | null
   entity_complexity: string | null
+  // Technical taxonomy (single-select values; labels in lib/taxonomy.ts)
+  ai_product_role: string | null
+  technology_positioning: string | null
+  technology_maturity: string | null
+  technology_differentiation: string | null
 }
 
 export type City = {

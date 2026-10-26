@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { CardStartup, CardFounder } from "@/components/radar/cards"
 import { SORTS, founderTags, paramList, paramOne, stageFrom } from "@/lib/radar"
+import { loadTechnicalIndex, type Vocabulary } from "@/lib/technical-profile"
+import {
+  FACETS, UNCLASSIFIED, childrenIndex, facetMatches, familyLabel, techMatches,
+  type Facet, type StartupTech, type TechSelection,
+} from "@/lib/taxonomy"
 
 // ------------------------------------------------------------------
 // The Database's startup/founder dataset and its filter semantics.
@@ -27,6 +32,10 @@ export type StartupItem = CardStartup & {
   added: number
   activity: number
   search: string
+  /** Technical classification as slugs, for filtering */
+  tech: StartupTech
+  /** The same classification as display labels, for the CSV export */
+  techLabels: { primaryLayer: string | null; secondaryLayers: string[] } & Record<Facet, string[]>
 }
 export type FounderItem = CardFounder & {
   sectorId: string | null
@@ -44,6 +53,10 @@ export type RadarDataset = {
   /** Startup ids on the user's watchlist */
   saved: Set<string>
   signalTotal: number
+  /** Technical layers and terms, for filter options */
+  vocab: Vocabulary
+  /** Term slug → narrower term slugs */
+  termChildren: Map<string, string[]>
 }
 
 export type DatabaseQuery = {
@@ -54,6 +67,8 @@ export type DatabaseQuery = {
   /** Can search founder roles and bios (Professional) */
   premium: boolean
   sel: { sector: string[]; stage: string[]; signal: string[]; location: string[]; bg: string[]; time: string[] }
+  /** Technical taxonomy filters (Professional) */
+  tech: TechSelection
 }
 
 function one<T>(v: T | T[] | null | undefined): T | null {
@@ -87,6 +102,15 @@ export function parseDatabaseQuery(params: Params, opts: { advanced: boolean; ca
       bg: advanced ? paramList(params.bg) : [],
       time: paramList(params.time),
     },
+    tech: {
+      layer: advanced ? paramList(params.layer) : [],
+      includeSecondary: advanced && paramOne(params.layerscope) === "any",
+      developsOnly: advanced && paramOne(params.develops) === "1",
+      spec: advanced ? paramList(params.spec) : [],
+      method: advanced ? paramList(params.method) : [],
+      modality: advanced ? paramList(params.modality) : [],
+      domain: advanced ? paramList(params.domain) : [],
+    },
   }
 }
 
@@ -99,7 +123,7 @@ export async function loadRadarDataset(svc: SupabaseClient, supabase: SupabaseCl
   const orgIds = (aiRadarOrgs ?? []).map((r: { organization_id: string }) => r.organization_id)
   const idFilter = orgIds.length > 0 ? orgIds : ["00000000-0000-0000-0000-000000000000"]
 
-  const [{ data: orgRows, error: orgError }, { data: sectorRows }, { data: signalRows }, { data: founderRows }, { data: watchRows }] =
+  const [{ data: orgRows, error: orgError }, { data: sectorRows }, { data: signalRows }, { data: founderRows }, { data: watchRows }, techIndex] =
     await Promise.all([
       svc
         .from("organizations")
@@ -118,6 +142,7 @@ export async function loadRadarDataset(svc: SupabaseClient, supabase: SupabaseCl
         .in("organization_id", idFilter)
         .eq("is_founder", true),
       supabase.from("watchlist").select("organization_id").eq("user_id", userId),
+      loadTechnicalIndex(svc, idFilter),
     ])
   if (orgError) console.error("Database query error:", orgError.message, orgError.code)
 
@@ -155,6 +180,8 @@ export async function loadRadarDataset(svc: SupabaseClient, supabase: SupabaseCl
     const sector = sectorByOrg.get(id) ?? null
     const latest = latestByOrg.get(id) ?? null
     const latestDate = latest?.date ?? (o.last_signal_date as string | null) ?? (o.created_at as string)
+    const tc = techIndex.byOrg.get(id)
+    const labels = (facet: Facet) => (tc?.terms ?? []).filter(({ term }) => term.facet === facet).map(({ term }) => term.label)
     const item: StartupItem = {
       id,
       slug: o.slug as string,
@@ -172,8 +199,23 @@ export async function loadRadarDataset(svc: SupabaseClient, supabase: SupabaseCl
       added: new Date(((o.first_seen_at as string | null) ?? (o.created_at as string)) || 0).getTime() || 0,
       activity: latestDate ? new Date(latestDate).getTime() : 0,
       search: "",
+      tech: {
+        primaryLayer: tc?.primary?.slug ?? null,
+        secondaryLayers: (tc?.secondary ?? []).map((l) => l.slug),
+        terms: (tc?.terms ?? []).map(({ term, kind }) => ({ slug: term.slug, facet: term.facet, kind })),
+      },
+      techLabels: {
+        primaryLayer: tc?.primary?.label ?? null,
+        secondaryLayers: (tc?.secondary ?? []).map((l) => l.label),
+        specialization: labels("specialization"),
+        method: labels("method"),
+        modality: labels("modality"),
+        domain: labels("domain"),
+      },
     }
-    item.search = [item.name, o.description, item.sector, item.city, ...(founderNamesByOrg.get(id) ?? [])].join(" ").toLowerCase()
+    // Technical terms are searchable by label and by alias ("RAG", "Agentic AI")
+    const techWords = [tc?.primary?.label, ...(tc?.secondary ?? []).map((l) => l.label), ...(tc?.terms ?? []).flatMap(({ term }) => [term.label, ...term.aliases])]
+    item.search = [item.name, o.description, item.sector, item.city, ...(founderNamesByOrg.get(id) ?? []), ...techWords].join(" ").toLowerCase()
     return item
   })
   const startupById = new Map(startups.map((s) => [s.id, s]))
@@ -210,7 +252,14 @@ export async function loadRadarDataset(svc: SupabaseClient, supabase: SupabaseCl
     founderMap.set(f.id, f)
   }
 
-  return { startups, founders: Array.from(founderMap.values()), saved, signalTotal: (signalRows ?? []).length }
+  return {
+    startups,
+    founders: Array.from(founderMap.values()),
+    saved,
+    signalTotal: (signalRows ?? []).length,
+    vocab: techIndex.vocab,
+    termChildren: childrenIndex(techIndex.vocab.terms),
+  }
 }
 
 /** Startups matching the query, in display order */
@@ -225,6 +274,7 @@ export function filterStartups(ds: RadarDataset, query: DatabaseQuery): StartupI
       matches(sel.location, [s.cityId]) &&
       (!timeOpt || withinTime(s.firstSeen, timeOpt.days)) &&
       (!shortlistOnly || ds.saved.has(s.id)) &&
+      techMatches(s.tech, query.tech, ds.termChildren) &&
       (!q || s.search.includes(q))
   )
   if (sort === "az") out.sort((a, b) => a.name.localeCompare(b.name))
@@ -248,4 +298,44 @@ export function filterFounders(ds: RadarDataset, query: DatabaseQuery): FounderI
   if (sort === "az") out.sort((a, b) => bareName(a.name).localeCompare(bareName(b.name)))
   else out.sort((a, b) => b.activity - a.activity)
   return out
+}
+
+export type TechFilterOption = { value: string; label: string; n: number; section?: string; hint?: string }
+
+/**
+ * Options for the technical filters, counted over the whole Radar with the
+ * same rules as filtering (an umbrella term counts startups tagged with a
+ * narrower one). Only values some startup has are offered, plus an explicit
+ * "Unclassified" option once a dimension is in use.
+ */
+export function technicalFilterOptions(ds: RadarDataset): { layer: TechFilterOption[] } & Record<Facet, TechFilterOption[]> {
+  const withUnclassified = (opts: TechFilterOption[], unclassified: number) =>
+    opts.length > 0 && unclassified > 0 ? [...opts, { value: UNCLASSIFIED, label: "Unclassified", n: unclassified }] : opts
+
+  const layer = withUnclassified(
+    ds.vocab.layers
+      .map((l) => ({ value: l.slug, label: l.label, hint: l.description ?? undefined, n: ds.startups.filter((s) => s.tech.primaryLayer === l.slug).length }))
+      .filter((o) => o.n > 0),
+    ds.startups.filter((s) => !s.tech.primaryLayer).length,
+  )
+
+  const facetOptions = (facet: Facet) =>
+    withUnclassified(
+      ds.vocab.terms
+        .filter((t) => t.facet === facet)
+        .map((t) => ({
+          value: t.slug,
+          label: t.label,
+          hint: t.definition ?? undefined,
+          section: facet === "specialization" ? familyLabel(t.family) : undefined,
+          n: ds.startups.filter((s) => facetMatches(s.tech, facet, [t.slug], ds.termChildren)).length,
+        }))
+        .filter((o) => o.n > 0),
+      ds.startups.filter((s) => !s.tech.terms.some((t) => t.facet === facet)).length,
+    )
+
+  return {
+    layer,
+    ...(Object.fromEntries(FACETS.map((f) => [f.value, facetOptions(f.value)])) as Record<Facet, TechFilterOption[]>),
+  }
 }

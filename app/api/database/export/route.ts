@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
   const ds = await loadRadarDataset(svc, supabase, user.id)
   const matched = filterStartups(ds, query)
   const order = new Map(matched.map((s, i) => [s.id, i]))
+  const techById = new Map(matched.map((s) => [s.id, s.techLabels]))
 
   // Full CSV columns for the matched startups
   const { data: rows, error } = matched.length > 0
@@ -98,7 +99,13 @@ export async function GET(request: NextRequest) {
     "Founded",
     "First Seen",
     "Sectors",
-    "Technology Layer",
+    "Technology Layer (legacy)",
+    "Primary Technical Layer",
+    "Secondary Technical Layers",
+    "Technical Specializations",
+    "Core AI Methods",
+    "Data Modalities",
+    "Target Domains",
     "Fundraising Status",
     "Total Raised (EUR)",
     "Last Round",
@@ -133,6 +140,7 @@ export async function GET(request: NextRequest) {
     cities: { name: string; country: string } | { name: string; country: string }[] | null
   }>) {
     const city = Array.isArray(v.cities) ? v.cities[0] : v.cities
+    const tech = techById.get(v.id)
     const row = [
       v.name,
       city?.name ?? "",
@@ -141,6 +149,12 @@ export async function GET(request: NextRequest) {
       v.first_seen_at ? v.first_seen_at.slice(0, 10) : "",
       (sectorsByOrgId.get(v.id) ?? []).join("; "),
       v.technology_layer ?? "",
+      tech?.primaryLayer ?? "",
+      (tech?.secondaryLayers ?? []).join("; "),
+      (tech?.specialization ?? []).join("; "),
+      (tech?.method ?? []).join("; "),
+      (tech?.modality ?? []).join("; "),
+      (tech?.domain ?? []).join("; "),
       v.fundraising_status ?? "",
       v.total_raised_eur ?? "",
       v.last_round ?? "",
