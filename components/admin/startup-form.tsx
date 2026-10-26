@@ -42,6 +42,8 @@ export type StartupFormValues = {
   phone: string
   // Narrative
   description: string
+  investor_brief: string
+  analyst_note: string
   // Product
   product_description: string
   target_market: string
@@ -69,7 +71,7 @@ const DEFAULTS: StartupFormValues = {
   founded_date: "", first_seen_at: "",
   status: "draft",
   website: "", linkedin_url: "", email: "", phone: "",
-  description: "",
+  description: "", investor_brief: "", analyst_note: "",
   product_description: "", target_market: "", competitive_landscape: "",
   technical_thesis: "",
   ai_product_role: "", technology_positioning: "", technology_maturity: "", technology_differentiation: "",
@@ -324,6 +326,12 @@ export function StartupForm({ initialValues, initialTags = [], startupId, initia
       <SectionTitle>Narrative</SectionTitle>
       <Field label="Description (public)">
         <Textarea className={textareaClass} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Short public description shown on the card and profile…" />
+      </Field>
+      <Field label="Investor brief">
+        <Textarea className="min-h-[140px] text-[13px]" value={form.investor_brief} onChange={(e) => set("investor_brief", e.target.value)} placeholder="Shown as “Investor brief” on the startup page. Separate paragraphs with a blank line; the first sentence is used on cards." />
+      </Field>
+      <Field label="Why this matters (analyst note)">
+        <Textarea className={textareaClass} value={form.analyst_note} onChange={(e) => set("analyst_note", e.target.value)} placeholder="Shown as “Why this matters” on the startup page." />
       </Field>
 
       {/* ── Product ── */}

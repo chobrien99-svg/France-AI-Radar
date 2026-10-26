@@ -88,8 +88,10 @@ export async function POST(request: NextRequest) {
   // Upsert profile fields to organization_profiles
   const profileFields = {
     organization_id: startup.id,
-    investor_brief: fields.investor_brief || null,
-    analyst_note: fields.analyst_note || null,
+    // Only overwrite these when the request sends them, so an older client
+    // that lacks the fields cannot wipe existing values.
+    ...("investor_brief" in fields && { investor_brief: fields.investor_brief || null }),
+    ...("analyst_note" in fields && { analyst_note: fields.analyst_note || null }),
     product_description: fields.product_description || null,
     target_market: fields.target_market || null,
     competitive_landscape: fields.competitive_landscape || null,
