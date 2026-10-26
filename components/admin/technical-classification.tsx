@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
 import {
   CLAIMS, EVIDENCE_STATUSES, FACETS, RELATIONSHIP_KINDS, familyLabel,
   type Facet, type RelationshipKind, type TechTerm,
@@ -62,14 +61,15 @@ export function TechnicalClassification({ organizationId, profile, vocab }: Prop
   const secondaryChoices = vocab.layers.filter((l) => l.isActive && !linkedLayerIds.has(l.id))
 
   return (
-    <div>
-      <Separator className="my-6" />
+    // Rendered inside the startup form: every control here saves through its own API call,
+    // and none of them submits the surrounding form.
+    <div className="border border-border p-4">
       <div className="mb-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Technical classification</p>
+        <p className="text-[12px] font-semibold text-foreground">Technical classification</p>
       </div>
       <p className="mb-5 text-[12px] text-muted-foreground">
-        Where the startup sits in the AI stack and what it builds. Each change saves immediately. Leave anything unknown
-        empty rather than guessing; record a source for substantive claims.
+        Where the startup sits in the AI stack and what it builds. Each change here saves immediately. Leave anything
+        unknown empty rather than guessing; record a source for substantive claims.
       </p>
 
       {/* ── Layers ── */}
@@ -324,6 +324,14 @@ function LinkCard({
   )
 }
 
+/** Enter saves the field (via blur) instead of submitting the surrounding startup form */
+function blurOnEnter(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (e.key === "Enter") {
+    e.preventDefault()
+    e.currentTarget.blur()
+  }
+}
+
 /** Evidence status, source link and note. Text saves when the field loses focus. */
 function EvidenceFields({ value, disabled, onSave }: { value: Evidence; disabled: boolean; onSave: (fields: Record<string, unknown>) => void }) {
   return (
@@ -342,6 +350,7 @@ function EvidenceFields({ value, disabled, onSave }: { value: Evidence; disabled
         placeholder="Source URL (paper, repo, docs…)"
         defaultValue={value.sourceUrl ?? ""}
         disabled={disabled}
+        onKeyDown={blurOnEnter}
         onBlur={(e) => e.target.value.trim() !== (value.sourceUrl ?? "") && onSave({ source_url: e.target.value })}
       />
       <Input
@@ -349,6 +358,7 @@ function EvidenceFields({ value, disabled, onSave }: { value: Evidence; disabled
         placeholder="Source note"
         defaultValue={value.sourceNote ?? ""}
         disabled={disabled}
+        onKeyDown={blurOnEnter}
         onBlur={(e) => e.target.value.trim() !== (value.sourceNote ?? "") && onSave({ source_note: e.target.value })}
       />
     </div>
