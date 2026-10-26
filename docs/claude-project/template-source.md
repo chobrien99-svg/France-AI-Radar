@@ -153,7 +153,7 @@ Secondary city (optional):
 Country: 
 Status: Draft (not visible)   ← always recommend Draft for a new profile
 Founded date: 
-First seen at:                ← date of the earliest dated document showing the company (registry, first article, first post)
+First seen at: (set automatically)   ← the site records the day the startup is added to the Radar; leave it out (null in the import block). Put the incorporation date in Founded date.
 Logo: [describe where a logo file or URL appears in the documents, or Unknown]
 ```
 
@@ -308,7 +308,7 @@ Other sectors: [zero or more names from Part 4.7]
 
 ### P. Investor brief
 
-The startup page shows an *Investor brief* (2–3 short paragraphs) and a *Why this matters* note (1–2 sentences). The import block saves both. The edit form has no fields for them yet, so they cannot be changed there afterwards.
+The startup page shows an *Investor brief* (2–3 short paragraphs, separated by a blank line) and a *Why this matters* note (1–2 sentences). They are in the *Narrative* section of the edit page, and the import block saves both.
 
 ### R. Review sections (always include)
 
@@ -332,6 +332,7 @@ Rules for the block:
 - Use the **exact labels** from Part 4 and Part 3 (e.g. `"AI-Native Applications"`, `"Develops"`, `"Reported"`, `"Pre-Seed"`, `"Media Mention"`). Terms go in the list for their facet: `specializations`, `methods`, `modalities`, `domains`.
 - Dates `"YYYY-MM-DD"` (`"YYYY-MM"` or `"YYYY"` when only that is known). Money as whole euros (`1500000`). Signal strength as a number 1–5. Signal-tag strength as `"Strong"`, `"Moderate"`, `"Neutral"` or `"Weak"`. Yes/No fields as `true`/`false` or `"Yes"`/`"No"`.
 - Do not include a status: imports are always created as Draft.
+- Leave `company.first_seen_at` as `null`: the site sets it to the import date, which drives the Database's "Most recent" sort and "Added to the Radar" filter.
 - Valid JSON only: double quotes, no comments, no trailing commas.
 
 Example (a fictional company; copy the structure, never the content):

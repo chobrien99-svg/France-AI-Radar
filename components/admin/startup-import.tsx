@@ -181,7 +181,7 @@ function Preview({ draft, matchedFounders }: { draft: NormalizedDraft; matchedFo
         <Line k="Country" v={o.country} />
         <Line k="Status" v="Draft (not visible)" />
         <Line k="Founded date" v={o.founded_date} />
-        <Line k="First seen at" v={o.first_seen_at} />
+        <Line k="First seen at" v={`${o.first_seen_at} (import date)`} />
       </Section>
 
       <Section title="Contact & web presence">

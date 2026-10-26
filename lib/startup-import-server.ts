@@ -163,7 +163,7 @@ export async function writeDraft(svc: SupabaseClient, draft: NormalizedDraft, fo
           city_id: cityId,
           secondary_city_id: secondaryCityId,
           founded_date: org.founded_date,
-          first_seen_at: org.first_seen_at ? new Date(`${org.first_seen_at}T00:00:00Z`).toISOString() : null,
+          first_seen_at: new Date(`${org.first_seen_at}T00:00:00Z`).toISOString(),
           website: org.website,
           linkedin_url: org.linkedin_url,
           email: org.email,
