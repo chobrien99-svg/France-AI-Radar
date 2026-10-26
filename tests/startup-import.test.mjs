@@ -106,7 +106,6 @@ test("amounts, dates, identifiers and URLs are normalized or rejected", () => {
   d.grants[0].amount_eur = "1,2 M€"
   d.legal_entities[0].capital_eur = "10,000"
   d.company.founded_date = "2025"
-  d.company.first_seen_at = "2025-02-30"
   d.legal_entities[0].siren = "123 456 789"
   d.legal_entities[0].siret = "12345"
   d.company.website = "example.com"
@@ -118,7 +117,6 @@ test("amounts, dates, identifiers and URLs are normalized or rejected", () => {
   assert.equal(draft.grants[0].amount_eur, 1200000)
   assert.equal(draft.legalEntities[0].capital_eur, 10000)
   assert.equal(draft.organization.founded_date, "2025-01-01")
-  assert.equal(draft.organization.first_seen_at, null)
   assert.equal(draft.legalEntities[0].siren, "123456789")
   assert.equal(draft.legalEntities[0].siret, null)
   assert.equal(draft.organization.website, "https://example.com")
@@ -138,6 +136,16 @@ test("invalid list items are skipped, the rest imported", () => {
   assert.equal(draft.sectors.length, 2)
   assert.equal(draft.founders.length, 1)
   assert.ok(warnings.length >= 4)
+})
+
+test("first seen is always the import date, so imports count as newly added", () => {
+  assert.equal(validateDraft(example, vocab, "2026-10-26").draft.organization.first_seen_at, "2026-10-26")
+  const d = clone()
+  d.company.first_seen_at = "2026-09-11"
+  const { draft, warnings } = validateDraft(d, vocab, "2026-10-26")
+  assert.equal(draft.organization.first_seen_at, "2026-10-26")
+  assert.equal(draft.organization.founded_date, "2025-03-14", "the founding date is kept separately")
+  assert.deepEqual(paths(warnings).filter((p) => p.includes("first_seen")), ["company.first_seen_at"])
 })
 
 test("slugs follow the admin form's rule", () => {

@@ -70,7 +70,8 @@ export type NormalizedDraft = {
     secondary_city: string | null
     country: string
     founded_date: string | null
-    first_seen_at: string | null
+    /** Always the import date: the Radar's "first seen" means "added to the Radar" (sort and time filter) */
+    first_seen_at: string
     website: string | null
     linkedin_url: string | null
     email: string | null
@@ -282,7 +283,8 @@ function lookup<T extends { slug: string; label: string; aliases?: string[]; isA
 // Validation
 // ------------------------------------------------------------------
 
-export function validateDraft(raw: unknown, vocab: ImportVocab): ValidationResult {
+/** `today` (YYYY-MM-DD) is the import date, stored as "first seen" */
+export function validateDraft(raw: unknown, vocab: ImportVocab, today = new Date().toISOString().slice(0, 10)): ValidationResult {
   const r = new Reader()
   if (!isObj(raw)) return { draft: null, errors: [{ path: "", message: "The import block must be a JSON object." }], warnings: [] }
   if (raw.schema !== DRAFT_SCHEMA) {
@@ -312,7 +314,7 @@ export function validateDraft(raw: unknown, vocab: ImportVocab): ValidationResul
     secondary_city: r.text(company.secondary_city, "company.secondary_city"),
     country: r.text(company.country, "company.country") ?? "France",
     founded_date: r.date(company.founded_date, "company.founded_date"),
-    first_seen_at: r.date(company.first_seen_at, "company.first_seen_at"),
+    first_seen_at: today,
     website: r.url(company.website, "company.website"),
     linkedin_url: r.url(company.linkedin_url, "company.linkedin_url"),
     email: r.text(company.email, "company.email"),
@@ -321,6 +323,10 @@ export function validateDraft(raw: unknown, vocab: ImportVocab): ValidationResul
     total_raised_eur: r.money(fundraising.total_raised_eur, "fundraising.total_raised_eur"),
     last_round: r.text(fundraising.last_round, "fundraising.last_round"),
     fundraising_status: r.option(fundraising.fundraising_status, FUNDRAISING_STATUSES, "fundraising.fundraising_status", "fundraising status") ?? "unknown",
+  }
+  const draftSeen = typeof company.first_seen_at === "string" ? company.first_seen_at.trim() : null
+  if (draftSeen && !UNKNOWN.has(draftSeen.toLowerCase()) && draftSeen !== today) {
+    r.warn("company.first_seen_at", `"First seen at" is set to the import date (${today}) so the startup shows as newly added; the draft's ${draftSeen} was not used.`)
   }
   if (organization.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(organization.email)) {
     r.warn("company.email", `"${organization.email}" is not an email address; left empty.`)
