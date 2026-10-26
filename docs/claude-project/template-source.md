@@ -308,7 +308,7 @@ Other sectors: [zero or more names from Part 4.7]
 
 ### P. Investor brief
 
-The startup page shows an *Investor brief* (2–3 short paragraphs) and a *Why this matters* note (1–2 sentences). The import block saves both. The edit form has no fields for them yet, so they cannot be changed there afterwards.
+The startup page shows an *Investor brief* (2–3 short paragraphs, separated by a blank line) and a *Why this matters* note (1–2 sentences). They are in the *Narrative* section of the edit page, and the import block saves both.
 
 ### R. Review sections (always include)
 

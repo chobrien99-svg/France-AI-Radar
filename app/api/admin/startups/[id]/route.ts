@@ -95,9 +95,10 @@ export async function PATCH(
     console.error("Org update error:", error.message)
   }
 
-  // Upsert profile fields to organization_profiles (independent of org update)
-  const profileFields = {
-    organization_id: id,
+  // Upsert profile fields to organization_profiles (independent of org update).
+  // Only fields present in the request are written, so a field the form does
+  // not send is left as it is instead of being cleared.
+  const allProfileFields: Record<string, string | null> = {
     investor_brief: fields.investor_brief || null,
     analyst_note: fields.analyst_note || null,
     product_description: fields.product_description || null,
@@ -113,6 +114,10 @@ export async function PATCH(
     fundraising_signal_summary: fields.fundraising_signal_summary || null,
     est_next_raise: fields.est_next_raise || null,
     entity_complexity: fields.entity_complexity || null,
+  }
+  const profileFields = {
+    organization_id: id,
+    ...Object.fromEntries(Object.entries(allProfileFields).filter(([key]) => key in fields)),
   }
 
   await supabase

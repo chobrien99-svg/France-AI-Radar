@@ -141,6 +141,8 @@ export default async function EditStartupPage({
     email: startup.email ?? "",
     phone: startup.phone ?? "",
     description: startup.description ?? "",
+    investor_brief: profile?.investor_brief ?? "",
+    analyst_note: profile?.analyst_note ?? "",
     product_description: profile?.product_description ?? "",
     target_market: profile?.target_market ?? "",
     competitive_landscape: profile?.competitive_landscape ?? "",
