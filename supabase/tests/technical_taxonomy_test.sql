@@ -1,4 +1,4 @@
--- Assertions for supabase/migrations/20261025_technical_taxonomy.sql.
+-- Assertions for the technical taxonomy migrations (20261025, 20261026).
 -- Run by run_taxonomy_tests.sh after applying the migration twice.
 \set ON_ERROR_STOP on
 
@@ -22,11 +22,11 @@ END $$;
 
 -- Seeds: exact counts prove the second run added nothing.
 SELECT pg_temp.expect((SELECT count(*) FROM technical_layers) = 12, '12 primary layers seeded');
-SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE facet = 'specialization') = 70, '70 specializations seeded');
-SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE facet = 'method') = 16, '16 methods seeded');
-SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE facet = 'modality') = 18, '18 modalities seeded');
-SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE facet = 'domain') = 15, '15 domains seeded');
-SELECT pg_temp.expect((SELECT count(*) FROM technical_term_aliases) = 77, '77 aliases seeded (none lost to a missing slug)');
+SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE facet = 'specialization') = 79, '79 specializations seeded');
+SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE facet = 'method') = 20, '20 methods seeded');
+SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE facet = 'modality') = 19, '19 modalities seeded');
+SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE facet = 'domain') = 17, '17 domains seeded');
+SELECT pg_temp.expect((SELECT count(*) FROM technical_term_aliases) = 74, '74 aliases seeded (none lost to a missing slug)');
 SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE parent_term_id IS NOT NULL) = 7, '7 parent links');
 SELECT pg_temp.expect(
   (SELECT p.slug FROM technical_terms c JOIN technical_terms p ON p.id = c.parent_term_id WHERE c.slug = 'autonomous_scientific_agents') = 'autonomous_research_agents',
@@ -34,6 +34,12 @@ SELECT pg_temp.expect(
 SELECT pg_temp.expect(NOT EXISTS (
   SELECT 1 FROM technical_term_aliases a JOIN technical_terms t ON lower(t.label) = a.normalized_alias
 ), 'no alias duplicates a term label');
+SELECT pg_temp.expect((
+  SELECT count(*) FROM technical_terms WHERE label IN ('Explainable AI', 'Causal AI', 'Predictive Modeling', 'Computational Biology',
+    'Retrieval-Augmented Generation', 'Physics-Informed Machine Learning')
+) = 10, 'cross-listed handoff choices present (4 labels in two lists, 2 renamed in methods)');
+SELECT pg_temp.expect((SELECT count(*) FROM technical_terms WHERE slug IN ('dynamic_routing', 'model_evaluation', 'multi_omics_data', 'ai_for_science', 'model_development')) = 5,
+  'choices from the handoff examples seeded');
 
 -- Backfill: only the AI Radar 'application' startup, as inferred, as primary.
 SELECT pg_temp.expect((SELECT count(*) FROM organization_technical_layers) = 1, 'backfill created exactly one link');

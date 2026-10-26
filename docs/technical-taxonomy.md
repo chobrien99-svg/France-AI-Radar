@@ -5,8 +5,9 @@ Implementation notes for the *France AI Radar / The Navigator — Technical Taxo
 | File | What it is |
 |---|---|
 | `supabase/migrations/20261025_technical_taxonomy.sql` | Schema, seed vocabulary, legacy backfill (additive, safe to re-run) |
-| `supabase/rollbacks/20261025_technical_taxonomy.sql` | Undo, never applied automatically |
-| `supabase/tests/run_taxonomy_tests.sh` | Applies the migration twice to a throwaway local Postgres, runs 36 checks, rolls back, re-applies (`npm run test:db`) |
+| `supabase/migrations/20261026_technical_taxonomy_choices.sql` | Remaining handoff choices (additive, safe to re-run) |
+| `supabase/rollbacks/2026102*_technical_taxonomy*.sql` | Undo, never applied automatically (newest first) |
+| `supabase/tests/run_taxonomy_tests.sh` | Applies both migrations twice to a throwaway local Postgres, runs 38 checks, rolls back, re-applies (`npm run test:db`) |
 | `tests/taxonomy.test.mjs` | Filter-semantics tests using the handoff's example searches (`npm test`) |
 | `lib/taxonomy.ts` | Labels for stored values; filter rules |
 | `lib/technical-profile.ts` | Loads the vocabulary and a startup's classification |
@@ -65,7 +66,11 @@ Kept as separate terms on purpose (different facets, different questions): *Geno
 
 Hierarchy (`parent_term_id`): Coding, Computer-Use, Browser and Web, Vertical, and Autonomous Research Agents sit under **AI Agents**. Autonomous Scientific Agents sit under Autonomous Research Agents, and Digital Twins in Biology under Digital Twins. Filtering on a parent also matches its descendants. "Agentic AI" is an alias of AI Agents, not a term of its own.
 
-Seed totals: 12 layers, 70 specializations, 16 methods, 18 modalities, 15 domains, 77 aliases.
+Seed totals after `20261025_technical_taxonomy.sql`: 12 layers, 70 specializations, 16 methods, 18 modalities, 15 domains, 77 aliases.
+
+**Update (`20261026_technical_taxonomy_choices.sql`).** Every choice the handoff lists now also appears in the list where the handoff puts it. The 11 phrases in the table above (Graph AI / GNN, Hybrid and Symbolic Reasoning, Causal AI, Explainable AI, Predictive Modeling, Probabilistic Modeling, Computational Biology, Imitation and Reinforcement Learning and Physics-Informed ML as specializations; RAG and Fine-Tuning as methods) are real terms in their listed facet, alongside the canonical term in the other facet. The specialization records what a company builds; the method records a technique it applies. Each definition names its counterpart. Choices from the handoff's examples were added too: Dynamic Routing and Model Evaluation (methods), Multi-Omics (modality), AI for Science and Model Development (domains). Eight aliases that now duplicate a label were removed.
+
+Totals now: 12 layers, 79 specializations, 20 methods, 19 modalities, 17 domains (135 terms), 74 aliases.
 
 ## 4. Legacy backfill report
 
