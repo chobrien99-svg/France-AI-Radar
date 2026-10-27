@@ -45,7 +45,7 @@ export default async function LandingPage() {
   const [{ data: orgRows }, { data: sectorRows }, { data: signalRows }, { data: founderRows }] = await Promise.all([
     svc
       .from("organizations")
-      .select("id, slug, description, short_description, founded_date, last_round, signal_count, last_signal_date, updated_at, cities!organizations_city_id_fkey(name)")
+      .select("id, slug, name, description, short_description, founded_date, last_round, signal_count, last_signal_date, updated_at, first_seen_at, created_at, cities!organizations_city_id_fkey(name)")
       .in("id", idFilter)
       .eq("status", "active"),
     svc.from("organization_sectors").select("organization_id, is_primary, sectors(id, name)").in("organization_id", idFilter),
@@ -92,8 +92,11 @@ export default async function LandingPage() {
   const updated = updatedLabel(orgs.map((o) => o.updated_at as string | null).filter(Boolean).sort().pop() ?? null)
   const sampleHref = byActivity[0] ? `/startup/${byActivity[0].slug}` : "/pricing"
 
-  // "This week on the Radar": anonymous cards, the 3 most recently active startups
-  const cards = byActivity.slice(0, 3).map((o) => {
+  // "This week on the Radar": anonymous cards, the 3 startups most recently added
+  // to the Radar (same order as the database's "Most recent" sort)
+  const added = (o: Row) => new Date(((o.first_seen_at as string | null) ?? (o.created_at as string)) || 0).getTime() || 0
+  const byAdded = [...orgs].sort((a, b) => added(b) - added(a) || String(a.name ?? "").localeCompare(String(b.name ?? "")))
+  const cards = byAdded.slice(0, 3).map((o) => {
     const id = o.id as string
     const city = one(o.cities as { name: string } | { name: string }[] | null)?.name
     const stage = stageFrom(o.last_round as string | null)
