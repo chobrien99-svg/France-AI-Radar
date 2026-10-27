@@ -2,17 +2,14 @@
 -- did not map to a primary layer (see docs/technical-taxonomy.md).
 -- Every link is marked "inferred" and was drawn from the Radar's own
 -- description fields. Safe to run more than once: existing links are kept.
--- Only AI Radar companies are included. Deliberately left out: Neutrogen
--- Technologies and Phyntec (not AI-led), and every company not on the Radar
--- (Agryco, Alan, Crosscall, HR Path, Locala, ManoMano, Mistral AI, Sekoia, Yubo).
+-- Only AI Radar companies are included. Deliberately left out: Aurels (draft
+-- still being written), Axone (likely a test record), Neutrogen Technologies
+-- and Phyntec (not AI-led), and every company not on the Radar (Agryco, Alan,
+-- Crosscall, HR Path, Locala, ManoMano, Mistral AI, Sekoia, Yubo).
 
 BEGIN;
 
 WITH layers(org_slug, layer_slug, is_primary) AS (VALUES
-  ('aurels',     'ai_security_safety_governance',      true),
-  ('aurels',     'agent_infrastructure_orchestration', false),
-  ('axone',      'compute_hardware',                   true),
-  ('axone',      'inference_optimization',             false),
   ('jemba',      'ai_native_applications',             true),
   ('katrix-ai',  'embodied_ai_robotics',               true),
   ('katrix-ai',  'compute_hardware',                   false),
@@ -27,15 +24,6 @@ JOIN technical_layers l ON l.slug = x.layer_slug
 ON CONFLICT DO NOTHING;
 
 WITH terms(org_slug, term_slug, kind, is_core) AS (VALUES
-  -- Aurels: security layer between an agent's decision and its execution
-  ('aurels',     'agent_security',               'develops', true),
-  ('aurels',     'ai_agents',                    'uses',     false),
-  ('aurels',     'cybersecurity',                'develops', false),
-  ('aurels',     'financial_services',           'develops', false),
-  -- Axone: neuromorphic chips for edge inference
-  ('axone',      'edge_ai',                      'develops', true),
-  ('axone',      'inference_optimization',       'develops', false),
-  ('axone',      'sensor_iot_data',              'uses',     false),
   -- Jemba: industrial ML on existing factory data
   ('jemba',      'predictive_maintenance',       'develops', true),
   ('jemba',      'predictive_modeling',          'uses',     false),
@@ -65,8 +53,6 @@ ON CONFLICT DO NOTHING;
 
 -- Only fills empty fields, so nothing already entered by hand is overwritten.
 WITH p(org_slug, role, positioning, maturity) AS (VALUES
-  ('aurels',     'infrastructure', 'enabling_infrastructure',       NULL),
-  ('axone',      'infrastructure', 'frontier_technology_developer', NULL),
   ('jemba',      'platform',       'vertical_ai_application',       NULL),
   ('katrix-ai',  'infrastructure', 'enabling_infrastructure',       NULL),
   ('signeva',    'infrastructure', 'frontier_technology_developer', 'research')
@@ -80,12 +66,12 @@ WHERE op.organization_id = o.id;
 
 COMMIT;
 
--- Check: should list 5 companies, each with one primary layer.
+-- Check: should list 3 companies, each with one primary layer.
 SELECT o.name, l.label AS primary_layer, op.ai_product_role, op.technology_positioning, op.technology_maturity,
   (SELECT count(*) FROM organization_technical_terms tt WHERE tt.organization_id = o.id) AS terms
 FROM organizations o
 JOIN organization_technical_layers ol ON ol.organization_id = o.id AND ol.is_primary
 JOIN technical_layers l ON l.id = ol.layer_id
 LEFT JOIN organization_profiles op ON op.organization_id = o.id
-WHERE o.slug IN ('aurels','axone','jemba','katrix-ai','signeva')
+WHERE o.slug IN ('jemba','katrix-ai','signeva')
 ORDER BY o.name;
