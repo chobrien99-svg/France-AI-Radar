@@ -10,6 +10,7 @@ export const runtime = "nodejs"
 //   PATCH { ...fields }                           → save edits, stays pending
 //   POST  { action: "approve", ...fields, add_funding_round? } → becomes a live signal
 //   POST  { action: "reject" }
+// Drafts Claude dismissed can be approved or rejected too, in case it was wrong.
 
 type Edits = {
   signal_type?: string
@@ -60,6 +61,8 @@ function readEdits(body: Record<string, unknown>): { edits: Edits } | { error: s
   return { edits }
 }
 
+const REVIEWABLE = ["pending", "dismissed"]
+
 async function loadPending(id: string) {
   const svc = await createServiceClient()
   const { data } = await svc.from("signal_candidates").select("*").eq("id", id).maybeSingle()
@@ -76,7 +79,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { svc, candidate } = await loadPending(id)
   if (!candidate) return NextResponse.json({ error: "Draft not found" }, { status: 404 })
-  if (candidate.status !== "pending") return NextResponse.json({ error: "This draft was already reviewed" }, { status: 409 })
+  if (!REVIEWABLE.includes(candidate.status as string)) return NextResponse.json({ error: "This draft was already reviewed" }, { status: 409 })
 
   const { error } = await svc.from("signal_candidates").update(read.edits).eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -93,13 +96,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { svc, candidate } = await loadPending(id)
   if (!candidate) return NextResponse.json({ error: "Draft not found" }, { status: 404 })
-  if (candidate.status !== "pending") return NextResponse.json({ error: "This draft was already reviewed" }, { status: 409 })
+  const previousStatus = candidate.status as string
+  if (!REVIEWABLE.includes(previousStatus)) return NextResponse.json({ error: "This draft was already reviewed" }, { status: 409 })
 
   const reviewed = { reviewed_by: admin.id, reviewed_at: new Date().toISOString() }
 
   if (action === "reject") {
-    const { error } = await svc.from("signal_candidates").update({ status: "rejected", ...reviewed }).eq("id", id).eq("status", "pending")
+    const { data: claimed, error } = await svc.from("signal_candidates")
+      .update({ status: "rejected", ...reviewed })
+      .eq("id", id).eq("status", previousStatus).select("id")
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!claimed?.length) return NextResponse.json({ error: "This draft was already reviewed" }, { status: 409 })
     return NextResponse.json({ ok: true, status: "rejected" })
   }
 
@@ -110,7 +117,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // Claim the draft first so two reviewers can't both publish it.
   const { data: claimed, error: claimError } = await svc.from("signal_candidates")
     .update({ ...read.edits, status: "approved", ...reviewed })
-    .eq("id", id).eq("status", "pending").select("id")
+    .eq("id", id).eq("status", previousStatus).select("id")
   if (claimError) return NextResponse.json({ error: claimError.message }, { status: 500 })
   if (!claimed?.length) return NextResponse.json({ error: "This draft was already reviewed" }, { status: 409 })
 
@@ -126,7 +133,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   })
   if ("error" in result) {
     // Put the draft back so it can be retried.
-    await svc.from("signal_candidates").update({ status: "pending", reviewed_by: null, reviewed_at: null }).eq("id", id)
+    await svc.from("signal_candidates").update({ status: previousStatus, reviewed_by: null, reviewed_at: null }).eq("id", id)
     return NextResponse.json({ error: result.error }, { status: 500 })
   }
   await svc.from("signal_candidates").update({ signal_id: result.id }).eq("id", id)

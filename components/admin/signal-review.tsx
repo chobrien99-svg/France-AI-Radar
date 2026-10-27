@@ -31,7 +31,7 @@ export type Candidate = {
   confidence: number | null
   ai_reasoning: string | null
   possible_duplicate_signal_id: string | null
-  status: "pending" | "approved" | "rejected"
+  status: "pending" | "approved" | "rejected" | "dismissed"
   reviewed_at: string | null
   created_at: string
 }
@@ -146,10 +146,12 @@ export function SignalReview({ candidates, status }: { candidates: Candidate[]; 
               <Link href={`/admin/startups/${orgId}/edit`} className="hover:underline">{items[0].organization_name}</Link>
               <span className="ml-2 text-[12px] font-normal text-muted-foreground">{items.length} draft{items.length === 1 ? "" : "s"}</span>
             </h2>
-            {status === "pending" && items.length > 1 && (
+            {(status === "pending" || status === "dismissed") && items.length > 1 && (
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" disabled={busy !== null} onClick={() => all(orgId, "reject")}>Reject all</Button>
-                <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => all(orgId, "approve")}>Approve all</Button>
+                {status === "pending" && (
+                  <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => all(orgId, "approve")}>Approve all</Button>
+                )}
               </div>
             )}
           </div>
@@ -157,7 +159,7 @@ export function SignalReview({ candidates, status }: { candidates: Candidate[]; 
           <div className="space-y-3">
             {items.map((c) => {
               const f = forms[c.id]
-              const pending = status === "pending"
+              const pending = status === "pending" || status === "dismissed"
               return (
                 <article key={c.id} className="border-l-2 border-l-primary bg-card p-4">
                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">

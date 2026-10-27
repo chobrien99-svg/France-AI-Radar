@@ -23,6 +23,11 @@ BEGIN
   VALUES ('00000000-0000-0000-0000-00000000000b', 'press_rss', 'https://example.com/a', 'Other Co too', 'partnership', 'Partners');
   RAISE NOTICE 'ok: same URL allowed for another startup';
 
+  -- Claude's dismissed finds are stored too, so they aren't re-read.
+  INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title, status)
+  VALUES ('00000000-0000-0000-0000-00000000000a', 'google_news', 'https://example.com/namesake', 'Namesake', 'other', 'Namesake', 'dismissed');
+  RAISE NOTICE 'ok: dismissed finds can be stored';
+
   -- Values outside the allowed lists are refused.
   BEGIN
     INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title)

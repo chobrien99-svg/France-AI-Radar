@@ -7,6 +7,7 @@ const TABS = [
   { value: "pending", label: "To review" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
+  { value: "dismissed", label: "Dismissed by Claude" },
 ] as const
 
 export default async function SignalsReviewPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
@@ -59,7 +60,15 @@ export default async function SignalsReviewPage({ searchParams }: { searchParams
           The review queue isn&rsquo;t set up yet. Run <code>supabase/migrations/20261028_signal_monitoring.sql</code> in the Supabase SQL Editor.
         </p>
       ) : (
-        <SignalReview candidates={candidates} status={status} />
+        <>
+          {status === "dismissed" && (
+            <p className="mb-4 text-[12px] text-muted-foreground">
+              Items Claude judged to be about a namesake, or not credible enough. They are kept so they aren&rsquo;t read again,
+              and you can still approve one if Claude got it wrong.
+            </p>
+          )}
+          <SignalReview candidates={candidates} status={status} />
+        </>
       )}
     </div>
   )

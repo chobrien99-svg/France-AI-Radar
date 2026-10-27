@@ -32,7 +32,9 @@ CREATE TABLE IF NOT EXISTS signal_candidates (
   confidence NUMERIC(3, 2) CHECK (confidence BETWEEN 0 AND 1),
   ai_reasoning TEXT,
   possible_duplicate_signal_id UUID REFERENCES signals(id) ON DELETE SET NULL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  -- dismissed: Claude judged it a namesake or not credible. Kept so the same
+  -- item isn't re-read every night, and so an admin can still approve it.
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'dismissed')),
   reviewed_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
   reviewed_at TIMESTAMPTZ,
   signal_id UUID REFERENCES signals(id) ON DELETE SET NULL,

@@ -35,6 +35,7 @@ export type RunSummary = {
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10)
 const daysAgo = (n: number) => isoDay(new Date(Date.now() - n * 86_400_000))
+const dayBefore = (day: string) => isoDay(new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000))
 
 /** Radar startup ids, or just the one asked for. */
 async function targetIds(svc: SupabaseClient, organizationId?: string): Promise<string[]> {
@@ -109,13 +110,12 @@ export async function runMonitoring(
     // 1. Collect
     const found: FoundItem[] = []
     let lastBodacc = (state?.last_bodacc_date as string | null | undefined) ?? null
+    let bodaccItems: FoundItem[] = []
     const siren = sirenBy.get(id)
     if (siren) {
       try {
-        const items = await fetchBodacc(siren, lastBodacc ?? daysAgo(BODACC_FIRST_LOOKBACK_DAYS))
-        found.push(...items)
-        const newest = items[0]?.publishedAt?.slice(0, 10)
-        if (newest && (!lastBodacc || newest > lastBodacc)) lastBodacc = newest
+        bodaccItems = await fetchBodacc(siren, lastBodacc ?? daysAgo(BODACC_FIRST_LOOKBACK_DAYS))
+        found.push(...bodaccItems)
       } catch (err) {
         note(`${name}: BODACC ${err instanceof Error ? err.message : "failed"}`)
       }
@@ -139,8 +139,13 @@ export async function runMonitoring(
       ...signals.map((s) => s.source_url).filter((u): u is string => Boolean(u)),
     ])
     const fresh: FoundItem[] = []
+    // URLs fully dealt with this run: already known, or read by Claude.
+    const processed = new Set<string>()
     for (const it of found) {
-      if (seen.has(it.url)) continue
+      if (seen.has(it.url)) {
+        processed.add(it.url)
+        continue
+      }
       seen.add(it.url)
       fresh.push(it)
     }
@@ -165,8 +170,10 @@ export async function runMonitoring(
         continue
       }
       const a = result.analysis
-      if (!isUsable(a)) continue
+      const usable = isUsable(a)
+      // Dropped finds are stored as "dismissed" so they aren't read again tomorrow.
       const { data: inserted, error } = await svc.from("signal_candidates").insert({
+        status: usable ? "pending" : "dismissed",
         organization_id: id,
         source: it.source,
         source_url: it.url,
@@ -188,12 +195,25 @@ export async function runMonitoring(
       }).select("id").single()
       if (error) {
         // 23505: another run queued the same URL a moment ago.
-        if (error.code !== "23505") note(`${name}: could not queue draft: ${error.message}`)
+        if (error.code === "23505") processed.add(it.url)
+        else note(`${name}: could not queue draft: ${error.message}`)
         continue
       }
+      processed.add(it.url)
+      if (!usable) continue
       summary.candidatesCreated++
       summary.candidateIds.push(inserted.id as string)
     }
+
+    // The BODACC query only returns filings after last_bodacc_date, so move it
+    // forward only past filings that were dealt with; anything skipped this
+    // time (Claude error, per-run cap, deadline) is fetched again next run.
+    const bodaccDates = (pick: (it: FoundItem) => boolean) =>
+      bodaccItems.filter(pick).map((it) => it.publishedAt?.slice(0, 10)).filter((d): d is string => Boolean(d)).sort()
+    const pendingDates = bodaccDates((it) => !processed.has(it.url))
+    const doneDates = bodaccDates((it) => processed.has(it.url))
+    const nextCursor = pendingDates.length ? dayBefore(pendingDates[0]) : doneDates.at(-1) ?? null
+    if (nextCursor && (!lastBodacc || nextCursor > lastBodacc)) lastBodacc = nextCursor
 
     await svc.from("monitoring_state").upsert({
       organization_id: id,

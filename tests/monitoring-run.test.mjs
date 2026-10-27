@@ -24,11 +24,19 @@ function fakeAnalysis(prompt) {
 }
 
 let calls
+// Per-test switches: what Google News returns, and an item text Claude fails on.
+let googleBody
+let claudeFailsOn
 const realFetch = globalThis.fetch
+const NAMESAKE_RSS = `<?xml version="1.0"?><rss version="2.0"><channel><title>Google News</title>
+<item><title>Jemba, le restaurant jamaïcain, ouvre à Lyon - Le Progrès</title><link>https://news.google.com/rss/articles/NAMESAKE</link>
+<pubDate>Wed, 22 Oct 2026 06:00:00 GMT</pubDate><source url="https://www.leprogres.fr">Le Progrès</source></item></channel></rss>`
 
 beforeEach(() => {
   process.env.ANTHROPIC_API_KEY = "test-key"
   calls = { claude: 0, urls: [] }
+  googleBody = EMPTY_RSS
+  claudeFailsOn = null
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input.url
     calls.urls.push(url)
@@ -37,6 +45,9 @@ beforeEach(() => {
       calls.claude++
       const body = JSON.parse(init.body)
       const prompt = body.messages[0].content
+      if (claudeFailsOn && prompt.includes(claudeFailsOn)) {
+        return reply(JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "boom" } }), "application/json", 400)
+      }
       assert.equal(body.model, "claude-haiku-5-5")
       assert.equal(body.output_config.format.type, "json_schema")
       return reply(JSON.stringify({
@@ -46,7 +57,7 @@ beforeEach(() => {
       }), "application/json")
     }
     if (url.startsWith("https://bodacc-datadila.opendatasoft.com/")) return reply(fixture("bodacc.json"), "application/json")
-    if (url.startsWith("https://news.google.com/")) return reply(EMPTY_RSS)
+    if (url.startsWith("https://news.google.com/")) return reply(googleBody)
     if (url.startsWith("https://www.maddyness.com/")) return reply(fixture("press.rss.xml"))
     return reply("not found", "text/plain", 404)
   }
@@ -136,4 +147,37 @@ test("the deadline stops a run cleanly", async () => {
   assert.equal(summary.orgsRemaining, 1)
   assert.equal(calls.claude, 0)
   assert.ok(db.tables.monitoring_runs[0].finished_at)
+})
+
+test("a namesake is kept as dismissed, not queued, and not read again", async () => {
+  googleBody = NAMESAKE_RSS
+  const db = seed()
+  const first = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(first.itemsAnalyzed, 3)
+  assert.equal(first.candidatesCreated, 2)
+  assert.equal(first.candidateIds.length, 2)
+  const namesake = db.tables.signal_candidates.find((d) => d.source === "google_news")
+  assert.equal(namesake.status, "dismissed")
+  assert.equal(namesake.raw_title, "Jemba, le restaurant jamaïcain, ouvre à Lyon")
+
+  calls.claude = 0
+  const second = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(second.itemsSeen, 0)
+  assert.equal(calls.claude, 0)
+})
+
+test("a filing Claude couldn't read is fetched again next run", async () => {
+  claudeFailsOn = "Procédures collectives"
+  const db = seed()
+  const first = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(first.candidatesCreated, 1)
+  assert.ok(first.errors.some((e) => e.includes("Claude API error 400")))
+  // The unread filing is dated 2026-10-15, so the cursor stops the day before.
+  assert.equal(db.tables.monitoring_state[0].last_bodacc_date, "2026-10-14")
+
+  claudeFailsOn = null
+  const second = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(second.candidatesCreated, 1)
+  assert.equal(db.tables.signal_candidates.find((d) => d.source === "bodacc").signal_type, "restructuring")
+  assert.equal(db.tables.monitoring_state[0].last_bodacc_date, "2026-10-15")
 })
