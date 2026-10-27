@@ -1,0 +1,83 @@
+-- Assertions for the signal monitoring migration. Each block raises on failure.
+
+DO $$
+DECLARE n INT;
+BEGIN
+  -- A draft can be queued with Claude's proposal and links back to an existing signal.
+  INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title, confidence, possible_duplicate_signal_id)
+  VALUES ('00000000-0000-0000-0000-00000000000a', 'press_rss', 'https://example.com/a', 'Radar App raises', 'fundraising', 'Raises seed', 0.9,
+          '00000000-0000-0000-0000-0000000005a1');
+  SELECT count(*) INTO n FROM signal_candidates WHERE status = 'pending';
+  IF n <> 1 THEN RAISE EXCEPTION 'expected 1 pending draft, got %', n; END IF;
+  RAISE NOTICE 'ok: draft queued as pending';
+
+  -- The same article cannot be queued twice for the same startup...
+  BEGIN
+    INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title)
+    VALUES ('00000000-0000-0000-0000-00000000000a', 'google_news', 'https://example.com/a', 'dup', 'other', 'dup');
+    RAISE EXCEPTION 'duplicate URL was accepted';
+  EXCEPTION WHEN unique_violation THEN RAISE NOTICE 'ok: same URL blocked for the same startup';
+  END;
+  -- ...but can be for a different startup it also mentions.
+  INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title)
+  VALUES ('00000000-0000-0000-0000-00000000000b', 'press_rss', 'https://example.com/a', 'Other Co too', 'partnership', 'Partners');
+  RAISE NOTICE 'ok: same URL allowed for another startup';
+
+  -- Values outside the allowed lists are refused.
+  BEGIN
+    INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title)
+    VALUES ('00000000-0000-0000-0000-00000000000a', 'twitter', 'https://example.com/b', 't', 'other', 't');
+    RAISE EXCEPTION 'unknown source was accepted';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: unknown source refused';
+  END;
+  BEGIN
+    INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title, strength)
+    VALUES ('00000000-0000-0000-0000-00000000000a', 'bodacc', 'https://example.com/c', 't', 'other', 't', 9);
+    RAISE EXCEPTION 'strength 9 was accepted';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: strength outside 1-5 refused';
+  END;
+
+  -- Deleting the linked signal keeps the draft and clears the link.
+  DELETE FROM signals WHERE id = '00000000-0000-0000-0000-0000000005a1';
+  SELECT count(*) INTO n FROM signal_candidates WHERE possible_duplicate_signal_id IS NOT NULL;
+  IF n <> 0 THEN RAISE EXCEPTION 'duplicate link not cleared'; END IF;
+  RAISE NOTICE 'ok: deleting a signal clears the duplicate link';
+
+  -- Monitoring settings default to enabled with no aliases.
+  INSERT INTO monitoring_state (organization_id) VALUES ('00000000-0000-0000-0000-00000000000a');
+  SELECT count(*) INTO n FROM monitoring_state WHERE enabled AND search_aliases = '{}' AND exclude_terms = '{}';
+  IF n <> 1 THEN RAISE EXCEPTION 'monitoring_state defaults wrong'; END IF;
+  RAISE NOTICE 'ok: monitoring settings default to enabled';
+
+  -- Deleting a startup removes its drafts and settings.
+  DELETE FROM organizations WHERE id = '00000000-0000-0000-0000-00000000000a';
+  SELECT (SELECT count(*) FROM signal_candidates WHERE organization_id = '00000000-0000-0000-0000-00000000000a')
+       + (SELECT count(*) FROM monitoring_state WHERE organization_id = '00000000-0000-0000-0000-00000000000a') INTO n;
+  IF n <> 0 THEN RAISE EXCEPTION 'cascade on startup delete failed'; END IF;
+  RAISE NOTICE 'ok: deleting a startup removes its drafts and settings';
+END $$;
+
+-- Public roles can see nothing.
+SET ROLE anon;
+DO $$
+BEGIN
+  PERFORM 1 FROM signal_candidates;
+  RAISE EXCEPTION 'anon could read signal_candidates';
+EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: anon cannot read drafts';
+END $$;
+RESET ROLE;
+SET ROLE authenticated;
+DO $$
+BEGIN
+  PERFORM 1 FROM monitoring_state;
+  RAISE EXCEPTION 'authenticated could read monitoring_state';
+EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: signed-in users cannot read monitoring settings';
+END $$;
+RESET ROLE;
+SET ROLE service_role;
+DO $$
+BEGIN
+  PERFORM 1 FROM monitoring_runs;
+  RAISE NOTICE 'ok: service role can read the run log';
+END $$;
+RESET ROLE;
