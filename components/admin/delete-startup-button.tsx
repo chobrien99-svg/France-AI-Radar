@@ -24,7 +24,7 @@ export function DeleteStartupButton({
   startupId: string
   startupName: string
   /** Founders linked to this startup and no other, who would be left orphaned. */
-  soloFounders?: string[]
+  soloFounders?: { id: string; name: string }[]
 }) {
   const router = useRouter()
   const [confirmingHide, setConfirmingHide] = useState(false)
@@ -44,7 +44,8 @@ export function DeleteStartupButton({
   async function hardDelete() {
     setLoading(true)
     setError(null)
-    const qs = `mode=permanent${deleteFounders ? "&founders=orphans" : ""}`
+    const ids = deleteFounders ? soloFounders.map((f) => f.id).join(",") : ""
+    const qs = `mode=permanent${ids ? `&founders=${encodeURIComponent(ids)}` : ""}`
     const res = await fetch(`/api/admin/startups/${startupId}?${qs}`, { method: "DELETE" })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) {
@@ -107,7 +108,7 @@ export function DeleteStartupButton({
                 />
                 <span>
                   Also delete {soloFounders.length === 1 ? "this founder, who isn't" : `these ${soloFounders.length} founders, who aren't`} linked
-                  to any other startup: <strong>{soloFounders.join(", ")}</strong>
+                  to any other startup: <strong>{soloFounders.map((f) => f.name).join(", ")}</strong>
                 </span>
               </label>
             )}

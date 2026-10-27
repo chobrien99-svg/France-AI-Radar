@@ -65,7 +65,7 @@ export default async function EditStartupPage({
         .in("person_id", linkedFounders.map((f) => f.id)).neq("organization_id", id)
     : { data: [] }
   const linkedElsewhere = new Set((otherLinks ?? []).map((l: { person_id: string }) => l.person_id))
-  const soloFounders = [...new Map(linkedFounders.filter((f) => !linkedElsewhere.has(f.id)).map((f) => [f.id, f.full_name])).values()]
+  const soloFounders = [...new Map(linkedFounders.filter((f) => !linkedElsewhere.has(f.id)).map((f) => [f.id, { id: f.id, name: f.full_name }])).values()]
 
   const allFounders = (allFoundersRaw ?? []).map((f: { id: string; full_name: string; slug: string | null; role: string | null }) => ({
     id: f.id, full_name: f.full_name, slug: f.slug, role: f.role,
