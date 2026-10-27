@@ -2,9 +2,9 @@
 -- did not map to a primary layer (see docs/technical-taxonomy.md).
 -- Every link is marked "inferred" and was drawn from the Radar's own
 -- description fields. Safe to run more than once: existing links are kept.
--- Deliberately left out: Neutrogen Technologies, Phyntec (not AI-led) and the
--- non-Radar companies that are not AI-native (Agryco, Alan, Crosscall,
--- HR Path, Locala, ManoMano, Yubo).
+-- Only AI Radar companies are included. Deliberately left out: Neutrogen
+-- Technologies and Phyntec (not AI-led), and every company not on the Radar
+-- (Agryco, Alan, Crosscall, HR Path, Locala, ManoMano, Mistral AI, Sekoia, Yubo).
 
 BEGIN;
 
@@ -17,9 +17,7 @@ WITH layers(org_slug, layer_slug, is_primary) AS (VALUES
   ('katrix-ai',  'embodied_ai_robotics',               true),
   ('katrix-ai',  'compute_hardware',                   false),
   ('signeva',    'knowledge_reasoning_infrastructure', true),
-  ('signeva',    'embodied_ai_robotics',               false),
-  ('mistral-ai', 'foundation_models',                  true),
-  ('sekoia',     'ai_native_applications',             true)
+  ('signeva',    'embodied_ai_robotics',               false)
 )
 INSERT INTO organization_technical_layers (organization_id, layer_id, is_primary, evidence_status, source_note)
 SELECT o.id, l.id, x.is_primary, 'inferred', 'Inferred from Radar description (Oct 2026 backfill)'
@@ -56,16 +54,7 @@ WITH terms(org_slug, term_slug, kind, is_core) AS (VALUES
   ('signeva',    'agent_memory_context',         'develops', false),
   ('signeva',    'embodied_agents',              'develops', false),
   ('signeva',    'symbolic_reasoning',           'uses',     false),
-  ('signeva',    'robotics',                     'develops', false),
-  -- Mistral AI: general-purpose generative models
-  ('mistral-ai', 'large_language_models',        'develops', true),
-  ('mistral-ai', 'multimodal_foundation_models', 'develops', false),
-  ('mistral-ai', 'small_language_models',        'develops', false),
-  ('mistral-ai', 'generative_modeling',          'uses',     false),
-  ('mistral-ai', 'text_data',                    'uses',     false),
-  -- Sekoia: AI-assisted security operations platform
-  ('sekoia',     'cybersecurity',                'develops', true),
-  ('sekoia',     'ai_agents',                    'uses',     false)
+  ('signeva',    'robotics',                     'develops', false)
 )
 INSERT INTO organization_technical_terms (organization_id, term_id, relationship_kind, is_core, evidence_status, source_note)
 SELECT o.id, t.id, x.kind, x.is_core, 'inferred', 'Inferred from Radar description (Oct 2026 backfill)'
@@ -80,9 +69,7 @@ WITH p(org_slug, role, positioning, maturity) AS (VALUES
   ('axone',      'infrastructure', 'frontier_technology_developer', NULL),
   ('jemba',      'platform',       'vertical_ai_application',       NULL),
   ('katrix-ai',  'infrastructure', 'enabling_infrastructure',       NULL),
-  ('signeva',    'infrastructure', 'frontier_technology_developer', 'research'),
-  ('mistral-ai', 'platform',       'frontier_technology_developer', 'commercial'),
-  ('sekoia',     'application',    'ai_enabled_software',           'commercial')
+  ('signeva',    'infrastructure', 'frontier_technology_developer', 'research')
 )
 UPDATE organization_profiles op SET
   ai_product_role        = COALESCE(op.ai_product_role, p.role),
@@ -93,12 +80,12 @@ WHERE op.organization_id = o.id;
 
 COMMIT;
 
--- Check: should list 7 companies, each with one primary layer.
+-- Check: should list 5 companies, each with one primary layer.
 SELECT o.name, l.label AS primary_layer, op.ai_product_role, op.technology_positioning, op.technology_maturity,
   (SELECT count(*) FROM organization_technical_terms tt WHERE tt.organization_id = o.id) AS terms
 FROM organizations o
 JOIN organization_technical_layers ol ON ol.organization_id = o.id AND ol.is_primary
 JOIN technical_layers l ON l.id = ol.layer_id
 LEFT JOIN organization_profiles op ON op.organization_id = o.id
-WHERE o.slug IN ('aurels','axone','jemba','katrix-ai','signeva','mistral-ai','sekoia')
+WHERE o.slug IN ('aurels','axone','jemba','katrix-ai','signeva')
 ORDER BY o.name;
