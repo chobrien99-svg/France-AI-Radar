@@ -8,10 +8,18 @@ export function DeleteFounderButton({ founderId, founderName }: { founderId: str
   const router = useRouter()
   const [confirming, setConfirming] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function del() {
     setLoading(true)
-    await fetch(`/api/admin/founders/${founderId}`, { method: "DELETE" })
+    setError(null)
+    const res = await fetch(`/api/admin/founders/${founderId}`, { method: "DELETE" })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? "Delete failed")
+      setLoading(false)
+      return
+    }
     router.push("/admin/founders")
     router.refresh()
   }
@@ -19,7 +27,9 @@ export function DeleteFounderButton({ founderId, founderName }: { founderId: str
   if (confirming) {
     return (
       <div className="flex items-center gap-2">
-        <p className="text-[12px] text-muted-foreground">Delete "{founderName}"?</p>
+        <p className="text-[12px] text-muted-foreground">
+          {error ? <span className="text-destructive">{error}</span> : <>Delete &ldquo;{founderName}&rdquo; permanently? This also removes them from every startup.</>}
+        </p>
         <Button variant="destructive" size="sm" onClick={del} disabled={loading}>
           {loading ? "Deleting…" : "Confirm"}
         </Button>

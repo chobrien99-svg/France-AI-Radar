@@ -145,8 +145,12 @@ export async function PATCH(
   )
 }
 
+// DELETE hides the startup (status → inactive) unless ?mode=permanent, which
+// removes the organization row; the database cascades its profile, links,
+// signals, rounds and so on. With &founders=orphans, founders who are left
+// with no other startup are deleted too.
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const admin = await getAdminUser()
@@ -154,6 +158,37 @@ export async function DELETE(
 
   const { id } = await params
   const supabase = await createServiceClient()
+  const { searchParams } = new URL(request.url)
+
+  if (searchParams.get("mode") === "permanent") {
+    const { data: links, error: linksError } = await supabase
+      .from("organization_people").select("person_id").eq("organization_id", id)
+    if (linksError) return NextResponse.json({ error: linksError.message }, { status: 500 })
+    const personIds = [...new Set((links ?? []).map((l: { person_id: string }) => l.person_id))]
+
+    const { data: deleted, error } = await supabase.from("organizations").delete().eq("id", id).select("id")
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!deleted?.length) return NextResponse.json({ error: "Startup not found" }, { status: 404 })
+
+    let foundersDeleted = 0
+    if (searchParams.get("founders") === "orphans" && personIds.length) {
+      const { data: stillLinked, error: checkError } = await supabase
+        .from("organization_people").select("person_id").in("person_id", personIds)
+      if (checkError) {
+        return NextResponse.json({ deleted: true, foundersDeleted, _warning: `Startup deleted, founders kept: ${checkError.message}` })
+      }
+      const keep = new Set((stillLinked ?? []).map((l: { person_id: string }) => l.person_id))
+      const orphans = personIds.filter((p) => !keep.has(p))
+      if (orphans.length) {
+        const { error: peopleError } = await supabase.from("people").delete().in("id", orphans)
+        if (peopleError) {
+          return NextResponse.json({ deleted: true, foundersDeleted, _warning: `Startup deleted, founders kept: ${peopleError.message}` })
+        }
+        foundersDeleted = orphans.length
+      }
+    }
+    return NextResponse.json({ deleted: true, foundersDeleted })
+  }
 
   const { error } = await supabase
     .from("organizations")

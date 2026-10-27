@@ -59,6 +59,14 @@ export default async function EditStartupPage({
     return { id: f.id, full_name: f.full_name, slug: f.slug, role: row.role }
   })
 
+  // Founders with no other startup: offered for deletion alongside this one.
+  const { data: otherLinks } = linkedFounders.length
+    ? await supabase.from("organization_people").select("person_id")
+        .in("person_id", linkedFounders.map((f) => f.id)).neq("organization_id", id)
+    : { data: [] }
+  const linkedElsewhere = new Set((otherLinks ?? []).map((l: { person_id: string }) => l.person_id))
+  const soloFounders = [...new Map(linkedFounders.filter((f) => !linkedElsewhere.has(f.id)).map((f) => [f.id, f.full_name])).values()]
+
   const allFounders = (allFoundersRaw ?? []).map((f: { id: string; full_name: string; slug: string | null; role: string | null }) => ({
     id: f.id, full_name: f.full_name, slug: f.slug, role: f.role,
   }))
@@ -185,7 +193,7 @@ export default async function EditStartupPage({
             </Button>
           </div>
         </div>
-        <DeleteStartupButton startupId={id} startupName={startup.name} />
+        <DeleteStartupButton startupId={id} startupName={startup.name} soloFounders={soloFounders} />
       </div>
 
       <StartupForm
