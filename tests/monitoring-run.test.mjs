@@ -1,5 +1,5 @@
 // End-to-end run of the signal monitor against an in-memory database, with
-// the network (feeds, BODACC and the Claude API) replaced by canned replies.
+// the network (feeds, BODACC, Pappers and the Claude API) replaced by canned replies.
 // Run with `npm test`.
 import { test, beforeEach, afterEach } from "node:test"
 import assert from "node:assert/strict"
@@ -17,6 +17,9 @@ function fakeAnalysis(prompt) {
   if (prompt.includes("Procédures collectives")) {
     return { ...base, is_about_company: true, confidence: 0.95, signal_type: "restructuring", title: "Jemba enters safeguard proceedings", signal_date: "2026-10-08", strength: 5 }
   }
+  if (prompt.includes("Augmentation du capital social")) {
+    return { ...base, is_about_company: true, confidence: 0.8, signal_type: "fundraising", title: "Jemba files a capital increase", signal_date: "2026-10-09" }
+  }
   if (prompt.includes("Jemba lève")) {
     return { ...base, is_about_company: true, confidence: 0.9, signal_type: "fundraising", title: "Jemba raises €3M", signal_date: "2026-10-20", funding_amount_eur: 3, funding_stage: "seed", investors: "Elaia" }
   }
@@ -31,6 +34,17 @@ let claudeFailsOn
 let rejectStructured
 // When set, the plain (non-structured) request gets this text instead of JSON.
 let plainAnswer
+// What Pappers answers: an HTTP status, and the company record (dates relative to today).
+let pappersStatus
+let pappersCapital
+const isoDaysAgo = (n) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
+function pappersCompany() {
+  const record = JSON.parse(fixture("pappers-entreprise.json"))
+  record.capital = pappersCapital
+  record.depots_actes[0].date_depot = isoDaysAgo(10)
+  record.representants[1].date_prise_de_poste = isoDaysAgo(20)
+  return record
+}
 const realFetch = globalThis.fetch
 const NAMESAKE_RSS = `<?xml version="1.0"?><rss version="2.0"><channel><title>Google News</title>
 <item><title>Jemba, le restaurant jamaïcain, ouvre à Lyon - Le Progrès</title><link>https://news.google.com/rss/articles/NAMESAKE</link>
@@ -43,6 +57,10 @@ beforeEach(() => {
   claudeFailsOn = null
   rejectStructured = false
   plainAnswer = null
+  pappersStatus = 200
+  pappersCapital = 15000
+  delete process.env.PAPPERS_API_KEY
+  delete process.env.PAPPERS_INTERVAL_DAYS
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input.url
     calls.urls.push(url)
@@ -72,6 +90,15 @@ beforeEach(() => {
     }
     if (url.startsWith("https://bodacc-datadila.opendatasoft.com/")) return reply(fixture("bodacc.json"), "application/json")
     if (url.startsWith("https://news.google.com/")) return reply(googleBody)
+    if (url.startsWith("https://api.pappers.fr/")) {
+      calls.pappers = (calls.pappers ?? 0) + 1
+      // The key travels in a header, never in the URL (which can end up in logs).
+      assert.equal(new Headers(init.headers).get("api-key"), "pappers-test-key")
+      assert.ok(!url.includes("pappers-test-key"))
+      assert.ok(url.startsWith("https://api.pappers.fr/v2/entreprise?siren=912345678"))
+      if (pappersStatus !== 200) return reply(JSON.stringify({ statusCode: pappersStatus, message: "refused" }), "application/json", pappersStatus)
+      return reply(JSON.stringify(pappersCompany()), "application/json")
+    }
     if (url.startsWith("https://www.maddyness.com/")) return reply(fixture("press.rss.xml"))
     return reply("not found", "text/plain", 404)
   }
@@ -226,4 +253,60 @@ test("a plain retry that answers badly still records why the structured request 
   const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
   assert.equal(summary.candidatesCreated, 0)
   assert.ok(summary.errors.some((e) => e.includes("structured request refused (output_config.format: schema not supported); plain retry: answer was not JSON")))
+})
+
+// ---------------------------------------------------------------- Pappers
+
+test("with a Pappers key, register events are read once and queued like any other find", async () => {
+  process.env.PAPPERS_API_KEY = "pappers-test-key"
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.pappers, 1)
+  // BODACC proceedings + press story + Pappers filing (queued) + Pappers new director (dismissed).
+  assert.equal(summary.itemsAnalyzed, 4)
+  assert.equal(summary.candidatesCreated, 3)
+  const filing = db.tables.signal_candidates.find((d) => d.source === "pappers" && d.status !== "dismissed")
+  assert.equal(filing.source_name, "Pappers")
+  assert.equal(filing.signal_type, "fundraising")
+  assert.match(filing.source_url, /^https:\/\/www\.pappers\.fr\/entreprise\/912345678#actes-/)
+  const state = db.tables.monitoring_state[0]
+  assert.ok(state.last_pappers_at)
+  assert.deepEqual(state.pappers_seen, { capital: 15000, closed: false })
+
+  // Next run: the same events are known; a capital change is new.
+  pappersCapital = 20000
+  calls.claude = 0
+  const again = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(again.itemsSeen, 1)
+  assert.equal(calls.claude, 1)
+  assert.ok(db.tables.signal_candidates.some((d) => d.source_url === "https://www.pappers.fr/entreprise/912345678#capital-20000"))
+  assert.deepEqual(db.tables.monitoring_state[0].pappers_seen, { capital: 20000, closed: false })
+})
+
+test("the nightly run reads Pappers only every PAPPERS_INTERVAL_DAYS, and 0 turns it off", async () => {
+  process.env.PAPPERS_API_KEY = "pappers-test-key"
+  const db = seed()
+  db.tables.monitoring_state.push({ organization_id: ORG, enabled: true, search_aliases: [], exclude_terms: [],
+    last_pappers_at: new Date(Date.now() - 5 * 86_400_000).toISOString(), pappers_seen: { capital: 15000, closed: false } })
+  await runMonitoring(db.client, { kind: "cron", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.pappers ?? 0, 0)   // read 5 days ago; default is every 14
+
+  process.env.PAPPERS_INTERVAL_DAYS = "3"
+  await runMonitoring(db.client, { kind: "cron", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.pappers, 1)
+
+  process.env.PAPPERS_INTERVAL_DAYS = "0"
+  db.tables.monitoring_state[0].last_pappers_at = null
+  await runMonitoring(db.client, { kind: "cron", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.pappers, 1)
+})
+
+test("a refused Pappers key is reported once and the other sources still run", async () => {
+  process.env.PAPPERS_API_KEY = "pappers-test-key"
+  pappersStatus = 401
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.ok(summary.errors.includes("Pappers: the API key was refused (401); check PAPPERS_API_KEY"))
+  assert.equal(summary.candidatesCreated, 2)
+  assert.equal(db.tables.monitoring_state[0].last_pappers_at, undefined)
 })

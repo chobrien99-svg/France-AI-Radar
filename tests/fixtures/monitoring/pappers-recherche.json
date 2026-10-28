@@ -1,0 +1,27 @@
+{
+  "resultats": [
+    {
+      "siren": "912345678",
+      "nom_entreprise": "JEMBA",
+      "forme_juridique": "SAS, société par actions simplifiée",
+      "date_creation": "2022-03-14",
+      "code_naf": "62.01Z",
+      "libelle_code_naf": "Programmation informatique",
+      "capital": 12000,
+      "entreprise_cessee": false,
+      "siege": { "ville": "Lyon", "code_postal": "69002" }
+    },
+    {
+      "siren": "801 234 567",
+      "nom_entreprise": "JEMBA RESTAURATION",
+      "forme_juridique": "SARL",
+      "date_creation": "2014-06-01",
+      "libelle_code_naf": "Restauration traditionnelle",
+      "entreprise_cessee": true,
+      "siege": { "ville": "Lyon" }
+    },
+    { "siren": "123", "nom_entreprise": "BAD SIREN" },
+    { "siren": "998877665" }
+  ],
+  "total": 4
+}

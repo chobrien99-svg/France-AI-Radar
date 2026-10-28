@@ -11,6 +11,7 @@ morning.
 | Source | What it finds | Notes |
 |---|---|---|
 | **BODACC** (official register) | Capital increases, changes of directors, head-office moves, insolvency proceedings, deregistration | Needs a SIREN under the startup's Legal entities. Annual-accounts filings are skipped. Lags the real event by days to weeks. |
+| **Pappers** (paid register data) | Documents filed at the registry (minutes of a capital increase, updated statutes; often weeks before BODACC), new directors, a change of share capital, closure | Needs a SIREN and `PAPPERS_API_KEY`. Each startup's record is read once every 14 days (1 credit, about €0.12 on a pay-as-you-go pack of 500 credits for €60): roughly 90 credits a month for 42 startups. **Check now** always reads it (1 credit). Annual accounts are skipped. |
 | **Tech press feeds** | Funding, launches, partnerships, hires | The list is in `lib/monitoring/feeds.ts`. A feed that stops working shows up in the run log. |
 | **Google News** | Wider coverage, French and English, last 14 days | Unofficial feed; if Google changes it, the other two sources keep working. |
 
@@ -34,6 +35,7 @@ The **Signal monitoring** box on each startup's edit page lets you:
 - **switch the nightly check off** for that startup;
 - add **other names** to search for (a brand or product name);
 - add **ignore** words for namesakes. For example, a startup called "Axone" could ignore "neurone";
+- **Find on Pappers** (only shown when the startup has no SIREN): searches Pappers by name and lists up to five companies with their city, creation date and activity. Clicking **Use this one** saves that company as the startup's legal entity. Check the details first: names are often shared.
 - **Check now**, which runs the whole check for that startup straight away. Use it after adding a startup or changing its names.
 
 ## Settings (Vercel environment variables)
@@ -45,6 +47,8 @@ The **Signal monitoring** box on each startup's edit page lets you:
 | `RESEND_API_KEY` | for the email (already set) | Sends the morning digest. |
 | `MONITOR_MODEL` | no | Another Claude model, e.g. `claude-sonnet-5-5`, if relevance needs more care. |
 | `MONITOR_MAX_ANALYSES` | no | Claude calls per night; default 150. |
+| `PAPPERS_API_KEY` | for Pappers | Pappers API key (moncompte.pappers.fr › API). Without it, Pappers is skipped. If the key is refused or the credits run out, the run log says so once and the other sources carry on. |
+| `PAPPERS_INTERVAL_DAYS` | no | Days between two reads of a startup's Pappers record; default 14. `0` stops the nightly reads (Check now still reads it). |
 
 The schedule is in `vercel.json` (`/api/cron/monitor-signals`, 01:23 UTC). A run stops starting new startups after four minutes; the ones it didn't reach go first the next night.
 

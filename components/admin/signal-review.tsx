@@ -14,7 +14,7 @@ export type Candidate = {
   organization_id: string
   organization_name: string
   organization_slug: string | null
-  source: "bodacc" | "press_rss" | "google_news"
+  source: "bodacc" | "press_rss" | "google_news" | "pappers"
   source_url: string
   source_name: string | null
   source_published_at: string | null
@@ -52,6 +52,7 @@ const SOURCE_LABELS: Record<Candidate["source"], string> = {
   bodacc: "Official register",
   press_rss: "Press",
   google_news: "Google News",
+  pappers: "Pappers (register)",
 }
 
 const typeLabel = (v: string) => SIGNAL_TYPES.find((t) => t.value === v)?.label ?? v
