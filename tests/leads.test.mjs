@@ -8,6 +8,7 @@ import { fakeSupabase } from "./fake-supabase.mjs"
 import { describeOfficer, parseDirectory, scoreLead } from "@/lib/leads/parse"
 import { collectEvidence, researchAdjustment, validateResearch } from "@/lib/leads/research"
 import { researchLeadNow, vetLeads } from "@/lib/leads/vet"
+import { findWebsites, siteGuesses } from "@/lib/leads/websites"
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/leads/${name}`, import.meta.url), "utf8"))
 const CLARA = "131609539"
@@ -103,6 +104,7 @@ test("validateResearch keeps only links the search actually returned", () => {
 let calls
 let claudeStatus
 let flaky
+let liveSites
 const realFetch = globalThis.fetch
 
 beforeEach(() => {
@@ -111,6 +113,7 @@ beforeEach(() => {
   calls = { directory: [], claude: [] }
   claudeStatus = 200
   flaky = 0
+  liveSites = {}
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input.url
     const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
@@ -126,6 +129,13 @@ beforeEach(() => {
       if (q === "130870025") return json(fixture("directory-beroua-holding.json"))
       if (q === "824128466") return json(fixture("directory-cignoni-holding.json"))
       return json({ results: [], total_results: 0 })
+    }
+    if (url in liveSites) {
+      calls.sites = [...(calls.sites ?? []), url]
+      const landed = liveSites[url]
+      const res = new Response("<html></html>", { status: 200, headers: { "content-type": "text/html" } })
+      Object.defineProperty(res, "url", { value: landed })
+      return res
     }
     if (url.startsWith("https://api.anthropic.com/")) {
       const body = JSON.parse(init.body)
@@ -245,6 +255,31 @@ test("research is given the trading name and the people behind founders' holding
   assert.match(prompt, /Trading name in the register: FIVE ANGELS/)
   assert.match(prompt, /Officers: FOURTICQ HOLDING \(Simon Fourticq\), Président de SAS; BEROUA HOLDING \(Assia Beroua\), Directeur Général/)
   assert.match(calls.claude[0].system, /trade under a brand or product name that differs from the legal name/)
+  assert.doesNotMatch(prompt, /Addresses built from its names/)   // none of the guessed sites answered
+})
+
+test("the obvious web addresses for the brand are tried, and the ones that answer go to the research", async () => {
+  assert.deepEqual(siteGuesses(["FIVE ANGELS", "ORAKLIA TECHNOLOGIES"]), [
+    "https://five-angels.com/", "https://five-angels.fr/", "https://five-angels.ai/", "https://five-angels.io/",
+    "https://fiveangels.com/", "https://fiveangels.fr/", "https://fiveangels.ai/", "https://fiveangels.io/",
+    "https://oraklia.com/", "https://oraklia.fr/", "https://oraklia.ai/", "https://oraklia.io/",
+    "https://oraklia-technologies.com/", "https://oraklia-technologies.fr/", "https://oraklia-technologies.ai/", "https://oraklia-technologies.io/",
+  ])
+  assert.deepEqual(siteGuesses(["Noïa Labs"]).slice(0, 2), ["https://noia.com/", "https://noia.fr/"])
+  assert.deepEqual(siteGuesses(["IA"]), [])   // nothing left to guess from
+
+  liveSites = {
+    "https://five-angels.com/": "https://five-angels.com/fr",
+    "https://oraklia.com/": "https://www.sedo.com/search/details/?domain=oraklia.com",   // for sale: not the company's
+  }
+  assert.deepEqual(await findWebsites(["FIVE ANGELS", "ORAKLIA TECHNOLOGIES"]), ["https://five-angels.com/"])
+
+  const db = fakeSupabase({ company_leads: [
+    { siren: ORAKLIA, name: "ORAKLIA TECHNOLOGIES", status: "new", first_seen_at: "2026-10-28T18:00:00Z", checked_at: null, score: null, score_reasons: [], research: null, researched_at: null },
+  ] })
+  await vetLeads(db.client, { deadline: Date.now() + 60_000 })
+  assert.match(calls.claude[0].messages[0].content, /answer with a page \(not checked; they may belong to someone else\): https:\/\/five-angels\.com\//)
+  assert.match(calls.claude[0].system, /Search the brand together with a founder's surname/)
 })
 
 test("profiles quoted on a page Claude read are kept; invented ones are dropped", () => {
