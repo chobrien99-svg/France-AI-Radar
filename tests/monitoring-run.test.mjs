@@ -29,6 +29,8 @@ let googleBody
 let claudeFailsOn
 // When true, the API refuses every structured-output request with a 400.
 let rejectStructured
+// When set, the plain (non-structured) request gets this text instead of JSON.
+let plainAnswer
 const realFetch = globalThis.fetch
 const NAMESAKE_RSS = `<?xml version="1.0"?><rss version="2.0"><channel><title>Google News</title>
 <item><title>Jemba, le restaurant jamaïcain, ouvre à Lyon - Le Progrès</title><link>https://news.google.com/rss/articles/NAMESAKE</link>
@@ -40,6 +42,7 @@ beforeEach(() => {
   googleBody = EMPTY_RSS
   claudeFailsOn = null
   rejectStructured = false
+  plainAnswer = null
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input.url
     calls.urls.push(url)
@@ -56,10 +59,14 @@ beforeEach(() => {
       }
       assert.equal(body.model, "claude-haiku-5-5")
       if (body.output_config) assert.equal(body.output_config.format.type, "json_schema")
-      else assert.match(prompt, /Reply with only a JSON object/)
+      else {
+        assert.match(prompt, /Reply with only a JSON object/)
+        assert.match(prompt, /funding_amount_eur \(number or null\) — Fundraising only: amount in MILLIONS of euros/)
+        assert.match(prompt, /signal_type \(string one of: fundraising, /)
+      }
       return reply(JSON.stringify({
         id: `msg_${calls.claude}`, type: "message", role: "assistant", model: body.model,
-        content: [{ type: "text", text: JSON.stringify(fakeAnalysis(prompt)) }],
+        content: [{ type: "text", text: !body.output_config && plainAnswer ? plainAnswer : JSON.stringify(fakeAnalysis(prompt)) }],
         stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 100, output_tokens: 50 },
       }), "application/json")
     }
@@ -210,4 +217,13 @@ test("when both attempts fail, the API's own message is in the run log", async (
   const db = seed()
   const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
   assert.ok(summary.errors.some((e) => e.includes("structured request refused (boom)") && e.includes("Claude API error 400: boom")))
+})
+
+test("a plain retry that answers badly still records why the structured request was refused", async () => {
+  rejectStructured = true
+  plainAnswer = "Sorry, I can't tell."
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(summary.candidatesCreated, 0)
+  assert.ok(summary.errors.some((e) => e.includes("structured request refused (output_config.format: schema not supported); plain retry: answer was not JSON")))
 })

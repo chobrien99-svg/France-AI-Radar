@@ -9,9 +9,21 @@ const MODEL = process.env.MONITOR_MODEL || "claude-haiku-5-5"
 
 // Used only if the API refuses the structured-output request: the same
 // question, with the shape spelled out in the prompt instead.
+// Each key's type, allowed values and meaning come from ANALYSIS_SCHEMA, so
+// units (funding in millions of euros) and enums are the same in both forms.
+function describeField(name: string, spec: Record<string, unknown>): string {
+  const branches = (spec.anyOf as Record<string, unknown>[] | undefined) ?? [spec]
+  const main = branches.find((b) => b.type !== "null") ?? spec
+  const nullable = branches.some((b) => b.type === "null")
+  const values = Array.isArray(main.enum) ? ` one of: ${(main.enum as string[]).join(", ")}` : ""
+  const note = typeof main.description === "string" ? ` — ${main.description}` : typeof spec.description === "string" ? ` — ${spec.description}` : ""
+  return `- ${name} (${String(main.type)}${nullable ? " or null" : ""}${values})${note}`
+}
+
 const PLAIN_JSON_INSTRUCTION = `
 
-Reply with only a JSON object (no prose, no code fence) with exactly these keys: ${ANALYSIS_SCHEMA.required.join(", ")}. Use null for unknown optional values.`
+Reply with only a JSON object (no prose, no code fence) with exactly these keys:
+${Object.entries(ANALYSIS_SCHEMA.properties).map(([k, v]) => describeField(k, v as Record<string, unknown>)).join("\n")}`
 
 let client: Anthropic | null = null
 
@@ -83,11 +95,13 @@ export async function analyzeItem(
   } catch (err) {
     if (!(err instanceof Anthropic.BadRequestError)) return failure(err)
     // The request shape was refused (400). Log why, then try the plain form once.
-    console.error("[monitoring] structured request refused:", apiMessage(err))
+    const reason = `structured request refused (${apiMessage(err)}); plain retry: `
+    console.error("[monitoring]", reason)
     try {
-      return await ask(false)
+      const retry = await ask(false)
+      return "error" in retry ? { error: reason + retry.error } : retry
     } catch (retryErr) {
-      return failure(retryErr, `structured request refused (${apiMessage(err)}); plain retry: `)
+      return failure(retryErr, reason)
     }
   }
 }
