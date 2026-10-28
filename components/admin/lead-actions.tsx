@@ -41,8 +41,8 @@ export function LeadActions({ siren, status }: { siren: string; status: Status }
   )
 }
 
-/** Web research on one company now (about $0.05). */
-export function LeadResearchButton({ siren }: { siren: string }) {
+/** Web research on one company now (about €0.10), or again after an earlier result. */
+export function LeadResearchButton({ siren, again = false }: { siren: string; again?: boolean }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,7 +59,7 @@ export function LeadResearchButton({ siren }: { siren: string }) {
   return (
     <>
       <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={research}>
-        {busy ? "Searching the web… (up to a minute)" : "Research now"}
+        {busy ? "Searching the web… (up to a minute)" : again ? "Research again" : "Research now"}
       </Button>
       {error && <span className="text-destructive">{error}</span>}
     </>

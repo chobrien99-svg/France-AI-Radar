@@ -307,3 +307,46 @@ test("companies checked before holdings were followed are checked again, and Res
   assert.equal(calls.directory[0], ORAKLIA)
   assert.match(calls.claude.at(-1).messages[0].content, /FOURTICQ HOLDING \(Simon Fourticq\)/)
 })
+
+test("Research again: a failed re-run keeps the last good result, and a new verdict applies to the uncapped register score", async () => {
+  process.env.LEAD_RESEARCH_PER_DAY = "0"
+  const good = { verdict: "startup", confidence: 0.8, summary: "Five Angels app.", brand: "Five Angels", website: "https://five-angels.com", founders: [], profiles: [], links: [], researchedWith: "claude-sonnet-5-5" }
+  const row = {
+    siren: CLARA, name: "Clara Solutions", status: "new", first_seen_at: "2026-10-28T18:00:00Z",
+    checked_at: "2026-10-29T08:00:00Z", naf_code: "58.29A", directors: [], research: good, researched_at: "2026-10-29T08:05:00Z",
+    score: 100, score_reasons: ["+20 software or R&D activity", "+10 3 officers (people or their holding companies)", "+20 web research: looks like an AI product startup"],
+  }
+  // Claude fails: the earlier summary stays.
+  claudeStatus = 400
+  const db = fakeSupabase({ company_leads: [structuredClone(row)] })
+  const failed = await researchLeadNow(db.client, CLARA)
+  assert.match(failed.errors[0], /research failed/)
+  assert.deepEqual(lead(db, CLARA).research, good)
+
+  // The register score here is 80 (+20 +10); the old +20 capped it at 100. An "unclear" re-run goes back to 80, not 100 - 20.
+  claudeStatus = 200
+  const db2 = fakeSupabase({ company_leads: [{ ...structuredClone(row), score: 100,
+    score_reasons: ["+20 software or R&D activity", "+10 3 officers (people or their holding companies)", "+10 a company among its officers", "+20 web research: looks like an AI product startup"] }] })
+  // Keep the register check from rescoring: the canned directory reply for CLARA is the real one (80 from register).
+  await researchLeadNow(db2.client, CLARA)
+  const after = lead(db2, CLARA)
+  assert.equal(after.research.verdict, "startup")
+  assert.equal(after.score, 100)   // 80 + 20, capped
+  assert.deepEqual(after.score_reasons.filter((r) => r.includes("web research")), ["+20 web research: looks like an AI product startup"])
+})
+
+test("a new verdict applies to the register score, not to a score already capped at 0", async () => {
+  process.env.LEAD_RESEARCH_PER_DAY = "0"
+  // OBSIDIA PARTNERS: 50 -30 -20 = 0 from the register; an earlier "consultancy" (-30) left it capped at 0.
+  const db = fakeSupabase({ company_leads: [{
+    siren: OBSIDIA, name: "OBSIDIA PARTNERS", status: "new", first_seen_at: "2026-10-28T18:00:00Z",
+    checked_at: "2026-10-29T08:00:00Z", naf_code: "70.22Z", directors: [], researched_at: "2026-10-29T08:05:00Z",
+    research: { verdict: "consultancy", confidence: 0.9, summary: "A consultancy.", brand: null, website: null, founders: [], profiles: [], links: [], researchedWith: "claude-sonnet-5-5" },
+    score: 0, score_reasons: ["-30 consulting activity", '-20 "PARTNERS" in the name', "-30 web research: looks like a consultancy or service business"],
+  }] })
+  await researchLeadNow(db.client, OBSIDIA)   // the canned answer for any company but Clara is "unclear"
+  const o = lead(db, OBSIDIA)
+  assert.equal(o.research.verdict, "unclear")
+  assert.equal(o.score, 0)   // reversing the capped -30 would have given 30
+  assert.ok(!o.score_reasons.some((r) => r.includes("web research")))
+})
