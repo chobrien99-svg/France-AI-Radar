@@ -117,6 +117,16 @@ export async function vetLeads(svc: SupabaseClient, opts: { deadline: number; si
 }
 
 /**
+ * The register-only score, rebuilt from its reasons ("+20 software…", "-30
+ * consulting…"; lines without points count 0), so a new research verdict is
+ * applied to the unclamped base rather than to a score already capped at 0 or 100.
+ */
+function baseScore(registerReasons: string[]): number {
+  const raw = registerReasons.reduce((n, r) => n + (parseInt(r, 10) || 0), 50)
+  return Math.max(0, Math.min(100, raw))
+}
+
+/**
  * Looks one company up in the directory (and the people behind its
  * holdings), rescores it and saves the facts. True, or a short error.
  */
@@ -156,18 +166,19 @@ async function researchOne(svc: SupabaseClient, lead: Lead, summary: VetSummary,
   const result = await researchCompany(lead.siren, lead.name ?? lead.siren, factsFromRow(lead))
   const researchedAt = new Date().toISOString()
   if ("error" in result) {
-    // Recorded (and counted against today's allowance) so a failing company isn't retried every night.
     note(`${lead.name ?? lead.siren}: research failed: ${result.error}`)
+    // A failed re-run keeps the last good result. A first attempt is recorded (and
+    // counted against today's allowance) so a failing company isn't retried every night.
+    if (lead.research && !("error" in lead.research && lead.research.error)) return
     await svc.from("company_leads").update({ research: { error: result.error }, researched_at: researchedAt }).eq("siren", lead.siren)
     return
   }
   const adjust = researchAdjustment(result)
   const reasons = (lead.score_reasons ?? []).filter((r) => !r.includes("web research:"))
-  const baseScore = (lead.score ?? 50) - (lead.score_reasons ?? []).filter((r) => r.includes("web research:")).reduce((n, r) => n + parseInt(r, 10), 0)
   const { error } = await svc.from("company_leads").update({
     research: result,
     researched_at: researchedAt,
-    score: Math.max(0, Math.min(100, baseScore + (adjust?.points ?? 0))),
+    score: Math.max(0, Math.min(100, baseScore(reasons) + (adjust?.points ?? 0))),
     score_reasons: adjust ? [...reasons, adjust.reason] : reasons,
   }).eq("siren", lead.siren)
   if (error) note(`${lead.siren}: could not save the research: ${error.message}`)
