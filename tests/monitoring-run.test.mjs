@@ -117,7 +117,7 @@ test("a run queues credible finds, skips known ones and namesakes, and logs itse
   assert.equal(run.kind, "manual")
   assert.ok(run.finished_at)
   assert.equal(run.candidates_created, 2)
-  assert.ok(run.errors.some((e) => e.startsWith("press feed FrenchWeb: HTTP 404")))
+  assert.ok(run.errors.some((e) => e.startsWith("press feed Sifted: HTTP 404")))
 })
 
 test("a second run finds nothing new and calls Claude for nothing", async () => {
@@ -180,4 +180,11 @@ test("a filing Claude couldn't read is fetched again next run", async () => {
   assert.equal(second.candidatesCreated, 1)
   assert.equal(db.tables.signal_candidates.find((d) => d.source === "bodacc").signal_type, "restructuring")
   assert.equal(db.tables.monitoring_state[0].last_bodacc_date, "2026-10-15")
+})
+
+test("a reply that isn't a feed is reported, not taken as 'no news'", async () => {
+  googleBody = "<!doctype html><html><body>Before you continue to Google</body></html>"
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.ok(summary.errors.includes("Jemba: Google News reply was not a news feed"))
 })
