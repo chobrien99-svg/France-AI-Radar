@@ -17,10 +17,16 @@ async function get(url: string, accept: string): Promise<string> {
   return res.text()
 }
 
+/** A 200 that isn't RSS/Atom (a consent or error page) must not pass as "no news". */
+function assertFeed(body: string): string {
+  if (!/<(rss|feed)[\s>]/i.test(body.slice(0, 2000))) throw new Error("reply was not a news feed")
+  return body
+}
+
 /** Every press feed, fetched in parallel. Failures are returned, not thrown. */
 export async function fetchPressFeeds(): Promise<{ items: FoundItem[]; errors: string[] }> {
   const results = await Promise.allSettled(
-    PRESS_FEEDS.map(async (f) => parseFeed(await get(f.url, "application/rss+xml, application/atom+xml, text/xml"), "press_rss", f.name)),
+    PRESS_FEEDS.map(async (f) => parseFeed(assertFeed(await get(f.url, "application/rss+xml, application/atom+xml, text/xml")), "press_rss", f.name)),
   )
   const items: FoundItem[] = []
   const errors: string[] = []
@@ -55,7 +61,7 @@ export async function fetchGoogleNews(target: MatchTarget): Promise<FoundItem[]>
   const out: FoundItem[] = []
   for (const e of EDITIONS) {
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=${e.hl}&gl=${e.gl}&ceid=${e.ceid}`
-    for (const it of parseFeed(await get(url, "application/rss+xml"), "google_news", "Google News")) {
+    for (const it of parseFeed(assertFeed(await get(url, "application/rss+xml")), "google_news", "Google News")) {
       // Google matches loosely; keep only items that really name the startup.
       if (seen.has(it.url) || !mentions(`${it.title} ${it.excerpt ?? ""}`, target)) continue
       seen.add(it.url)
@@ -77,8 +83,14 @@ export async function fetchBodacc(sirenRaw: string, since: string): Promise<Foun
     order_by: "dateparution desc",
     limit: "50",
   })
-  const body = JSON.parse(await get(`${BODACC_API}?${params}`, "application/json")) as { results?: Record<string, unknown>[] }
-  const own = (body.results ?? []).filter((r) => {
+  let body: { results?: Record<string, unknown>[] }
+  try {
+    body = JSON.parse(await get(`${BODACC_API}?${params}`, "application/json"))
+  } catch (err) {
+    throw err instanceof SyntaxError ? new Error("reply was not JSON") : err
+  }
+  if (!Array.isArray(body.results)) throw new Error("unexpected reply (no results list)")
+  const own = body.results.filter((r) => {
     const reg = Array.isArray(r.registre) ? r.registre.join(" ") : String(r.registre ?? "")
     return reg.replace(/\D/g, "").includes(siren)
   })
