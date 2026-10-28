@@ -27,6 +27,8 @@ let calls
 // Per-test switches: what Google News returns, and an item text Claude fails on.
 let googleBody
 let claudeFailsOn
+// When true, the API refuses every structured-output request with a 400.
+let rejectStructured
 const realFetch = globalThis.fetch
 const NAMESAKE_RSS = `<?xml version="1.0"?><rss version="2.0"><channel><title>Google News</title>
 <item><title>Jemba, le restaurant jamaïcain, ouvre à Lyon - Le Progrès</title><link>https://news.google.com/rss/articles/NAMESAKE</link>
@@ -37,6 +39,7 @@ beforeEach(() => {
   calls = { claude: 0, urls: [] }
   googleBody = EMPTY_RSS
   claudeFailsOn = null
+  rejectStructured = false
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input.url
     calls.urls.push(url)
@@ -48,8 +51,12 @@ beforeEach(() => {
       if (claudeFailsOn && prompt.includes(claudeFailsOn)) {
         return reply(JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "boom" } }), "application/json", 400)
       }
+      if (rejectStructured && body.output_config) {
+        return reply(JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "output_config.format: schema not supported" } }), "application/json", 400)
+      }
       assert.equal(body.model, "claude-haiku-5-5")
-      assert.equal(body.output_config.format.type, "json_schema")
+      if (body.output_config) assert.equal(body.output_config.format.type, "json_schema")
+      else assert.match(prompt, /Reply with only a JSON object/)
       return reply(JSON.stringify({
         id: `msg_${calls.claude}`, type: "message", role: "assistant", model: body.model,
         content: [{ type: "text", text: JSON.stringify(fakeAnalysis(prompt)) }],
@@ -187,4 +194,20 @@ test("a reply that isn't a feed is reported, not taken as 'no news'", async () =
   const db = seed()
   const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
   assert.ok(summary.errors.includes("Jemba: Google News reply was not a news feed"))
+})
+
+test("if the structured request is refused, the plain retry still queues the draft and the reason is logged", async () => {
+  rejectStructured = true
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(summary.candidatesCreated, 2)
+  assert.equal(calls.claude, 4)   // each item: refused, then answered
+  assert.equal(db.tables.signal_candidates.find((d) => d.source === "press_rss").funding_amount_eur, 3)
+})
+
+test("when both attempts fail, the API's own message is in the run log", async () => {
+  claudeFailsOn = "Procédures collectives"
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.ok(summary.errors.some((e) => e.includes("structured request refused (boom)") && e.includes("Claude API error 400: boom")))
 })
