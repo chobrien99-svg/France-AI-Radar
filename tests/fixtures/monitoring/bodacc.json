@@ -1,0 +1,35 @@
+{
+  "total_count": 3,
+  "results": [
+    {
+      "id": "A202601234567",
+      "familleavis": "modification",
+      "familleavis_lib": "Modifications diverses",
+      "typeavis_lib": "Avis initial",
+      "commercant": "JEMBA",
+      "registre": ["912 345 678", "912345678"],
+      "dateparution": "2026-10-10",
+      "modificationsgenerales": "{\"descriptif\": \"Modification survenue sur le capital (augmentation).\"}",
+      "url_complete": "https://www.bodacc.fr/pages/annonces-commerciales-detail/?q.id=id:A202601234567"
+    },
+    {
+      "id": "B202601111111",
+      "familleavis": "dpc",
+      "familleavis_lib": "Dépôts des comptes",
+      "commercant": "JEMBA",
+      "registre": "912 345 678,912345678",
+      "dateparution": "2026-09-01",
+      "depot": "{\"typeDepot\": \"Comptes annuels\"}"
+    },
+    {
+      "id": "C202602222222",
+      "familleavis": "collective",
+      "familleavis_lib": "Procédures collectives",
+      "typeavis_lib": "Jugement d'ouverture",
+      "commercant": "JEMBA",
+      "registre": ["912345678"],
+      "dateparution": "2026-10-15",
+      "jugement": "{\"nature\": \"Jugement d'ouverture d'une procédure de sauvegarde\", \"date\": \"2026-10-08\"}"
+    }
+  ]
+}

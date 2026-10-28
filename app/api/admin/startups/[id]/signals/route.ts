@@ -1,32 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminUser } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { insertSignal, signalFromBody, updateSignalCount } from "@/lib/signals-server"
 
 export const runtime = "nodejs"
-
-async function updateSignalCount(supabase: SupabaseClient, organizationId: string) {
-  const { count } = await supabase
-    .from("signals")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", organizationId)
-
-  const { data: latestSignal } = await supabase
-    .from("signals")
-    .select("signal_date")
-    .eq("organization_id", organizationId)
-    .order("signal_date", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  await supabase
-    .from("organizations")
-    .update({
-      signal_count: count ?? 0,
-      last_signal_date: latestSignal?.signal_date ?? null,
-    })
-    .eq("id", organizationId)
-}
 
 export async function POST(
   request: NextRequest,
@@ -39,25 +16,9 @@ export async function POST(
   const body = await request.json()
   const supabase = await createServiceClient()
 
-  const { data, error } = await supabase
-    .from("signals")
-    .insert({
-      organization_id,
-      signal_type: body.signal_type,
-      signal_date: body.signal_date || null,
-      strength: body.strength ? Number(body.strength) : null,
-      title: body.title,
-      description: body.description || null,
-      source_url: body.source_url || null,
-      source_name: body.source_name || null,
-    })
-    .select("id")
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  await updateSignalCount(supabase, organization_id)
-  return NextResponse.json(data, { status: 201 })
+  const result = await insertSignal(supabase, organization_id, signalFromBody(body))
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: 500 })
+  return NextResponse.json({ id: result.id }, { status: 201 })
 }
 
 export async function PATCH(
@@ -71,24 +32,20 @@ export async function PATCH(
   const signalId = body.signal_id
   if (!signalId) return NextResponse.json({ error: "signal_id required" }, { status: 400 })
 
+  const { id: organization_id } = await params
   const supabase = await createServiceClient()
 
   const { data, error } = await supabase
     .from("signals")
-    .update({
-      signal_type: body.signal_type,
-      signal_date: body.signal_date || null,
-      strength: body.strength ? Number(body.strength) : null,
-      title: body.title,
-      description: body.description || null,
-      source_url: body.source_url || null,
-      source_name: body.source_name || null,
-    })
+    .update(signalFromBody(body))
     .eq("id", signalId)
     .select("id")
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // The date may have changed, which moves last_signal_date.
+  await updateSignalCount(supabase, organization_id)
   return NextResponse.json(data)
 }
 

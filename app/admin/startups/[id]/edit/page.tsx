@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { DeleteStartupButton } from "@/components/admin/delete-startup-button"
 import { LinkedFounders } from "@/components/admin/linked-founders"
 import { LinkedSignals } from "@/components/admin/linked-signals"
+import { MonitoringSettings, type MonitoringState } from "@/components/admin/monitoring-settings"
 import { LinkedGrants } from "@/components/admin/linked-grants"
 import { LinkedFundingRounds } from "@/components/admin/linked-funding-rounds"
 import { LinkedPrograms } from "@/components/admin/linked-programs"
@@ -35,6 +36,7 @@ export default async function EditStartupPage({
     { data: legalEntitiesRaw },
     { data: sectorLinksRaw },
     { data: allSectorsRaw },
+    { data: monitoringRaw },
     vocab,
   ] = await Promise.all([
     supabase.from("organizations").select("*, cities!organizations_city_id_fkey(name), secondary_city:cities!organizations_secondary_city_id_fkey(name), organization_tags(tag, strength), organization_profiles(*)").eq("id", id).single(),
@@ -47,6 +49,7 @@ export default async function EditStartupPage({
     supabase.from("legal_entities").select("*").eq("organization_id", id),
     supabase.from("organization_sectors").select("id, is_primary, sectors(name)").eq("organization_id", id),
     supabase.from("sectors").select("id, name").order("name"),
+    supabase.from("monitoring_state").select("enabled, search_aliases, exclude_terms, last_checked_at").eq("organization_id", id).maybeSingle(),
     loadVocabulary(supabase),
   ])
 
@@ -215,6 +218,12 @@ export default async function EditStartupPage({
       <LinkedSignals
         organizationId={id}
         signals={signals}
+      />
+
+      <MonitoringSettings
+        organizationId={id}
+        state={(monitoringRaw as MonitoringState) ?? null}
+        hasSiren={legalEntities.some((e) => Boolean(e.siren))}
       />
 
       <LinkedGrants

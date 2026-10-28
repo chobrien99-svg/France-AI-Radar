@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Maddyness</title>
+    <link>https://www.maddyness.com</link>
+    <item>
+      <title>Jemba lève 3 millions d&#8217;euros pour démocratiser l&#8217;IA industrielle</title>
+      <link>https://www.maddyness.com/2026/10/20/jemba-leve-3-millions/</link>
+      <pubDate>Mon, 20 Oct 2026 07:30:00 +0000</pubDate>
+      <description><![CDATA[<p>La startup parisienne <strong>Jemba</strong> annonce une levée de fonds de 3 M€ menée par Elaia.</p>]]></description>
+    </item>
+    <item>
+      <title>Les 10 tendances de la French Tech</title>
+      <link>https://www.maddyness.com/2026/10/19/tendances/</link>
+      <pubDate>Sun, 19 Oct 2026 07:30:00 +0000</pubDate>
+      <description>Un tour d'horizon.</description>
+    </item>
+    <item>
+      <title>Sans lien</title>
+    </item>
+  </channel>
+</rss>
