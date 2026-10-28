@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs"
 import { fakeSupabase } from "./fake-supabase.mjs"
 import { describeOfficer, parseDirectory, scoreLead } from "@/lib/leads/parse"
 import { collectEvidence, researchAdjustment, researchPrompt, validateResearch } from "@/lib/leads/research"
-import { vetLeads } from "@/lib/leads/vet"
+import { researchLeadNow, vetLeads } from "@/lib/leads/vet"
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/leads/${name}`, import.meta.url), "utf8"))
 const CLARA = "131609539"
@@ -117,6 +117,7 @@ beforeEach(() => {
     if (url.startsWith("https://recherche-entreprises.api.gouv.fr/search")) {
       const q = new URL(url).searchParams.get("q")
       calls.directory.push(q)
+      calls.directoryAt = [...(calls.directoryAt ?? []), Date.now()]
       if (flaky > 0) { flaky--; return new Response("", { status: 502 }) }
       if (q === CLARA) return json(fixture("directory-clara-solutions.json"))
       if (q === OBSIDIA) return json(fixture("directory-obsidia-partners.json"))
@@ -268,4 +269,41 @@ test("profiles quoted on a page Claude read are kept; invented ones are dropped"
   assert.equal(r.website, "https://five-angels.com")
   assert.deepEqual(r.profiles.map((p) => p.url), ["https://www.linkedin.com/in/assia-beroua/", "https://www.instagram.com/fiveangels_app/"])
   assert.deepEqual(r.links, [{ title: "About", url: "https://five-angels.com/about" }])
+})
+
+test("directory requests are paced, holdings included, and only personal holdings are followed", async () => {
+  const db = fakeSupabase({ company_leads: [
+    { siren: ORAKLIA, name: "ORAKLIA TECHNOLOGIES", status: "new", first_seen_at: "2026-10-28T18:00:00Z", checked_at: null, score: null, score_reasons: [], research: null, researched_at: null },
+  ] })
+  process.env.LEAD_RESEARCH_PER_DAY = "0"
+  await vetLeads(db.client, { deadline: Date.now() + 60_000 })
+  const gaps = calls.directoryAt.slice(1).map((t, i) => t - calls.directoryAt[i])
+  assert.ok(gaps.every((g) => g >= 150), `gaps between directory requests: ${gaps.join(", ")} ms`)
+
+  // An investor or studio on the board is not taken for a founder's holding.
+  const { resolveHoldings } = await import("@/lib/leads/directory")
+  const facts = { directors: [{ name: "EVE STUDIO", role: "Président", isCompany: true, siren: "130532518" }] }
+  calls.directory = []
+  await resolveHoldings(facts)
+  assert.deepEqual(calls.directory, [])
+  assert.equal(facts.directors[0].people, undefined)
+})
+
+test("companies checked before holdings were followed are checked again, and Research now refreshes the facts first", async () => {
+  process.env.LEAD_RESEARCH_PER_DAY = "0"
+  const old = { siren: ORAKLIA, name: "ORAKLIA TECHNOLOGIES", status: "new", first_seen_at: "2026-10-28T18:00:00Z",
+    checked_at: "2026-10-28T19:00:00Z", naf_code: "62.01Z", score: 80, score_reasons: [], research: { error: "x" }, researched_at: "2026-10-28T19:05:00Z",
+    directors: [{ name: "FOURTICQ HOLDING", role: "Président de SAS", isCompany: true }] }
+  const db = fakeSupabase({ company_leads: [structuredClone(old)] })
+  await vetLeads(db.client, { deadline: Date.now() + 60_000 })
+  assert.equal(lead(db, ORAKLIA).brand, "FIVE ANGELS")
+  assert.deepEqual(lead(db, ORAKLIA).directors[0].people, ["Simon Fourticq"])
+
+  // Research now on a stale row: the register is read again before Claude is asked.
+  const db2 = fakeSupabase({ company_leads: [structuredClone(old)] })
+  calls.directory = []
+  const result = await researchLeadNow(db2.client, ORAKLIA)
+  assert.equal(result.checked, 1)
+  assert.equal(calls.directory[0], ORAKLIA)
+  assert.match(calls.claude.at(-1).messages[0].content, /FOURTICQ HOLDING \(Simon Fourticq\)/)
 })

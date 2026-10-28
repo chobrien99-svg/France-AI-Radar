@@ -9,7 +9,7 @@
 // ------------------------------------------------------------------
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { fetchDirectory, resolveHoldings } from "@/lib/leads/directory"
-import { scoreLead, type DirectoryFacts } from "@/lib/leads/parse"
+import { scoreLead, type DirectoryFacts, type Director } from "@/lib/leads/parse"
 import { researchAdjustment, researchCompany, type Research } from "@/lib/leads/research"
 
 type Lead = {
@@ -46,8 +46,6 @@ export function researchPerDay(): number {
 
 export type VetSummary = { checked: number; researched: number; errors: string[] }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
 function factsFromRow(l: Lead): DirectoryFacts | null {
   if (!l.checked_at) return null
   return {
@@ -67,6 +65,8 @@ function factsFromRow(l: Lead): DirectoryFacts | null {
 /** Is this lead due a (re)check? Companies too new for the directory are retried every 3 days for 3 weeks. */
 function needsCheck(l: Lead, now: number): boolean {
   if (!l.checked_at) return true
+  // Checked before holdings were followed (their SIRENs weren't kept): check again once.
+  if (Array.isArray(l.directors) && (l.directors as Director[]).some((d) => d.isCompany && !("siren" in d))) return true
   return !l.naf_code && now - Date.parse(l.checked_at) > 3 * DAY && now - Date.parse(l.first_seen_at) < 21 * DAY
 }
 
@@ -87,40 +87,12 @@ export async function vetLeads(svc: SupabaseClient, opts: { deadline: number; si
   // 1. Free first check.
   for (const lead of leads.filter((l) => needsCheck(l, now)).slice(0, MAX_CHECKS)) {
     if (Date.now() > opts.deadline) break
-    let facts: DirectoryFacts | null
-    try {
-      facts = await fetchDirectory(lead.siren)
-    } catch (err) {
-      note(`${lead.name ?? lead.siren}: ${err instanceof Error ? err.message : "directory lookup failed"}`)
-      if (err instanceof Error && /429/.test(err.message)) break
-      continue
-    }
-    // Founders often sit on the board through personal holdings: find the people behind them.
-    if (facts) await resolveHoldings(facts)
-    const base = scoreLead(lead.name, facts)
-    const reasons = facts ? base.reasons : [...base.reasons, "not in the government directory yet (registered in the last days)"]
-    const adjust = lead.research && !("error" in lead.research && lead.research.error) ? researchAdjustment(lead.research as Research) : null
-    const update = {
-      name: lead.name ?? facts?.name ?? null,
-      brand: facts?.brand ?? null,
-      naf_code: facts?.nafCode ?? null,
-      naf_label: facts?.nafLabel ?? null,
-      legal_form: facts?.legalForm ?? null,
-      created_on: facts?.createdOn ?? null,
-      city: facts?.city ?? null,
-      employer: facts?.employer ?? null,
-      directors: facts?.directors ?? [],
-      score: Math.max(0, Math.min(100, base.score + (adjust?.points ?? 0))),
-      score_reasons: adjust ? [...reasons, adjust.reason] : reasons,
-      checked_at: new Date().toISOString(),
-    }
-    const { error: upErr } = await svc.from("company_leads").update(update).eq("siren", lead.siren)
-    if (upErr) note(`${lead.siren}: could not save the check: ${upErr.message}`)
+    const outcome = await checkOne(svc, lead)
+    if (outcome === true) summary.checked++
     else {
-      Object.assign(lead, update)
-      summary.checked++
+      note(`${lead.name ?? lead.siren}: ${outcome}`)
+      if (/429/.test(outcome)) break
     }
-    await sleep(150)
   }
 
   // 2. Web research on the most promising, within today's allowance.
@@ -142,6 +114,42 @@ export async function vetLeads(svc: SupabaseClient, opts: { deadline: number; si
   }
   await Promise.all(Array.from({ length: PARALLEL }, worker))
   return summary
+}
+
+/**
+ * Looks one company up in the directory (and the people behind its
+ * holdings), rescores it and saves the facts. True, or a short error.
+ */
+async function checkOne(svc: SupabaseClient, lead: Lead): Promise<true | string> {
+  let facts: DirectoryFacts | null
+  try {
+    facts = await fetchDirectory(lead.siren)
+  } catch (err) {
+    return err instanceof Error ? err.message : "directory lookup failed"
+  }
+  // Founders often sit on the board through personal holdings: find the people behind them.
+  if (facts) await resolveHoldings(facts)
+  const base = scoreLead(lead.name, facts)
+  const reasons = facts ? base.reasons : [...base.reasons, "not in the government directory yet (registered in the last days)"]
+  const adjust = lead.research && !("error" in lead.research && lead.research.error) ? researchAdjustment(lead.research as Research) : null
+  const update = {
+    name: lead.name ?? facts?.name ?? null,
+    brand: facts?.brand ?? null,
+    naf_code: facts?.nafCode ?? null,
+    naf_label: facts?.nafLabel ?? null,
+    legal_form: facts?.legalForm ?? null,
+    created_on: facts?.createdOn ?? null,
+    city: facts?.city ?? null,
+    employer: facts?.employer ?? null,
+    directors: facts?.directors ?? [],
+    score: Math.max(0, Math.min(100, base.score + (adjust?.points ?? 0))),
+    score_reasons: adjust ? [...reasons, adjust.reason] : reasons,
+    checked_at: new Date().toISOString(),
+  }
+  const { error } = await svc.from("company_leads").update(update).eq("siren", lead.siren)
+  if (error) return `could not save the check: ${error.message}`
+  Object.assign(lead, update)
+  return true
 }
 
 async function researchOne(svc: SupabaseClient, lead: Lead, summary: VetSummary, note: (m: string) => void) {
@@ -171,6 +179,10 @@ export async function researchLeadNow(svc: SupabaseClient, siren: string): Promi
   const summary: VetSummary = { checked: 0, researched: 0, errors: [] }
   const { data } = await svc.from("company_leads").select("*").eq("siren", siren).maybeSingle()
   if (!data) return { ...summary, errors: ["Not found"] }
-  await researchOne(svc, data as Lead, summary, (m) => summary.errors.push(m))
+  // Refresh the register facts first (free), so the research gets today's officers and trading name.
+  const lead = data as Lead
+  const checked = await checkOne(svc, lead)
+  if (checked === true) summary.checked++
+  await researchOne(svc, lead, summary, (m) => summary.errors.push(m))
   return summary
 }
