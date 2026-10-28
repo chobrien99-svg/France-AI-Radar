@@ -8,13 +8,14 @@
 // How it works: docs/signal-monitoring.md ("Companies to vet").
 // ------------------------------------------------------------------
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { fetchDirectory } from "@/lib/leads/directory"
+import { fetchDirectory, resolveHoldings } from "@/lib/leads/directory"
 import { scoreLead, type DirectoryFacts } from "@/lib/leads/parse"
 import { researchAdjustment, researchCompany, type Research } from "@/lib/leads/research"
 
 type Lead = {
   siren: string
   name: string | null
+  brand: string | null
   status: string
   first_seen_at: string
   checked_at: string | null
@@ -51,6 +52,7 @@ function factsFromRow(l: Lead): DirectoryFacts | null {
   if (!l.checked_at) return null
   return {
     name: l.name,
+    brand: l.brand,
     nafCode: l.naf_code,
     nafLabel: null,
     legalForm: l.legal_form,
@@ -93,11 +95,14 @@ export async function vetLeads(svc: SupabaseClient, opts: { deadline: number; si
       if (err instanceof Error && /429/.test(err.message)) break
       continue
     }
+    // Founders often sit on the board through personal holdings: find the people behind them.
+    if (facts) await resolveHoldings(facts)
     const base = scoreLead(lead.name, facts)
     const reasons = facts ? base.reasons : [...base.reasons, "not in the government directory yet (registered in the last days)"]
     const adjust = lead.research && !("error" in lead.research && lead.research.error) ? researchAdjustment(lead.research as Research) : null
     const update = {
       name: lead.name ?? facts?.name ?? null,
+      brand: facts?.brand ?? null,
       naf_code: facts?.nafCode ?? null,
       naf_label: facts?.nafLabel ?? null,
       legal_form: facts?.legalForm ?? null,

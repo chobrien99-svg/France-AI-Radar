@@ -8,10 +8,19 @@
 // domiciliation address are shown as facts, not counted against.
 // ------------------------------------------------------------------
 
-export type Director = { name: string; role: string | null; isCompany: boolean }
+export type Director = {
+  name: string
+  role: string | null
+  isCompany: boolean
+  /** For a company officer (often a founder's personal holding): its SIREN, and the people behind it. */
+  siren?: string | null
+  people?: string[]
+}
 
 export type DirectoryFacts = {
   name: string | null
+  /** Trading or product name when it differs from the legal name, e.g. FIVE ANGELS for ORAKLIA TECHNOLOGIES. */
+  brand: string | null
   nafCode: string | null
   nafLabel: string | null
   legalForm: string | null
@@ -78,11 +87,17 @@ export function parseDirectory(body: unknown, siren: string): DirectoryFacts | n
     const name = isCompany
       ? str(d.denomination)
       : [str(d.prenoms)?.split(/\s+/)[0], str(d.nom)].filter(Boolean).map((s) => titleCase(s!)).join(" ") || null
-    return name ? [{ name, role: str(d.qualite), isCompany }] : []
+    if (!name) return []
+    return [isCompany ? { name, role: str(d.qualite), isCompany, siren: str(d.siren) } : { name, role: str(d.qualite), isCompany }]
   })
+  const legalName = str(r.nom_raison_sociale)
+  const enseignes = Array.isArray(siege.liste_enseignes) ? (siege.liste_enseignes as unknown[]) : []
+  const brand = [str(siege.nom_commercial), ...enseignes.map(str), str(r.sigle)]
+    .find((b): b is string => Boolean(b) && b!.toUpperCase() !== (legalName ?? "").toUpperCase()) ?? null
   const legal = str(r.nature_juridique)
   return {
-    name: str(r.nom_complet) ?? str(r.nom_raison_sociale),
+    name: legalName ?? str(r.nom_complet),
+    brand,
     nafCode: naf,
     nafLabel: naf ? NAF_LABELS[naf] ?? null : null,
     legalForm: legal ? LEGAL_FORMS[legal] ?? `Legal form ${legal}` : null,
@@ -121,4 +136,15 @@ export function scoreLead(name: string | null, facts: DirectoryFacts | null): Le
   if (backers.length) add(10, `a company among its officers (${backers.map((d) => d.name).join(", ")}): studio, parent company or investor`)
   if (facts?.closed) add(-50, "already closed")
   return { score: Math.max(0, Math.min(100, score)), reasons }
+}
+
+/** The natural-person officers of a company, e.g. the people behind a founder's holding. */
+export function peopleOf(facts: DirectoryFacts | null): string[] {
+  return (facts?.directors ?? []).filter((d) => !d.isCompany).map((d) => d.name)
+}
+
+/** "FOURTICQ HOLDING (Simon Fourticq), Président de SAS" — for prompts and the admin page. */
+export function describeOfficer(d: Director): string {
+  const behind = d.isCompany && d.people?.length ? ` (${d.people.join(", ")})` : ""
+  return `${d.name}${behind}${d.role ? `, ${d.role}` : ""}`
 }

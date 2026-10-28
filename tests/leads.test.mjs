@@ -5,13 +5,17 @@ import { test, beforeEach, afterEach } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { fakeSupabase } from "./fake-supabase.mjs"
-import { parseDirectory, scoreLead } from "@/lib/leads/parse"
-import { researchAdjustment, validateResearch } from "@/lib/leads/research"
+import { describeOfficer, parseDirectory, scoreLead } from "@/lib/leads/parse"
+import { collectEvidence, researchAdjustment, researchPrompt, validateResearch } from "@/lib/leads/research"
 import { vetLeads } from "@/lib/leads/vet"
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/leads/${name}`, import.meta.url), "utf8"))
 const CLARA = "131609539"
 const OBSIDIA = "131976334"
+const ORAKLIA = "131950198"
+// No captured reply for this holding (the directory dropped the connection), so a minimal one.
+const FOURTICQ_HOLDING = { results: [{ siren: "130532518", nom_complet: "FOURTICQ HOLDING", nom_raison_sociale: "FOURTICQ HOLDING", siege: {},
+  dirigeants: [{ nom: "FOURTICQ", prenoms: "SIMON", qualite: "Président de SAS", type_dirigeant: "personne physique" }] }] }
 
 // ---------------------------------------------------------------- directory + score
 
@@ -19,6 +23,7 @@ test("parseDirectory reads a real directory reply: activity, form, city, officer
   const facts = parseDirectory(fixture("directory-clara-solutions.json"), CLARA)
   assert.deepEqual(facts, {
     name: "CLARA SOLUTIONS",
+    brand: null,
     nafCode: "58.29A",
     nafLabel: "System and network software publishing",
     legalForm: "SAS",
@@ -63,10 +68,23 @@ test("scoreLead: a studio among the officers counts in favour, founders' holding
   assert.equal(scoreLead("NAPRIA", { ...base, closed: true, directors: [] }).score, 20)
 })
 
+test("parseDirectory keeps the trading name and the SIRENs of company officers", () => {
+  const facts = parseDirectory(fixture("directory-oraklia-technologies.json"), ORAKLIA)
+  assert.equal(facts.name, "ORAKLIA TECHNOLOGIES")
+  assert.equal(facts.brand, "FIVE ANGELS")
+  assert.deepEqual(facts.directors.map((d) => [d.name, d.siren, d.isCompany]), [
+    ["FOURTICQ HOLDING", "130532518", true],
+    ["BEROUA HOLDING", "130870025", true],
+    ["CIGNONI HOLDING", "824128466", true],
+  ])
+  assert.equal(describeOfficer({ ...facts.directors[2], people: ["Thomas Cignoni", "Mathieu Cignoni"] }),
+    "CIGNONI HOLDING (Thomas Cignoni, Mathieu Cignoni), Directeur Général")
+})
+
 // ---------------------------------------------------------------- research answer
 
 test("validateResearch keeps only links the search actually returned", () => {
-  const seen = new Set(["https://clara.ai/", "https://www.maddyness.com/clara"])
+  const seen = { urls: new Set(["https://clara.ai/", "https://www.maddyness.com/clara"]), text: "" }
   const ok = validateResearch({
     verdict: "startup", confidence: 0.8, summary: "Builds an AI assistant.",
     website: "https://clara.ai/about", founders: ["Victor Huger, CEO"],
@@ -84,6 +102,7 @@ test("validateResearch keeps only links the search actually returned", () => {
 
 let calls
 let claudeStatus
+let flaky
 const realFetch = globalThis.fetch
 
 beforeEach(() => {
@@ -91,14 +110,20 @@ beforeEach(() => {
   delete process.env.LEAD_RESEARCH_PER_DAY
   calls = { directory: [], claude: [] }
   claudeStatus = 200
+  flaky = 0
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input.url
     const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
     if (url.startsWith("https://recherche-entreprises.api.gouv.fr/search")) {
       const q = new URL(url).searchParams.get("q")
       calls.directory.push(q)
+      if (flaky > 0) { flaky--; return new Response("", { status: 502 }) }
       if (q === CLARA) return json(fixture("directory-clara-solutions.json"))
       if (q === OBSIDIA) return json(fixture("directory-obsidia-partners.json"))
+      if (q === ORAKLIA) return json(fixture("directory-oraklia-technologies.json"))
+      if (q === "130532518") return json(FOURTICQ_HOLDING)
+      if (q === "130870025") return json(fixture("directory-beroua-holding.json"))
+      if (q === "824128466") return json(fixture("directory-cignoni-holding.json"))
       return json({ results: [], total_results: 0 })
     }
     if (url.startsWith("https://api.anthropic.com/")) {
@@ -106,7 +131,10 @@ beforeEach(() => {
       calls.claude.push(body)
       if (claudeStatus !== 200) return json({ type: "error", error: { type: "api_error", message: "overloaded" } }, claudeStatus)
       assert.equal(body.model, "claude-sonnet-5-5")
-      assert.deepEqual(body.tools, [{ type: "web_search_20260209", name: "web_search", max_uses: 3, user_location: { type: "approximate", country: "FR" } }])
+      assert.deepEqual(body.tools, [
+        { type: "web_search_20260209", name: "web_search", max_uses: 5, user_location: { type: "approximate", country: "FR" } },
+        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 3, blocked_domains: ["linkedin.com"], max_content_tokens: 20_000 },
+      ])
       if (!body.messages[0].content.includes("SIREN: 131609539")) {
         // Any other company: nothing much found yet.
         return json({
@@ -115,7 +143,7 @@ beforeEach(() => {
           content: [{ type: "text", text: '{"verdict":"unclear","confidence":0.4,"summary":"No public trace yet.","website":null,"founders":[],"links":[]}' }],
         })
       }
-      assert.match(body.messages[0].content, /Officers: Mickael Chansavang \(Président de SAS\)/)
+      assert.match(body.messages[0].content, /Officers: Mickael Chansavang, Président de SAS/)
       return json({
         id: "msg_1", type: "message", role: "assistant", model: body.model, stop_reason: "end_turn", stop_sequence: null,
         usage: { input_tokens: 5000, output_tokens: 300, server_tool_use: { web_search_requests: 2 } },
@@ -197,4 +225,47 @@ test("research stops at the daily allowance, and a failure is recorded instead o
   calls.claude = []
   await vetLeads(db.client, { deadline: Date.now() + 60_000 })
   assert.equal(calls.claude.length, 0)
+})
+
+// ---------------------------------------------------------------- following the founders (the ORAKLIA case)
+
+test("research is given the trading name and the people behind founders' holdings", async () => {
+  const db = fakeSupabase({ company_leads: [
+    { siren: ORAKLIA, name: "ORAKLIA TECHNOLOGIES", status: "new", first_seen_at: "2026-10-28T18:00:00Z", checked_at: null, score: null, score_reasons: [], research: null, researched_at: null },
+  ] })
+  flaky = 1   // the first directory request fails; the retry gets through
+  await vetLeads(db.client, { deadline: Date.now() + 60_000 })
+  const oraklia = lead(db, ORAKLIA)
+  assert.equal(oraklia.brand, "FIVE ANGELS")
+  assert.deepEqual(oraklia.directors.map((d) => d.people), [["Simon Fourticq"], ["Assia Beroua"], ["Mathieu Cignoni", "Thomas Cignoni"]])
+  assert.deepEqual(calls.directory, [ORAKLIA, ORAKLIA, "130532518", "130870025", "824128466"])
+
+  const prompt = calls.claude[0].messages[0].content
+  assert.match(prompt, /Trading name in the register: FIVE ANGELS/)
+  assert.match(prompt, /Officers: FOURTICQ HOLDING \(Simon Fourticq\), Président de SAS; BEROUA HOLDING \(Assia Beroua\), Directeur Général/)
+  assert.match(calls.claude[0].system, /trade under a brand or product name that differs from the legal name/)
+})
+
+test("profiles quoted on a page Claude read are kept; invented ones are dropped", () => {
+  const evidence = { urls: new Set(), text: "" }
+  collectEvidence([
+    { type: "web_search_tool_result", tool_use_id: "s1", content: [{ type: "web_search_result", url: "https://five-angels.com/", title: "Five Angels", encrypted_content: "x", page_age: null }] },
+    { type: "web_fetch_tool_result", tool_use_id: "f1", content: { type: "web_fetch_result", url: "https://five-angels.com/about", retrieved_at: null,
+      content: { type: "document", title: "About", citations: null, source: { type: "text", media_type: "text/plain",
+        data: "Our team: Assia Beroua https://www.linkedin.com/in/assia-beroua/ · Thomas Cignoni https://www.linkedin.com/in/thomas-cignoni-609bb07b/ · instagram.com/fiveangels_app" } } } },
+  ], evidence)
+  const r = validateResearch({
+    verdict: "startup", confidence: 0.8, summary: "Five Angels app.", brand: "Five Angels", website: "https://five-angels.com",
+    founders: ["Assia Beroua", "Thomas Cignoni", "Simon Fourticq"],
+    profiles: [
+      { label: "Assia Beroua on LinkedIn", url: "https://www.linkedin.com/in/assia-beroua/" },
+      { label: "Instagram", url: "https://www.instagram.com/fiveangels_app/" },
+      { label: "Invented", url: "https://www.linkedin.com/in/simon-made-up/" },
+    ],
+    links: [{ title: "About", url: "https://five-angels.com/about" }],
+  }, evidence)
+  assert.equal(r.brand, "Five Angels")
+  assert.equal(r.website, "https://five-angels.com")
+  assert.deepEqual(r.profiles.map((p) => p.url), ["https://www.linkedin.com/in/assia-beroua/", "https://www.instagram.com/fiveangels_app/"])
+  assert.deepEqual(r.links, [{ title: "About", url: "https://five-angels.com/about" }])
 })

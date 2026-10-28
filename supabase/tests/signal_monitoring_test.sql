@@ -86,7 +86,7 @@ BEGIN
     RAISE EXCEPTION 'score 120 accepted';
   EXCEPTION WHEN check_violation THEN NULL;
   END;
-  SELECT count(*) INTO n FROM company_leads WHERE directors = '[]' AND research IS NULL AND score = 72;
+  SELECT count(*) INTO n FROM company_leads WHERE directors = '[]' AND research IS NULL AND brand IS NULL AND score = 72;
   IF n <> 1 THEN RAISE EXCEPTION 'lead ranking defaults wrong'; END IF;
   RAISE NOTICE 'ok: lead scores kept within 0-100';
 

@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { LeadActions, LeadResearchButton, LeadsToolbar } from "@/components/admin/lead-actions"
 import { pappersUrl } from "@/lib/monitoring/parse"
 import { researchPerDay } from "@/lib/leads/vet"
+import { describeOfficer, type Director } from "@/lib/leads/parse"
 
 const TABS = [
   { value: "new", label: "To vet" },
@@ -14,6 +15,7 @@ const TABS = [
 type Lead = {
   siren: string
   name: string | null
+  brand: string | null
   list_name: string | null
   is_new_company: boolean
   status: "new" | "added" | "ignored"
@@ -24,7 +26,7 @@ type Lead = {
   created_on: string | null
   city: string | null
   employer: boolean | null
-  directors: { name: string; role: string | null; isCompany: boolean }[] | null
+  directors: Director[] | null
   score: number | null
   score_reasons: string[] | null
   checked_at: string | null
@@ -33,7 +35,9 @@ type Lead = {
     verdict?: "startup" | "consultancy" | "unclear"
     confidence?: number
     summary?: string
+    brand?: string | null
     website?: string | null
+    profiles?: { label: string; url: string }[]
     founders?: string[]
     links?: { title: string; url: string }[]
   } | null
@@ -115,6 +119,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   <div className="min-w-0">
                     <p className="text-[14px] font-medium text-foreground">
                       <a href={pappersUrl(l.siren)} target="_blank" rel="noreferrer" className="hover:underline">{l.name ?? l.siren}</a>
+                      {l.brand && <span className="font-normal text-muted-foreground"> · trades as {l.brand}</span>}
                       {l.is_new_company && <span className="ml-2 bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">Newly registered</span>}
                     </p>
                     <p className="text-[12px] text-muted-foreground">
@@ -130,7 +135,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                     </p>
                     {l.directors && l.directors.length > 0 && (
                       <p className="text-[12px] text-muted-foreground">
-                        Officers: {l.directors.map((d) => `${d.name}${d.role ? ` (${d.role})` : ""}`).join("; ")}
+                        Officers: {l.directors.map(describeOfficer).join("; ")}
                       </p>
                     )}
                   </div>
@@ -156,10 +161,19 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                       {typeof l.research.confidence === "number" && <span className="font-normal text-muted-foreground"> · confidence {Math.round(l.research.confidence * 100)}%</span>}
                     </p>
                     <p className="mt-0.5 text-muted-foreground">{l.research.summary}</p>
+                    {l.research.brand && <p className="mt-0.5">Known online as: {l.research.brand}</p>}
                     {l.research.website && (
                       <p className="mt-0.5">Website: <a href={l.research.website} target="_blank" rel="noreferrer" className="underline">{l.research.website}</a></p>
                     )}
                     {l.research.founders && l.research.founders.length > 0 && <p className="mt-0.5">People: {l.research.founders.join("; ")}</p>}
+                    {l.research.profiles && l.research.profiles.length > 0 && (
+                      <p className="mt-0.5">
+                        Profiles:{" "}
+                        {l.research.profiles.map((p, i) => (
+                          <span key={p.url}>{i > 0 && " · "}<a href={p.url} target="_blank" rel="noreferrer" className="underline">{p.label || p.url}</a></span>
+                        ))}
+                      </p>
+                    )}
                     {l.research.links && l.research.links.length > 0 && (
                       <ul className="mt-0.5 list-disc pl-4">
                         {l.research.links.map((link) => (
