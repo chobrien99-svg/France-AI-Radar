@@ -41,9 +41,10 @@ let plainAnswer
 // What Pappers answers: an HTTP status, and the company record (dates relative to today).
 let pappersStatus
 let pappersCapital
-// What the Pappers watch-list call answers.
+// What the Pappers watch-list call answers, and the only path it exists at.
 let watchStatus
 let watchBody
+let watchPath
 const isoDaysAgo = (n) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
 function pappersCompany() {
   const record = JSON.parse(fixture("pappers-entreprise.json"))
@@ -68,6 +69,7 @@ beforeEach(() => {
   pappersCapital = 15000
   watchStatus = 201
   watchBody = { notifications_ajoutees: 1 }
+  watchPath = "/v2/surveillance/entreprise/liste"
   delete process.env.PAPPERS_API_KEY
   delete process.env.PAPPERS_INTERVAL_DAYS
   delete process.env.PAPPERS_WATCH_LIST_ID
@@ -106,8 +108,11 @@ beforeEach(() => {
       // The key travels in a header, never in the URL (which can end up in logs).
       assert.equal(new Headers(init.headers).get("api-key"), "pappers-test-key")
       assert.ok(!url.includes("pappers-test-key"))
-      if (url.startsWith("https://api.pappers.fr/v2/surveillance/")) {
+      if (init?.method === "POST") {
         calls.watch = [...(calls.watch ?? []), { url, method: init.method, body: JSON.parse(init.body) }]
+        if (new URL(url).pathname !== watchPath) {
+          return reply(JSON.stringify({ statusCode: 404, error: "Not Found", message: `Route POST:${new URL(url).pathname} not found` }), "application/json", 404)
+        }
         return reply(JSON.stringify(watchBody), "application/json", watchStatus)
       }
       assert.ok(url.startsWith("https://api.pappers.fr/v2/entreprise?siren=912345678"))
@@ -403,7 +408,7 @@ test("with a watch list, Radar startups are added to it once, and paid reads sto
   db.tables.monitoring_inbox = []
   await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
   assert.equal(calls.watch.length, 1)
-  assert.equal(calls.watch[0].url, "https://api.pappers.fr/v2/surveillance/entreprise?id_liste=L1")
+  assert.equal(calls.watch[0].url, "https://api.pappers.fr/v2/surveillance/entreprise/liste?id_liste=L1")
   assert.equal(calls.watch[0].method, "POST")
   assert.deepEqual(calls.watch[0].body, [{ siren: "912345678" }])
   assert.equal(db.tables.monitoring_state[0].pappers_watched_siren, "912345678")
@@ -425,7 +430,7 @@ test("a wrong watch-list ID is reported with Pappers' own message, and the rest 
   const db = seed()
   const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
   assert.equal(calls.watch.length, 1)
-  assert.ok(summary.errors.includes("Pappers watch list: HTTP 404: Liste non trouvée"))
+  assert.ok(summary.errors.includes("Pappers watch list: HTTP 404: Liste non trouvée (/surveillance/entreprise/liste)"))
   assert.equal(db.tables.monitoring_state[0].pappers_watched_siren, undefined)
   assert.equal(summary.candidatesCreated, 3)
 })
@@ -444,4 +449,23 @@ test("the webhook address stores messages only with the right token and a well-f
   assert.equal(db.tables.monitoring_inbox[0].evenement, "notifications.veille")
   assert.equal(db.tables.monitoring_inbox[0].list_id, "1234567890")
   assert.equal(db.tables.monitoring_inbox[0].payload.donnees.siren_entrant[0].siren, "882572894")
+})
+
+test("if Pappers says a watch-list route doesn't exist, the next documented form is tried", async () => {
+  process.env.PAPPERS_API_KEY = "pappers-test-key"
+  process.env.PAPPERS_WATCH_LIST_ID = "L1"
+  watchPath = "/v2/liste"
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.deepEqual(calls.watch.map((c) => new URL(c.url).pathname), ["/v2/surveillance/entreprise/liste", "/v2/surveillance/entreprise", "/v2/liste"])
+  assert.equal(db.tables.monitoring_state[0].pappers_watched_siren, "912345678")
+  assert.ok(!summary.errors.some((e) => e.startsWith("Pappers watch list")))
+
+  // No form exists: the last answer is reported.
+  watchPath = "/nowhere"
+  db.tables.monitoring_state[0].pappers_watched_siren = null
+  calls.watch = []
+  const again = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.watch.length, 4)
+  assert.ok(again.errors.includes("Pappers watch list: HTTP 404: Route POST:/v2/surveillance/liste/entreprise not found (/surveillance/liste/entreprise)"))
 })

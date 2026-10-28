@@ -62,9 +62,11 @@ export function pappersWatchListId(): string | null {
   return process.env.PAPPERS_WATCH_LIST_ID?.trim() || null
 }
 
-// The published docs cut the path off; the first is what other clients use.
-// The others are only tried when Pappers says the route itself doesn't exist.
-const WATCH_PATHS = ["/surveillance/entreprise", "/surveillance/liste/entreprise", "/surveillance/entreprise/liste"]
+// The docs show this operation as "POST /liste/" under a section base URL
+// that the exported docs don't include, and other clients use the second
+// path. Each is tried in turn while Pappers answers that the route doesn't
+// exist; a "liste non trouvée" (wrong list ID) or any other answer stops.
+const WATCH_PATHS = ["/surveillance/entreprise/liste", "/surveillance/entreprise", "/liste", "/surveillance/liste/entreprise"]
 
 /**
  * Adds companies to a surveillance list (included in the subscription, no
@@ -86,9 +88,8 @@ export async function addToWatchList(listId: string, sirens: string[]): Promise<
     if (res.ok) return typeof reply.notifications_ajoutees === "number" ? reply.notifications_ajoutees : 0
     if (res.status === 401) throw new PappersAccountError("Pappers: the API key was refused (401); check PAPPERS_API_KEY")
     if (res.status === 403) throw new PappersAccountError(`Pappers watch list: plan limit reached (403)${message ? `: ${message}` : ""}`)
-    lastError = `Pappers watch list: HTTP ${res.status}${message ? `: ${message}` : ""}`
-    // Only an unknown route is worth another path; "Liste non trouvée" means a wrong list ID.
-    if (res.status !== 404 || !/^route /i.test(message)) break
+    lastError = `Pappers watch list: HTTP ${res.status}${message ? `: ${message}` : ""} (${path})`
+    if (res.status !== 404 || /liste non trouv/i.test(message)) break
   }
   throw new PappersAccountError(lastError)
 }
