@@ -8,6 +8,7 @@
 // quoted from search results or from pages that link to them.
 import Anthropic from "@anthropic-ai/sdk"
 import { describeOfficer, type DirectoryFacts } from "@/lib/leads/parse"
+import { findWebsites } from "@/lib/leads/websites"
 
 // Web search with result filtering needs a Sonnet- or Opus-class model.
 const MODEL = process.env.LEAD_RESEARCH_MODEL || "claude-sonnet-5-5"
@@ -34,8 +35,8 @@ const SYSTEM = `You help the editors of the France AI Radar, a database of Frenc
 You get one company from the French register: its legal name, any trading name, town, activity and officers. Find out what it really is, the way an experienced editor would:
 1. Search the legal name with the town, and any trading name given.
 2. Founders often sit on the board through personal holding companies ("X HOLDING"); the people behind them are listed. Search the founders' names together, and each name with words like "IA", "intelligence artificielle", "startup" or the town.
-3. New startups usually trade under a brand or product name that differs from the legal name, and the founders' own profiles are often not updated yet. When a name keeps coming up next to the founders, search that name too.
-4. When you find the brand's or the company's website, open it (its home, About or Team page) to confirm the founders and to collect the company's and founders' social links. Do not open LinkedIn pages; quote them only from search results or from pages that link to them.
+3. New startups usually trade under a brand or product name that differs from the legal name, and the founders' own profiles are often not updated yet. Search the brand together with a founder's surname or the town, as a brand alone often matches unrelated companies. When a name keeps coming up next to the founders, search that name too.
+4. A new site is often not in search results yet. When addresses built from the company's names are listed as answering, open the most likely one first. When you find the brand's or the company's website, open it (its home, About or Team page) to confirm the founders and to collect the company's and founders' social links. Do not open LinkedIn pages; quote them only from search results or from pages that link to them.
 Look for: website, founders, a product or demo, fundraising, incubator or accelerator programmes, press coverage.
 Then judge: "startup" if it builds its own AI product or technology; "consultancy" if it sells AI consulting, training, integration or freelance services, or is a holding or solo service business; "unclear" if there is still not enough public information (common for companies registered in the last weeks).
 Companies with the same name are common: only use results that match the town, the founders or the activity, and say so when unsure.
@@ -53,7 +54,7 @@ When you have finished searching, reply with only a JSON object (no prose, no co
 - profiles (array of {"label", "url"}: company and founder pages such as LinkedIn, Instagram, X, GitHub, exactly as found)
 - links (array of {"title", "url"}: up to 5 of the most useful other pages you found, such as press or programme pages)`
 
-export function researchPrompt(siren: string, name: string, facts: DirectoryFacts | null): string {
+export function researchPrompt(siren: string, name: string, facts: DirectoryFacts | null, sites: string[] = []): string {
   const lines = [
     `Company: ${name}`,
     facts?.brand && `Trading name in the register: ${facts.brand}`,
@@ -63,6 +64,7 @@ export function researchPrompt(siren: string, name: string, facts: DirectoryFact
     facts?.nafCode && `Activity code: ${facts.nafCode}${facts.nafLabel ? ` (${facts.nafLabel})` : ""}`,
     facts?.city && `City: ${facts.city}`,
     facts?.directors.length ? `Officers: ${facts.directors.map(describeOfficer).join("; ")}` : null,
+    sites.length ? `Addresses built from its names that answer with a page (not checked; they may belong to someone else): ${sites.join(", ")}` : null,
     "Its stated business purpose mentions artificial intelligence (that is why it was flagged).",
   ]
   return lines.filter(Boolean).join("\n") + ANSWER_FORMAT
@@ -144,7 +146,9 @@ let client: Anthropic | null = null
 
 export async function researchCompany(siren: string, name: string, facts: DirectoryFacts | null): Promise<Research | { error: string }> {
   client ??= new Anthropic({ timeout: 120_000, maxRetries: 1 })
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: researchPrompt(siren, name, facts) }]
+  // Free: try five-angels.com and the like, since a week-old site rarely shows up in search yet.
+  const sites = await findWebsites([facts?.brand, name]).catch(() => [])
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: researchPrompt(siren, name, facts, sites) }]
   const tools: Anthropic.ToolUnion[] = [
     { type: "web_search_20260209", name: "web_search", max_uses: MAX_SEARCHES, user_location: { type: "approximate", country: "FR" } },
     { type: "web_fetch_20260209", name: "web_fetch", max_uses: MAX_FETCHES, blocked_domains: ["linkedin.com"], max_content_tokens: 20_000 },
