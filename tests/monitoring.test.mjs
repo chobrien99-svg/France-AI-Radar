@@ -4,7 +4,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { mentions, normalizeText, searchTerms } from "../lib/monitoring/match.ts"
-import { normalizeSiren, pappersUrl, parseBodacc, parseFeed, parsePappersCompany, parsePappersSearch, stripHtml } from "../lib/monitoring/parse.ts"
+import { normalizeSiren, pappersUrl, parseBodacc, parseFeed, parsePappersCompany, parsePappersSearch, parsePappersWebhook, stripHtml } from "../lib/monitoring/parse.ts"
 import { ANALYSIS_SCHEMA, buildPrompt, findPossibleDuplicate, isUsable, validateAnalysis } from "../lib/monitoring/analysis.ts"
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/monitoring/${name}`, import.meta.url), "utf8")
@@ -145,6 +145,58 @@ test("parsePappersCompany reports a capital change and a closure against the las
   ])
   assert.match(items[0].excerpt, /from 12000 € to 15000 €/)
   assert.equal(parsePappersCompany(body, "2026-10-27", { capital: 15000, closed: true }, "2026-10-28").items.length, 0)
+})
+
+test("parsePappersWebhook turns a surveillance message into plain-language changes, leaving out routine ones", () => {
+  const msg = parsePappersWebhook(JSON.parse(fixture("pappers-webhook-entreprises.json")))
+  assert.equal(msg.event, "notifications.entreprises")
+  assert.equal(msg.listId, "1234567890")
+  assert.equal(msg.listName, "GAFA")
+  assert.deepEqual(msg.leads, [])
+  const [google] = msg.changes
+  assert.equal(google.siren, "443061841")
+  const byFragment = Object.fromEntries(google.items.map((i) => [i.url.split("#")[1], i]))
+  assert.deepEqual(Object.keys(byFragment).sort(), [
+    "acte-2023-10-02-proces-verbal-d-assemblee-changement-de-president",
+    "capital-464884017",
+    "depart-2019-05-03-manicle-paul",
+    "dirigeant-2019-05-03-paul-manicle",
+    "etablissement-2024-01-01-44306184100047",
+    "forme-2024-01-01-societe-a-responsabilite-limitee-sarl",
+    "justice-5364",
+    "nom-2024-01-01-google-france",
+    "objet-2024-01-01",
+    "procedure-2023-10-02-6124",
+    "role-2019-05-03-paul-manicle-gerant",
+    "siege-2024-01-01-44306184100047",
+    "statuts-2023-10-02",
+  ])
+  const capital = byFragment["capital-464884017"]
+  assert.equal(capital.title, "Pappers: Share capital changed – GOOGLE FRANCE")
+  assert.equal(capital.excerpt, "From 1,000,000 € to 464,884,017 €")
+  assert.equal(capital.publishedAt, "2024-01-01T00:00:00.000Z")
+  assert.equal(capital.source, "pappers")
+  // DD/MM/YYYY dates and first names given as a list.
+  assert.equal(byFragment["dirigeant-2019-05-03-paul-manicle"].publishedAt, "2019-05-03T00:00:00.000Z")
+  assert.equal(byFragment["role-2019-05-03-paul-manicle-gerant"].excerpt, "Paul Manicle: From Commissaire aux comptes suppléant to Gérant")
+  assert.equal(byFragment["procedure-2023-10-02-6124"].title, "Pappers: Liquidation judiciaire – GOOGLE FRANCE")
+  // A company that is not closed, and an RCS status of "Inscrit", are not news.
+  assert.ok(!google.items.some((i) => /closed|register/i.test(i.title)))
+})
+
+test("parsePappersWebhook reads a saved-search message: new companies become leads", () => {
+  const msg = parsePappersWebhook(JSON.parse(fixture("pappers-webhook-veille.json")))
+  assert.equal(msg.event, "notifications.veille")
+  assert.deepEqual(msg.leads, [{ siren: "882572894", name: "HAYDN HARRIS CONSULTING", isNew: false }])
+  assert.equal(msg.changes.length, 1)
+  assert.deepEqual(msg.changes[0].items.map((i) => i.url.split("#")[1]), [
+    "capital-464884017",
+    "acte-2023-10-02-proces-verbal-d-assemblee-changement-de-president",
+    "dirigeant-2019-05-03-paul-manicle",
+  ])
+  assert.equal(msg.changes[0].items[0].excerpt, "Now 464,884,017 €")
+  assert.deepEqual(parsePappersWebhook({ evenement: "something.else" }).changes, [])
+  assert.deepEqual(parsePappersWebhook(null).leads, [])
 })
 
 // ---------------------------------------------------------------- Claude's answer

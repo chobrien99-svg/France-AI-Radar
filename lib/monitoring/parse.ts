@@ -298,3 +298,141 @@ export function parsePappersCompany(
   }
   return { items: items.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "")), snapshot }
 }
+
+// ------------------------------------------------------------------
+// Pappers webhooks: what Pappers sends when a watched company changes
+// ("notifications.entreprises") or when a saved search ("veille") gains,
+// loses or sees changes in companies ("notifications.veille").
+// ------------------------------------------------------------------
+
+/** "2024-01-01", "2024-01-01 00:00:00" or "03/05/2019" → "2024-01-01". */
+function anyDay(v: unknown): string | null {
+  if (typeof v !== "string") return null
+  const iso = /^(\d{4}-\d{2}-\d{2})/.exec(v)
+  if (iso) return iso[1]
+  const fr = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v.trim())
+  return fr ? `${fr[3]}-${fr[2]}-${fr[1]}` : null
+}
+
+const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
+const list = (v: unknown) => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => x !== null) : [])
+/** A value that may be a string, a number, or a list of strings. */
+const words = (v: unknown) => (Array.isArray(v) ? v.map((x) => str(x)).filter(Boolean).join(" ") : typeof v === "number" ? String(v) : str(v) ?? "")
+const euros = (n: unknown) => (typeof n === "number" ? `${n.toLocaleString("en-GB")} €` : null)
+
+function personName(p: Record<string, unknown>): string | null {
+  const person = [words(p.prenom), words(p.nom)].filter(Boolean).join(" ")
+  return person || str(p.denomination)
+}
+
+function address(a: Record<string, unknown>): string | null {
+  return [str(a.adresse_ligne_1), [str(a.code_postal), str(a.ville)].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null
+}
+
+/** One watched company's changes → items. Routine or BODACC-covered changes are left out. */
+function pappersChanges(siren: string, company: string, e: Record<string, unknown>): FoundItem[] {
+  const items: FoundItem[] = []
+  const add = (fragment: string, title: string, excerpt: string | null, date: string | null) => {
+    items.push({
+      source: "pappers",
+      url: pappersUrl(siren, fragment),
+      title: `Pappers: ${title} – ${company}`,
+      excerpt: excerpt ? clip(excerpt, 800) : null,
+      publishedAt: date ? `${date}T00:00:00.000Z` : null,
+      sourceName: "Pappers",
+    })
+  }
+  const change = (key: string) => obj(e[key])
+  const fromTo = (c: Record<string, unknown>, fmt: (v: unknown) => string | null = (v) => words(v) || null) => {
+    const now = fmt(c.valeur)
+    const before = fmt(c.ancienne_valeur)
+    return before ? `From ${before} to ${now ?? "?"}` : now ? `Now ${now}` : null
+  }
+
+  const capital = change("capital")
+  if (capital && typeof capital.valeur === "number") {
+    add(`capital-${capital.valeur}`, "Share capital changed", fromTo(capital, euros), anyDay(capital.date))
+  }
+  const name = change("nom_entreprise")
+  if (name && str(name.valeur) && name.ancienne_valeur !== undefined) {
+    add(`nom-${anyDay(name.date)}-${slug(words(name.valeur))}`, "Company name changed", fromTo(name), anyDay(name.date))
+  }
+  const form = change("forme_juridique")
+  if (form && str(form.valeur)) add(`forme-${anyDay(form.date)}-${slug(words(form.valeur))}`, "Legal form changed", fromTo(form), anyDay(form.date))
+  const hq = change("siege_social")
+  if (hq) add(`siege-${anyDay(hq.date)}-${words(hq.valeur)}`, "Head office moved", address(hq), anyDay(hq.date))
+  const purpose = change("objet_social")
+  if (purpose && str(purpose.valeur)) {
+    add(`objet-${anyDay(purpose.date)}`, "Stated business purpose changed", `Now: ${words(purpose.valeur)}`, anyDay(purpose.date))
+  }
+  const closed = change("entreprise_cessee")
+  if (closed?.valeur === true) add(`cessation-${anyDay(closed.date)}`, "Company closed", "Registered as closed", anyDay(closed.date))
+  const rcs = change("statut_rcs")
+  if (rcs && /radi/i.test(words(rcs.valeur))) add(`radiation-${anyDay(rcs.date)}`, "Removed from the trade register", `RCS status: ${words(rcs.valeur)}`, anyDay(rcs.date))
+
+  for (const a of list(e.nouvel_acte_publie)) {
+    const acte = str(a.acte) ?? "Document"
+    add(`acte-${anyDay(a.date)}-${slug(acte)}`, `Document filed: ${acte}`, acte, anyDay(a.date))
+  }
+  for (const a of list(e.nouveaux_statuts_publies)) {
+    add(`statuts-${anyDay(a.date)}`, "Updated statutes filed", str(a.acte), anyDay(a.date))
+  }
+  for (const p of list(e.nouveau_dirigeant)) {
+    const who = personName(p)
+    if (who) add(`dirigeant-${anyDay(p.date)}-${slug(who)}`, `New director: ${who}`, `${who} joined the company's officers`, anyDay(p.date))
+  }
+  for (const p of list(e.dirigeant_partant)) {
+    const who = personName(p)
+    if (who) add(`depart-${anyDay(p.date)}-${slug(who)}`, `Director left: ${who}`, `${who} left the company's officers`, anyDay(p.date))
+  }
+  for (const p of list(e.qualite_dirigeant)) {
+    const who = personName(p)
+    if (who) add(`role-${anyDay(p.date)}-${slug(who)}-${slug(words(p.valeur))}`, `Officer role changed: ${who}`, `${who}: ${fromTo(p) ?? ""}`, anyDay(p.date))
+  }
+  for (const s of list(e.nouvel_etablissement)) {
+    add(`etablissement-${anyDay(s.date)}-${words(s.siret)}`, "New establishment opened", address(s), anyDay(s.date))
+  }
+  for (const d of list(e.nouvelle_decision_justice)) {
+    const court = str(d.juridiction) ?? "court"
+    add(`justice-${words(d.id) || anyDay(d.date)}`, `Court decision (${court})`,
+      [str(d.numero) && `Case ${str(d.numero)}`, str(d.position) && `position: ${str(d.position)}`].filter(Boolean).join(", ") || null, anyDay(d.date))
+  }
+  for (const b of list(e.nouvelle_annonce_procedure_collective_publiee)) {
+    const kind = str(b.type_procedure_collective) ?? "Insolvency proceedings"
+    add(`procedure-${anyDay(b.date)}-${words(b.numero_annonce)}`, kind, str(b.annonce), anyDay(b.date))
+  }
+  return items
+}
+
+export type PappersLead = { siren: string; name: string | null; isNew: boolean }
+
+export type PappersWebhook = {
+  event: string
+  listId: string | null
+  listName: string | null
+  /** Changes to companies, by SIREN; only Radar startups' are used. */
+  changes: { siren: string; items: FoundItem[] }[]
+  /** Companies that newly match a saved search (veille). */
+  leads: PappersLead[]
+}
+
+export function parsePappersWebhook(payload: unknown): PappersWebhook {
+  const p = obj(payload) ?? {}
+  const d = obj(p.donnees) ?? {}
+  const event = str(p.evenement) ?? ""
+  const out: PappersWebhook = { event, listId: words(d.id_list) || null, listName: str(d.nom_list), changes: [], leads: [] }
+  const companies = event === "notifications.entreprises" ? list(d.entreprises) : event === "notifications.veille" ? list(d.siren_modifie) : []
+  for (const e of companies) {
+    const siren = normalizeSiren(words(e.siren))
+    if (!siren) continue
+    const name = str(obj(e.details_entreprise)?.nom_entreprise) ?? (words(obj(e.nom_entreprise)?.valeur) || str(e.nom_entreprise)) ?? siren
+    out.changes.push({ siren, items: pappersChanges(siren, name, e) })
+  }
+  if (event === "notifications.veille") {
+    for (const e of list(d.siren_entrant)) {
+      const siren = normalizeSiren(words(e.siren))
+      if (siren) out.leads.push({ siren, name: str(e.nom_entreprise), isNew: e.nouvelle_entreprise === true })
+    }
+  }
+  return out
+}

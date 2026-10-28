@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   try {
     const svc = await createServiceClient()
     const summary = await runMonitoring(svc, { kind: "cron", deadline: Date.now() + RUN_BUDGET_MS })
-    const digest = await sendMonitoringDigest(svc, summary.candidateIds)
+    const digest = await sendMonitoringDigest(svc, summary.candidateIds, summary.leadsAdded)
     return NextResponse.json({ ...summary, candidateIds: undefined, digestsSent: digest.sent })
   } catch (err) {
     console.error("[cron/monitor-signals] failed:", err)

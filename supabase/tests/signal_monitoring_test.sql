@@ -60,6 +60,25 @@ BEGIN
   IF n <> 1 THEN RAISE EXCEPTION 'monitoring_state defaults wrong'; END IF;
   RAISE NOTICE 'ok: monitoring settings default to enabled';
 
+  -- Pappers messages are stored as received; leads hold one row per SIREN.
+  INSERT INTO monitoring_inbox (evenement, list_id, payload) VALUES ('notifications.veille', '1', '{"donnees": {}}');
+  SELECT count(*) INTO n FROM monitoring_inbox WHERE processed_at IS NULL;
+  IF n <> 1 THEN RAISE EXCEPTION 'inbox row not stored'; END IF;
+  INSERT INTO company_leads (siren, name) VALUES ('882572894', 'HAYDN HARRIS CONSULTING');
+  BEGIN
+    INSERT INTO company_leads (siren, name) VALUES ('882572894', 'again');
+    RAISE EXCEPTION 'duplicate lead accepted';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO company_leads (siren) VALUES ('12345');
+    RAISE EXCEPTION 'malformed SIREN accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+  SELECT count(*) INTO n FROM company_leads WHERE status = 'new';
+  IF n <> 1 THEN RAISE EXCEPTION 'lead default status wrong'; END IF;
+  RAISE NOTICE 'ok: Pappers messages stored, leads unique per SIREN';
+
   -- Deleting a startup removes its drafts and settings.
   DELETE FROM organizations WHERE id = '00000000-0000-0000-0000-00000000000a';
   SELECT (SELECT count(*) FROM signal_candidates WHERE organization_id = '00000000-0000-0000-0000-00000000000a')
@@ -83,6 +102,20 @@ BEGIN
   PERFORM 1 FROM monitoring_state;
   RAISE EXCEPTION 'authenticated could read monitoring_state';
 EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: signed-in users cannot read monitoring settings';
+END $$;
+DO $$
+BEGIN
+  PERFORM 1 FROM company_leads;
+  RAISE EXCEPTION 'authenticated could read company_leads';
+EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: signed-in users cannot read leads';
+END $$;
+RESET ROLE;
+SET ROLE anon;
+DO $$
+BEGIN
+  INSERT INTO monitoring_inbox (evenement, payload) VALUES ('x', '{}');
+  RAISE EXCEPTION 'anon could write to the inbox';
+EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'ok: anon cannot write to the Pappers inbox';
 END $$;
 RESET ROLE;
 SET ROLE service_role;

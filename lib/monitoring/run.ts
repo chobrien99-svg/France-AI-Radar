@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------
 // One signal monitoring run: for each AI Radar startup, collect new items
-// from BODACC, Pappers, Google News and the press feeds, have Claude judge and draft
+// from BODACC, Pappers (webhook messages and record reads), Google News and the press feeds, have Claude judge and draft
 // each one, and queue the credible ones in signal_candidates for review.
 // Called nightly by /api/cron/monitor-signals and on demand ("Check now").
 // How it works: docs/signal-monitoring.md
@@ -9,8 +9,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { analysisConfigured, analyzeItem } from "@/lib/monitoring/analyze"
 import { findPossibleDuplicate, isUsable, type CompanyContext } from "@/lib/monitoring/analysis"
 import type { MatchTarget } from "@/lib/monitoring/match"
-import { parsePappersCompany, type FoundItem, type PappersSnapshot } from "@/lib/monitoring/parse"
-import { getCompany, PappersAccountError, pappersConfigured, pappersIntervalDays } from "@/lib/monitoring/pappers"
+import { normalizeSiren, parsePappersCompany, parsePappersWebhook, type FoundItem, type PappersLead, type PappersSnapshot } from "@/lib/monitoring/parse"
+import { addToWatchList, getCompany, PappersAccountError, pappersConfigured, pappersIntervalDays, pappersWatchListId } from "@/lib/monitoring/pappers"
 import { fetchBodacc, fetchGoogleNews, fetchPressFeeds, pressMatches } from "@/lib/monitoring/sources"
 
 type Row = Record<string, unknown>
@@ -24,6 +24,8 @@ const MAX_ITEMS_PER_ORG = 12
 const BODACC_FIRST_LOOKBACK_DAYS = 90
 /** Pappers events this recent are considered; ones already seen are skipped by URL. */
 const PAPPERS_LOOKBACK_DAYS = 90
+/** Pappers webhook messages read per run; the rest wait for the next one. */
+const INBOX_BATCH = 200
 
 export type RunSummary = {
   runId: string | null
@@ -33,6 +35,8 @@ export type RunSummary = {
   itemsAnalyzed: number
   candidatesCreated: number
   candidateIds: string[]
+  /** Companies new to the "to vet" list (from Pappers saved searches). */
+  leadsAdded: number
   errors: string[]
 }
 
@@ -54,7 +58,7 @@ export async function runMonitoring(
   svc: SupabaseClient,
   opts: { kind: "cron" | "manual"; organizationId?: string; deadline: number },
 ): Promise<RunSummary> {
-  const summary: RunSummary = { runId: null, orgsChecked: 0, orgsRemaining: 0, itemsSeen: 0, itemsAnalyzed: 0, candidatesCreated: 0, candidateIds: [], errors: [] }
+  const summary: RunSummary = { runId: null, orgsChecked: 0, orgsRemaining: 0, itemsSeen: 0, itemsAnalyzed: 0, candidatesCreated: 0, candidateIds: [], leadsAdded: 0, errors: [] }
   const note = (msg: string) => { if (summary.errors.length < 100) summary.errors.push(msg) }
 
   if (!analysisConfigured()) {
@@ -91,6 +95,35 @@ export async function runMonitoring(
   const orgs = ((orgRows ?? []) as Row[])
     .filter((o) => opts.kind === "manual" || (o.status === "active" && stateBy.get(o.id as string)?.enabled !== false))
     .sort((a, b) => String(stateBy.get(a.id as string)?.last_checked_at ?? "").localeCompare(String(stateBy.get(b.id as string)?.last_checked_at ?? "")))
+
+  // Pappers watch list: startups not on it yet are added (free with the
+  // subscription); Pappers then posts their changes to /api/webhooks/pappers.
+  const watchList = pappersWatchListId()
+  if (watchList && pappersConfigured()) {
+    const toWatch = orgs
+      .map((o) => ({ id: o.id as string, siren: normalizeSiren(sirenBy.get(o.id as string)) }))
+      .filter((o): o is { id: string; siren: string } => Boolean(o.siren) && stateBy.get(o.id)?.pappers_watched_siren !== o.siren)
+    if (toWatch.length) {
+      try {
+        await addToWatchList(watchList, [...new Set(toWatch.map((o) => o.siren))])
+        const now = new Date().toISOString()
+        await svc.from("monitoring_state").upsert(
+          toWatch.map((o) => ({ organization_id: o.id, pappers_watched_siren: o.siren, updated_at: now })),
+          { onConflict: "organization_id" },
+        )
+        for (const o of toWatch) stateBy.set(o.id, { ...(stateBy.get(o.id) ?? {}), pappers_watched_siren: o.siren })
+      } catch (err) {
+        note(err instanceof Error ? err.message : "Pappers watch list failed")
+      }
+    }
+  }
+
+  // Pappers webhook messages: changes to Radar startups join that startup's
+  // finds below; companies new to a saved search go to the "to vet" list.
+  const inbox = await readInbox(svc, opts, ids, new Set(orgs.map((o) => o.id as string)))
+  summary.leadsAdded = inbox.leadsAdded
+  inbox.errors.forEach(note)
+  const handledUrls = new Set<string>()
 
   const press = await fetchPressFeeds()
   press.errors.forEach(note)
@@ -132,7 +165,10 @@ export async function runMonitoring(
     const lastPappers = (state?.last_pappers_at as string | null | undefined) ?? null
     const previousSnapshot = (state?.pappers_seen as PappersSnapshot | null | undefined) ?? null
     const pappersDue = opts.kind === "manual" || !lastPappers || Date.now() - Date.parse(lastPappers) >= pappersEvery * 86_400_000 - 3_600_000
-    if (siren && pappersOn && pappersDue) {
+    // Once Pappers has proved it sends webhook messages, watched startups need no paid reads.
+    const watched = inbox.webhooksWork && Boolean(siren) && state?.pappers_watched_siren === normalizeSiren(siren)
+    found.push(...(inbox.itemsBy.get(id) ?? []))
+    if (siren && pappersOn && pappersDue && !watched) {
       try {
         const parsed = parsePappersCompany(
           await getCompany(siren),
@@ -252,6 +288,7 @@ export async function runMonitoring(
       if (!changeUnread) pappersUpdate.pappers_seen = pappersSnapshot
     }
 
+    processed.forEach((u) => handledUrls.add(u))
     await svc.from("monitoring_state").upsert({
       organization_id: id,
       last_checked_at: new Date().toISOString(),
@@ -261,6 +298,11 @@ export async function runMonitoring(
     }, { onConflict: "organization_id" })
     summary.orgsChecked++
   }
+
+  // A webhook message is done once every Radar change in it was read (or
+  // was already known); the rest wait for the next run.
+  const done = inbox.rows.filter((r) => r.urls.every((u) => handledUrls.has(u))).map((r) => r.id)
+  if (done.length) await svc.from("monitoring_inbox").update({ processed_at: new Date().toISOString() }).in("id", done)
 
   if (summary.runId) {
     await svc.from("monitoring_runs").update({
@@ -273,4 +315,77 @@ export async function runMonitoring(
     }).eq("id", summary.runId)
   }
   return summary
+}
+
+type InboxRead = {
+  /** Changes to Radar startups in this run, by organization id. */
+  itemsBy: Map<string, FoundItem[]>
+  /** Each unprocessed message and the item URLs it is waiting on. */
+  rows: { id: string; urls: string[]; hasLeads?: boolean }[]
+  leadsAdded: number
+  /** True once any surveillance message has ever arrived. */
+  webhooksWork: boolean
+  errors: string[]
+}
+
+/**
+ * Unprocessed Pappers webhook messages → items per startup, plus new leads.
+ * A change to a startup outside this run waits for a run that covers it,
+ * except on the nightly run, where startups left out (inactive, monitoring
+ * off) simply don't wait.
+ */
+async function readInbox(
+  svc: SupabaseClient,
+  opts: { kind: "cron" | "manual" },
+  runIds: string[],
+  orgsInRun: Set<string>,
+): Promise<InboxRead> {
+  const out: InboxRead = { itemsBy: new Map(), rows: [], leadsAdded: 0, webhooksWork: false, errors: [] }
+  const [{ data: rows, error }, { data: proof }] = await Promise.all([
+    svc.from("monitoring_inbox").select("id, evenement, payload").is("processed_at", null).order("received_at").limit(INBOX_BATCH),
+    svc.from("monitoring_inbox").select("id").eq("evenement", "notifications.entreprises").limit(1),
+  ])
+  out.webhooksWork = (proof ?? []).length > 0
+  if (error || !rows?.length) return out
+
+  // Every SIREN already on the site, and which Radar startup (if any) owns it.
+  const radarIds = new Set([...runIds, ...(opts.kind === "manual" ? await targetIds(svc) : [])])
+  const { data: entities } = await svc.from("legal_entities").select("organization_id, siren")
+  const known = new Set<string>()
+  const orgBySiren = new Map<string, string>()
+  for (const e of (entities ?? []) as Row[]) {
+    const siren = normalizeSiren(e.siren as string | null)
+    if (!siren) continue
+    known.add(siren)
+    if (radarIds.has(e.organization_id as string)) orgBySiren.set(siren, e.organization_id as string)
+  }
+
+  const leads = new Map<string, PappersLead & { listName: string | null }>()
+  for (const row of rows as Row[]) {
+    const msg = parsePappersWebhook(row.payload)
+    const urls: string[] = []
+    for (const change of msg.changes) {
+      const org = orgBySiren.get(change.siren)
+      if (!org || (opts.kind === "cron" && !orgsInRun.has(org))) continue
+      out.itemsBy.set(org, [...(out.itemsBy.get(org) ?? []), ...change.items])
+      urls.push(...change.items.map((it) => it.url))
+    }
+    for (const lead of msg.leads) if (!known.has(lead.siren)) leads.set(lead.siren, { ...lead, listName: msg.listName })
+    out.rows.push({ id: row.id as string, urls, hasLeads: msg.leads.length > 0 })
+  }
+
+  if (leads.size) {
+    const { data: added, error: leadError } = await svc.from("company_leads").upsert(
+      [...leads.values()].map((l) => ({ siren: l.siren, name: l.name, list_name: l.listName, is_new_company: l.isNew })),
+      { onConflict: "siren", ignoreDuplicates: true },
+    ).select("siren")
+    if (leadError) {
+      // Keep the messages so the leads are saved next time.
+      out.errors.push(`Pappers: could not save companies to vet: ${leadError.message}`)
+      out.rows = out.rows.filter((r) => !r.hasLeads)
+    } else {
+      out.leadsAdded = (added ?? []).length
+    }
+  }
+  return out
 }

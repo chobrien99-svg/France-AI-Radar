@@ -12,6 +12,7 @@ morning.
 |---|---|---|
 | **BODACC** (official register) | Capital increases, changes of directors, head-office moves, insolvency proceedings, deregistration | Needs a SIREN under the startup's Legal entities. Annual-accounts filings are skipped. Lags the real event by days to weeks. |
 | **Pappers** (paid register data) | Documents filed at the registry (minutes of a capital increase, updated statutes; often weeks before BODACC), new directors, a change of share capital, closure | Needs a SIREN and `PAPPERS_API_KEY`. Each startup's record is read once every 14 days (1 credit, about €0.12 on a pay-as-you-go pack of 500 credits for €60): roughly 90 credits a month for 42 startups. **Check now** always reads it (1 credit). Annual accounts are skipped. |
+| **Pappers alerts** (watch list, webhook) | The same register events as above, sent by Pappers as they happen | Free with the Starter subscription (up to 300 companies). Set `PAPPERS_WATCH_LIST_ID` and the run adds every Radar startup with a SIREN to that list. Once Pappers has sent its first message, watched startups are no longer read every 14 days. See "Pappers webhooks" below. |
 | **Tech press feeds** | Funding, launches, partnerships, hires | The list is in `lib/monitoring/feeds.ts`. A feed that stops working shows up in the run log. |
 | **Google News** | Wider coverage, French and English, last 14 days | Unofficial feed; if Google changes it, the other two sources keep working. |
 
@@ -48,6 +49,8 @@ The **Signal monitoring** box on each startup's edit page lets you:
 | `MONITOR_MODEL` | no | Another Claude model, e.g. `claude-sonnet-5-5`, if relevance needs more care. |
 | `MONITOR_MAX_ANALYSES` | no | Claude calls per night; default 150. |
 | `PAPPERS_API_KEY` | for Pappers | Pappers API key (moncompte.pappers.fr › API). Without it, Pappers is skipped. If the key is refused or the credits run out, the run log says so once and the other sources carry on. |
+| `PAPPERS_WATCH_LIST_ID` | for Pappers alerts | ID of the Pappers surveillance list for Radar startups (shown in your Pappers account). |
+| `PAPPERS_WEBHOOK_SECRET` | for Pappers alerts | Any long random string. It is part of the webhook address you give Pappers; messages without it are refused. |
 | `PAPPERS_INTERVAL_DAYS` | no | Days between two reads of a startup's Pappers record; default 14. `0` stops the nightly reads (Check now still reads it). |
 
 The schedule is in `vercel.json` (`/api/cron/monitor-signals`, 01:23 UTC). A run stops starting new startups after four minutes; the ones it didn't reach go first the next night.
@@ -55,3 +58,16 @@ The schedule is in `vercel.json` (`/api/cron/monitor-signals`, 01:23 UTC). A run
 ## Checking it's healthy
 
 The last run's summary is at the top of **Admin › Signals**. Click it for the list of problems, such as a feed that failed or an item Claude couldn't read. Every run is kept in the `monitoring_runs` table.
+
+## Pappers webhooks
+
+Pappers can post a message to the Radar instead of (or as well as) emailing you:
+
+- **Surveillance list** (`notifications.entreprises`): a watched startup changed (capital, directors, documents filed, head office, closure, court decisions…). Each change goes through Claude and lands in **Signals to review**, labelled "Pappers (register)". Routine changes (activity code, trade names, accounts filed, BODACC notices already covered by the BODACC source) are left out.
+- **Saved searches / alerts** (`notifications.veille`), such as "new SAS companies whose stated purpose mentions artificial intelligence": each company that newly matches goes to **Admin › To vet**, unless it is already on the site. Ignore it, or add it as a startup and mark it as added.
+
+Webhook address to give Pappers (replace the secret with the value of `PAPPERS_WEBHOOK_SECRET`):
+
+    https://www.franceairadar.com/api/webhooks/pappers?token=<PAPPERS_WEBHOOK_SECRET>
+
+Messages are stored as received (table `monitoring_inbox`) and read by the next nightly run or **Check now**. A message about a startup outside that check waits for one that covers it. If Pappers sends the same message twice, nothing is added twice.
