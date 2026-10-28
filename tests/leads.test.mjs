@@ -6,7 +6,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { fakeSupabase } from "./fake-supabase.mjs"
 import { describeOfficer, parseDirectory, scoreLead } from "@/lib/leads/parse"
-import { collectEvidence, researchAdjustment, researchPrompt, validateResearch } from "@/lib/leads/research"
+import { collectEvidence, researchAdjustment, validateResearch } from "@/lib/leads/research"
 import { researchLeadNow, vetLeads } from "@/lib/leads/vet"
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/leads/${name}`, import.meta.url), "utf8"))
