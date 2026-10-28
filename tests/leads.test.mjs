@@ -8,7 +8,7 @@ import { fakeSupabase } from "./fake-supabase.mjs"
 import { describeOfficer, parseDirectory, scoreLead } from "@/lib/leads/parse"
 import { collectEvidence, researchAdjustment, validateResearch } from "@/lib/leads/research"
 import { researchLeadNow, vetLeads } from "@/lib/leads/vet"
-import { findWebsites, siteGuesses } from "@/lib/leads/websites"
+import { dns, findWebsites, siteGuesses } from "@/lib/leads/websites"
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/leads/${name}`, import.meta.url), "utf8"))
 const CLARA = "131609539"
@@ -106,6 +106,7 @@ let claudeStatus
 let flaky
 let liveSites
 const realFetch = globalThis.fetch
+const realResolve = dns.resolve
 
 beforeEach(() => {
   process.env.ANTHROPIC_API_KEY = "test-key"
@@ -114,6 +115,7 @@ beforeEach(() => {
   claudeStatus = 200
   flaky = 0
   liveSites = {}
+  dns.resolve = async (host) => (host === "intranet.five-angels.com" ? ["10.0.0.5"] : ["203.0.113.10"])
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input.url
     const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })
@@ -130,12 +132,11 @@ beforeEach(() => {
       if (q === "824128466") return json(fixture("directory-cignoni-holding.json"))
       return json({ results: [], total_results: 0 })
     }
-    if (url in liveSites) {
+    if (url in liveSites || url.includes("sedo.com") || url.includes("127.0.0.1")) {
       calls.sites = [...(calls.sites ?? []), url]
-      const landed = liveSites[url]
-      const res = new Response("<html></html>", { status: 200, headers: { "content-type": "text/html" } })
-      Object.defineProperty(res, "url", { value: landed })
-      return res
+      assert.equal(init.redirect, "manual")
+      const to = liveSites[url]
+      return to ? new Response(null, { status: 301, headers: { location: to } }) : new Response("<html></html>", { status: 200, headers: { "content-type": "text/html" } })
     }
     if (url.startsWith("https://api.anthropic.com/")) {
       const body = JSON.parse(init.body)
@@ -178,6 +179,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = realFetch
+  dns.resolve = realResolve
 })
 
 function seedLeads() {
@@ -269,10 +271,16 @@ test("the obvious web addresses for the brand are tried, and the ones that answe
   assert.deepEqual(siteGuesses(["IA"]), [])   // nothing left to guess from
 
   liveSites = {
-    "https://five-angels.com/": "https://five-angels.com/fr",
+    "https://five-angels.com/": "/fr",
+    "https://five-angels.com/fr": null,
     "https://oraklia.com/": "https://www.sedo.com/search/details/?domain=oraklia.com",   // for sale: not the company's
+    "https://five-angels.fr/": "http://127.0.0.1/admin",                // never followed to this server…
+    "https://five-angels.ai/": "https://intranet.five-angels.com/",      // …or to a private network
+    "https://intranet.five-angels.com/": null,
   }
   assert.deepEqual(await findWebsites(["FIVE ANGELS", "ORAKLIA TECHNOLOGIES"]), ["https://five-angels.com/"])
+  assert.ok(!calls.sites.includes("https://intranet.five-angels.com/"))
+  assert.ok(!calls.sites.some((u) => u.includes("sedo.com") || u.includes("127.0.0.1")))
 
   const db = fakeSupabase({ company_leads: [
     { siren: ORAKLIA, name: "ORAKLIA TECHNOLOGIES", status: "new", first_seen_at: "2026-10-28T18:00:00Z", checked_at: null, score: null, score_reasons: [], research: null, researched_at: null },
