@@ -1,5 +1,5 @@
 // A small in-memory stand-in for the Supabase client: enough of the query
-// builder (select/insert/update/upsert/delete, eq/is/ilike/in, single) to run
+// builder (select/insert/update/upsert/delete, eq/is/gte/ilike/in, single) to run
 // the import's write path. `failOn` makes inserts into one table fail.
 export function fakeSupabase(seed = {}, { failOn } = {}) {
   const tables = structuredClone(seed)
@@ -10,7 +10,7 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
     const filters = []
     let op = "select", payload = null, onConflict = null, ignoreDuplicates = false, mode = "many"
     const like = (pattern, v) => new RegExp("^" + pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*") + "$", "i").test(String(v ?? ""))
-    const matches = (r) => filters.every(([k, f, v]) => (f === "eq" ? r[k] === v : f === "is" ? (r[k] ?? null) === v : f === "in" ? v.includes(r[k]) : like(v, r[k])))
+    const matches = (r) => filters.every(([k, f, v]) => (f === "eq" ? r[k] === v : f === "is" ? (r[k] ?? null) === v : f === "gte" ? r[k] != null && r[k] >= v : f === "in" ? v.includes(r[k]) : like(v, r[k])))
     const run = () => {
       if (op === "insert" && failOn === table) return { data: null, error: { message: `insert into ${table} failed` } }
       let data
@@ -45,6 +45,7 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
       delete() { op = "delete"; return b },
       eq(k, v) { filters.push([k, "eq", v]); return b },
       is(k, v) { filters.push([k, "is", v]); return b },
+      gte(k, v) { filters.push([k, "gte", v]); return b },
       in(k, v) { filters.push([k, "in", v]); return b },
       ilike(k, v) { filters.push([k, "ilike", v]); return b },
       single() { mode = "single"; return b },

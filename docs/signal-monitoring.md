@@ -71,3 +71,26 @@ Webhook address to give Pappers (replace the secret with the value of `PAPPERS_W
     https://www.franceairadar.com/api/webhooks/pappers?token=<PAPPERS_WEBHOOK_SECRET>
 
 Messages are stored as received (table `monitoring_inbox`) and read by the next nightly run or **Check now**. A message about a startup outside that check waits for one that covers it. If Pappers sends the same message twice, nothing is added twice.
+
+## Companies to vet
+
+**Admin › To vet** lists companies found by your Pappers saved searches (or pasted in by hand with **Add companies by SIREN**, for example from a Pappers alert email), best first. Companies already on the site are left out.
+
+Each night (after the signal check), and when you click **Check now**:
+
+1. **Free first check.** Every new company is looked up in the government company directory (recherche-entreprises.api.gouv.fr: activity code, legal form, city, creation date, officers) and scored out of 100, starting at 50:
+   - −30 consulting, IT-services or training activity (70.2x, 62.02/62.03/62.09, 74.90, 85.5x, 73.1x, 64.20);
+   - −20 a word like CONSULTING, CONSEIL, PARTNERS, FORMATION, HOLDING, INVEST, GROUP or ADVISORY in the name;
+   - +20 software or R&D activity (62.01, 58.2x, 72.1x, 63.1x);
+   - +10 two or more officers (founders' personal holding companies count);
+   - +10 another company among the officers (a studio, parent company or investor);
+   - a solo founder or a domiciliation address is shown but not counted against.
+   Companies registered in the last days may not be in the directory yet; they are looked up again every 3 days for 3 weeks.
+2. **Web research.** The best-scored companies (score 40 or more) not yet researched are looked up on the web by Claude (`LEAD_RESEARCH_MODEL`, default `claude-sonnet-5-5`, with Anthropic's web search, at most 3 searches each): website, founders, product, fundraising, press. It returns a short summary with links (only pages the search actually returned) and a verdict. "Looks like a startup" adds 20 points, "looks like a service business" takes 30 off; "not enough found yet" changes nothing. At most `LEAD_RESEARCH_PER_DAY` companies a day (default 10, about €0.05–0.07 each, so roughly €15–20 a month); **Research now** on a company runs it straight away. LinkedIn is never opened; public profiles only appear as ordinary search results.
+
+The score only orders the list: nothing is added, ignored or published automatically.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `LEAD_RESEARCH_PER_DAY` | 10 | Companies researched on the web per day; `0` turns the research off. |
+| `LEAD_RESEARCH_MODEL` | `claude-sonnet-5-5` | Model for the research (needs web search support). |
