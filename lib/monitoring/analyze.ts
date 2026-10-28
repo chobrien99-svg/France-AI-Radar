@@ -7,10 +7,43 @@ import type { FoundItem } from "@/lib/monitoring/parse"
 // (e.g. claude-sonnet-5-5 if relevance judgements need more care).
 const MODEL = process.env.MONITOR_MODEL || "claude-haiku-5-5"
 
+// Used only if the API refuses the structured-output request: the same
+// question, with the shape spelled out in the prompt instead.
+// Each key's type, allowed values and meaning come from ANALYSIS_SCHEMA, so
+// units (funding in millions of euros) and enums are the same in both forms.
+function describeField(name: string, spec: Record<string, unknown>): string {
+  const branches = (spec.anyOf as Record<string, unknown>[] | undefined) ?? [spec]
+  const main = branches.find((b) => b.type !== "null") ?? spec
+  const nullable = branches.some((b) => b.type === "null")
+  const values = Array.isArray(main.enum) ? ` one of: ${(main.enum as string[]).join(", ")}` : ""
+  const note = typeof main.description === "string" ? ` — ${main.description}` : typeof spec.description === "string" ? ` — ${spec.description}` : ""
+  return `- ${name} (${String(main.type)}${nullable ? " or null" : ""}${values})${note}`
+}
+
+const PLAIN_JSON_INSTRUCTION = `
+
+Reply with only a JSON object (no prose, no code fence) with exactly these keys:
+${Object.entries(ANALYSIS_SCHEMA.properties).map(([k, v]) => describeField(k, v as Record<string, unknown>)).join("\n")}`
+
 let client: Anthropic | null = null
 
 export function analysisConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY)
+}
+
+/** The API's own explanation, e.g. "output_config.format: ...", kept short for the run log. */
+function apiMessage(err: InstanceType<typeof Anthropic.APIError>): string {
+  const body = err.error as { error?: { message?: unknown } } | undefined
+  const msg = typeof body?.error?.message === "string" ? body.error.message : err.message
+  return msg.replace(/\s+/g, " ").slice(0, 300)
+}
+
+/** First {...} block in a text answer (a model may wrap JSON in prose or a fence). */
+function extractJson(text: string): unknown {
+  const start = text.indexOf("{")
+  const end = text.lastIndexOf("}")
+  if (start < 0 || end <= start) throw new SyntaxError("no JSON object")
+  return JSON.parse(text.slice(start, end + 1))
 }
 
 /** Asks Claude whether the item is about the startup and drafts the signal. */
@@ -20,29 +53,55 @@ export async function analyzeItem(
   today: string,
 ): Promise<{ analysis: Analysis } | { error: string }> {
   client ??= new Anthropic({ timeout: 60_000, maxRetries: 2 })
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4000,
-      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: buildPrompt(company, item) }],
-      output_config: { effort: "low", format: { type: "json_schema", schema: ANALYSIS_SCHEMA } },
-    })
+  const prompt = buildPrompt(company, item)
+
+  const ask = async (structured: boolean) => {
+    const response = await client!.messages.create(structured
+      ? {
+          model: MODEL,
+          max_tokens: 4000,
+          system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+          messages: [{ role: "user", content: prompt }],
+          output_config: { effort: "low", format: { type: "json_schema", schema: ANALYSIS_SCHEMA } },
+        }
+      : {
+          model: MODEL,
+          max_tokens: 4000,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: prompt + PLAIN_JSON_INSTRUCTION }],
+        })
     if (response.stop_reason === "refusal") return { error: "model declined to analyse this item" }
     if (response.stop_reason === "max_tokens") return { error: "answer was cut off" }
     const textBlock = response.content.find((b) => b.type === "text")
     if (!textBlock || textBlock.type !== "text") return { error: "no answer" }
     let parsed: unknown
     try {
-      parsed = JSON.parse(textBlock.text)
+      parsed = structured ? JSON.parse(textBlock.text) : extractJson(textBlock.text)
     } catch {
       return { error: "answer was not JSON" }
     }
     return validateAnalysis(parsed, item, today)
-  } catch (err) {
+  }
+
+  const failure = (err: unknown, prefix = ""): { error: string } => {
     if (err instanceof Anthropic.AuthenticationError) return { error: "ANTHROPIC_API_KEY is invalid" }
     if (err instanceof Anthropic.RateLimitError) return { error: "rate limited by the Claude API" }
-    if (err instanceof Anthropic.APIError) return { error: `Claude API error ${err.status ?? ""}`.trim() }
+    if (err instanceof Anthropic.APIError) return { error: `${prefix}Claude API error ${err.status ?? ""}: ${apiMessage(err)}` }
     return { error: err instanceof Error ? err.message : "analysis failed" }
+  }
+
+  try {
+    return await ask(true)
+  } catch (err) {
+    if (!(err instanceof Anthropic.BadRequestError)) return failure(err)
+    // The request shape was refused (400). Log why, then try the plain form once.
+    const reason = `structured request refused (${apiMessage(err)}); plain retry: `
+    console.error("[monitoring]", reason)
+    try {
+      const retry = await ask(false)
+      return "error" in retry ? { error: reason + retry.error } : retry
+    } catch (retryErr) {
+      return failure(retryErr, reason)
+    }
   }
 }
