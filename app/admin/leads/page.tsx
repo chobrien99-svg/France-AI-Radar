@@ -181,7 +181,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                         ))}
                       </ul>
                     )}
-                    {l.researched_at && <p className="mt-0.5 text-muted-foreground">Researched {day(l.researched_at)}</p>}
+                    <div className="mt-0.5 flex items-center gap-2 text-muted-foreground">
+                      {l.researched_at && <span>Researched {day(l.researched_at)}</span>}
+                      {l.status === "new" && <LeadResearchButton siren={l.siren} again />}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-muted-foreground">
