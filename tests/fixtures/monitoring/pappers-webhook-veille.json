@@ -1,0 +1,58 @@
+{
+  "date_envoi": "2024-01-01 00:00:00",
+  "evenement": "notifications.veille",
+  "donnees": {
+    "nom_list": "nom de la liste",
+    "id_list": "1234567890",
+    "siren_entrant": [
+      {
+        "siren": "882572894",
+        "nom_entreprise": "HAYDN HARRIS CONSULTING",
+        "nouvelle_entreprise": false
+      }
+    ],
+    "siren_sortant": [
+      {
+        "siren": "888207859",
+        "nom_entreprise": "PAPPERS"
+      }
+    ],
+    "siren_modifie": [
+      {
+        "siren": "443061841",
+        "nom_entreprise": {
+          "valeur": "GOOGLE FRANCE",
+          "date": "2024-01-01"
+        },
+        "capital": {
+          "valeur": 464884017,
+          "date": "2024-01-01"
+        },
+        "nouvel_acte_publie": [
+          {
+            "acte": "Procès-verbal d’assemblée - Changement de président",
+            "date": "2023-10-02"
+          }
+        ],
+        "nouveau_dirigeant": [
+          {
+            "prenom": "Paul",
+            "nom": "Manicle",
+            "date_de_naissance_rgpd": "1975-10",
+            "denomination": null,
+            "siren": null,
+            "date": "03/05/2019"
+          }
+        ],
+        "entreprise_cessee": {
+          "valeur": false,
+          "date": "2024-01-01"
+        },
+        "statut_rcs": {
+          "valeur": "Inscrit",
+          "date": "2024-01-01"
+        }
+      }
+    ]
+  }
+}

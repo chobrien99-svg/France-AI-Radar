@@ -12,6 +12,7 @@ morning.
 |---|---|---|
 | **BODACC** (official register) | Capital increases, changes of directors, head-office moves, insolvency proceedings, deregistration | Needs a SIREN under the startup's Legal entities. Annual-accounts filings are skipped. Lags the real event by days to weeks. |
 | **Pappers** (paid register data) | Documents filed at the registry (minutes of a capital increase, updated statutes; often weeks before BODACC), new directors, a change of share capital, closure | Needs a SIREN and `PAPPERS_API_KEY`. Each startup's record is read once every 14 days (1 credit, about €0.12 on a pay-as-you-go pack of 500 credits for €60): roughly 90 credits a month for 42 startups. **Check now** always reads it (1 credit). Annual accounts are skipped. |
+| **Pappers alerts** (watch list, webhook) | The same register events as above, sent by Pappers as they happen | Free with the Starter subscription (up to 300 companies). Set `PAPPERS_WATCH_LIST_ID` and the run adds every Radar startup with a SIREN to that list. Once Pappers has sent its first message, watched startups are no longer read every 14 days. See "Pappers webhooks" below. |
 | **Tech press feeds** | Funding, launches, partnerships, hires | The list is in `lib/monitoring/feeds.ts`. A feed that stops working shows up in the run log. |
 | **Google News** | Wider coverage, French and English, last 14 days | Unofficial feed; if Google changes it, the other two sources keep working. |
 
@@ -48,6 +49,8 @@ The **Signal monitoring** box on each startup's edit page lets you:
 | `MONITOR_MODEL` | no | Another Claude model, e.g. `claude-sonnet-5-5`, if relevance needs more care. |
 | `MONITOR_MAX_ANALYSES` | no | Claude calls per night; default 150. |
 | `PAPPERS_API_KEY` | for Pappers | Pappers API key (moncompte.pappers.fr › API). Without it, Pappers is skipped. If the key is refused or the credits run out, the run log says so once and the other sources carry on. |
+| `PAPPERS_WATCH_LIST_ID` | for Pappers alerts | ID of the Pappers surveillance list for Radar startups (shown in your Pappers account). |
+| `PAPPERS_WEBHOOK_SECRET` | for Pappers alerts | Any long random string. It is part of the webhook address you give Pappers; messages without it are refused. |
 | `PAPPERS_INTERVAL_DAYS` | no | Days between two reads of a startup's Pappers record; default 14. `0` stops the nightly reads (Check now still reads it). |
 
 The schedule is in `vercel.json` (`/api/cron/monitor-signals`, 01:23 UTC). A run stops starting new startups after four minutes; the ones it didn't reach go first the next night.
@@ -55,3 +58,39 @@ The schedule is in `vercel.json` (`/api/cron/monitor-signals`, 01:23 UTC). A run
 ## Checking it's healthy
 
 The last run's summary is at the top of **Admin › Signals**. Click it for the list of problems, such as a feed that failed or an item Claude couldn't read. Every run is kept in the `monitoring_runs` table.
+
+## Pappers webhooks
+
+Pappers can post a message to the Radar instead of (or as well as) emailing you:
+
+- **Surveillance list** (`notifications.entreprises`): a watched startup changed (capital, directors, documents filed, head office, closure, court decisions…). Each change goes through Claude and lands in **Signals to review**, labelled "Pappers (register)". Routine changes (activity code, trade names, accounts filed, BODACC notices already covered by the BODACC source) are left out.
+- **Saved searches / alerts** (`notifications.veille`), such as "new SAS companies whose stated purpose mentions artificial intelligence": each company that newly matches goes to **Admin › To vet**, unless it is already on the site. Ignore it, or add it as a startup and mark it as added.
+
+Webhook address to give Pappers (replace the secret with the value of `PAPPERS_WEBHOOK_SECRET`):
+
+    https://www.franceairadar.com/api/webhooks/pappers?token=<PAPPERS_WEBHOOK_SECRET>
+
+Messages are stored as received (table `monitoring_inbox`) and read by the next nightly run or **Check now**. A message about a startup outside that check waits for one that covers it. If Pappers sends the same message twice, nothing is added twice.
+
+## Companies to vet
+
+**Admin › To vet** lists companies found by your Pappers saved searches (or pasted in by hand with **Add companies by SIREN**, for example from a Pappers alert email), best first. Companies already on the site are left out.
+
+Each night (after the signal check), and when you click **Check now**:
+
+1. **Free first check.** Every new company is looked up in the government company directory (recherche-entreprises.api.gouv.fr: activity code, legal form, city, creation date, officers) and scored out of 100, starting at 50:
+   - −30 consulting, IT-services or training activity (70.2x, 62.02/62.03/62.09, 74.90, 85.5x, 73.1x, 64.20);
+   - −20 a word like CONSULTING, CONSEIL, PARTNERS, FORMATION, HOLDING, INVEST, GROUP or ADVISORY in the name;
+   - +20 software or R&D activity (62.01, 58.2x, 72.1x, 63.1x);
+   - +10 two or more officers (founders' personal holding companies count);
+   - +10 another company among the officers (a studio, parent company or investor);
+   - a solo founder or a domiciliation address is shown but not counted against.
+   Companies registered in the last days may not be in the directory yet; they are looked up again every 3 days for 3 weeks.
+2. **Web research.** The best-scored companies (score 40 or more) not yet researched are looked up on the web by Claude (`LEAD_RESEARCH_MODEL`, default `claude-sonnet-5-5`, with Anthropic's web search, at most 3 searches each): website, founders, product, fundraising, press. It returns a short summary with links (only pages the search actually returned) and a verdict. "Looks like a startup" adds 20 points, "looks like a service business" takes 30 off; "not enough found yet" changes nothing. At most `LEAD_RESEARCH_PER_DAY` companies a day (default 10, about €0.05–0.07 each, so roughly €15–20 a month); **Research now** on a company runs it straight away. LinkedIn is never opened; public profiles only appear as ordinary search results.
+
+The score only orders the list: nothing is added, ignored or published automatically.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `LEAD_RESEARCH_PER_DAY` | 10 | Companies researched on the web per day; `0` turns the research off. |
+| `LEAD_RESEARCH_MODEL` | `claude-sonnet-5-5` | Model for the research (needs web search support). |

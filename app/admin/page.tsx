@@ -12,6 +12,7 @@ export default async function AdminDashboard() {
     { count: activeStartups },
     { count: draftStartups },
     { count: signalsToReview },
+    { count: leadsToVet },
   ] = await Promise.all([
     supabase.from("product_organizations").select("*", { count: "exact", head: true })
       .eq("product_id", (await supabase.from("product_catalog").select("id").eq("slug", "ai-radar").single()).data?.id ?? ""),
@@ -20,6 +21,7 @@ export default async function AdminDashboard() {
     supabase.from("organizations").select("*, product_organizations!inner(product_catalog!inner(slug))", { count: "exact", head: true })
       .eq("product_organizations.product_catalog.slug", "ai-radar").eq("status", "draft"),
     supabase.from("signal_candidates").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("company_leads").select("siren", { count: "exact", head: true }).eq("status", "new"),
   ])
 
   return (
@@ -34,12 +36,15 @@ export default async function AdminDashboard() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <StatCard label="AI Radar startups" value={totalStartups ?? 0} />
         <StatCard label="Published" value={activeStartups ?? 0} />
         <StatCard label="Drafts" value={draftStartups ?? 0} />
         <Link href="/admin/signals" className="block transition-opacity hover:opacity-80">
           <StatCard label="Signals to review" value={signalsToReview ?? 0} />
+        </Link>
+        <Link href="/admin/leads" className="block transition-opacity hover:opacity-80">
+          <StatCard label="Companies to vet" value={leadsToVet ?? 0} />
         </Link>
       </div>
 

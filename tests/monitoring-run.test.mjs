@@ -6,6 +6,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { fakeSupabase } from "./fake-supabase.mjs"
 import { runMonitoring } from "@/lib/monitoring/run"
+import { receivePappersWebhook } from "@/lib/monitoring/webhook"
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/monitoring/${name}`, import.meta.url), "utf8")
 const ORG = "org-jemba"
@@ -16,6 +17,9 @@ function fakeAnalysis(prompt) {
   const base = { investors: null, funding_amount_eur: null, funding_stage: null, strength: 3, description: "", reasoning: "Matches the profile." }
   if (prompt.includes("Procédures collectives")) {
     return { ...base, is_about_company: true, confidence: 0.95, signal_type: "restructuring", title: "Jemba enters safeguard proceedings", signal_date: "2026-10-08", strength: 5 }
+  }
+  if (prompt.includes("Share capital changed")) {
+    return { ...base, is_about_company: true, confidence: 0.9, signal_type: "fundraising", title: "Jemba raises its share capital", signal_date: "2026-10-20" }
   }
   if (prompt.includes("Augmentation du capital social")) {
     return { ...base, is_about_company: true, confidence: 0.8, signal_type: "fundraising", title: "Jemba files a capital increase", signal_date: "2026-10-09" }
@@ -37,6 +41,10 @@ let plainAnswer
 // What Pappers answers: an HTTP status, and the company record (dates relative to today).
 let pappersStatus
 let pappersCapital
+// What the Pappers watch-list call answers, and the only path it exists at.
+let watchStatus
+let watchBody
+let watchPath
 const isoDaysAgo = (n) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10)
 function pappersCompany() {
   const record = JSON.parse(fixture("pappers-entreprise.json"))
@@ -59,8 +67,13 @@ beforeEach(() => {
   plainAnswer = null
   pappersStatus = 200
   pappersCapital = 15000
+  watchStatus = 201
+  watchBody = { notifications_ajoutees: 1 }
+  watchPath = "/v2/surveillance/entreprise/liste"
   delete process.env.PAPPERS_API_KEY
   delete process.env.PAPPERS_INTERVAL_DAYS
+  delete process.env.PAPPERS_WATCH_LIST_ID
+  delete process.env.PAPPERS_WEBHOOK_SECRET
   globalThis.fetch = async (input, init) => {
     const url = typeof input === "string" ? input : input.url
     calls.urls.push(url)
@@ -95,6 +108,13 @@ beforeEach(() => {
       // The key travels in a header, never in the URL (which can end up in logs).
       assert.equal(new Headers(init.headers).get("api-key"), "pappers-test-key")
       assert.ok(!url.includes("pappers-test-key"))
+      if (init?.method === "POST") {
+        calls.watch = [...(calls.watch ?? []), { url, method: init.method, body: JSON.parse(init.body) }]
+        if (new URL(url).pathname !== watchPath) {
+          return reply(JSON.stringify({ statusCode: 404, error: "Not Found", message: `Route POST:${new URL(url).pathname} not found` }), "application/json", 404)
+        }
+        return reply(JSON.stringify(watchBody), "application/json", watchStatus)
+      }
       assert.ok(url.startsWith("https://api.pappers.fr/v2/entreprise?siren=912345678"))
       if (pappersStatus !== 200) return reply(JSON.stringify({ statusCode: pappersStatus, message: "refused" }), "application/json", pappersStatus)
       return reply(JSON.stringify(pappersCompany()), "application/json")
@@ -309,4 +329,143 @@ test("a refused Pappers key is reported once and the other sources still run", a
   assert.ok(summary.errors.includes("Pappers: the API key was refused (401); check PAPPERS_API_KEY"))
   assert.equal(summary.candidatesCreated, 2)
   assert.equal(db.tables.monitoring_state[0].last_pappers_at, undefined)
+})
+
+// ---------------------------------------------------------------- Pappers webhooks
+
+/** A surveillance message about Jemba: two changes worth reading, two routine ones. */
+function jembaMessage() {
+  const msg = JSON.parse(fixture("pappers-webhook-entreprises.json"))
+  const google = msg.donnees.entreprises[0]
+  msg.donnees.entreprises = [{
+    siren: "912345678",
+    details_entreprise: { nom_entreprise: "JEMBA" },
+    capital: { valeur: 20000, ancienne_valeur: 12000, date: "2026-10-20" },
+    nouveau_dirigeant: [{ ...google.nouveau_dirigeant[0], date: "20/10/2026" }],
+    code_naf: google.code_naf,
+    enseigne: google.enseigne,
+  }]
+  return msg
+}
+
+function inboxRow(id, payload, extra = {}) {
+  return { id, evenement: payload.evenement, payload, processed_at: null, received_at: "2026-10-27T10:00:00Z", ...extra }
+}
+
+test("Pappers messages: a startup's changes become drafts, new companies go on the list to vet, and both are read once", async () => {
+  const db = seed()
+  db.tables.monitoring_inbox = [
+    inboxRow("in-1", jembaMessage()),
+    inboxRow("in-2", JSON.parse(fixture("pappers-webhook-veille.json"))),
+  ]
+  db.tables.company_leads = []
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+
+  const capital = db.tables.signal_candidates.find((d) => d.source_url === "https://www.pappers.fr/entreprise/912345678#capital-20000")
+  assert.equal(capital.source, "pappers")
+  assert.equal(capital.status ?? "pending", "pending")
+  assert.equal(capital.signal_type, "fundraising")
+  assert.ok(db.tables.signal_candidates.some((d) => d.source_url.includes("#dirigeant-2026-10-20-paul-manicle")))
+  assert.ok(!db.tables.signal_candidates.some((d) => /code_naf|enseigne/.test(d.source_url)))
+  assert.equal(summary.candidatesCreated, 3)   // BODACC proceedings, press story, capital change
+
+  // The veille message: its new company is listed; its change concerns a company not on the Radar.
+  assert.equal(summary.leadsAdded, 1)
+  assert.deepEqual(db.tables.company_leads.map(({ siren, name, list_name, is_new_company }) => ({ siren, name, list_name, is_new_company })),
+    [{ siren: "882572894", name: "HAYDN HARRIS CONSULTING", list_name: "nom de la liste", is_new_company: false }])
+  assert.ok(db.tables.monitoring_inbox.every((r) => r.processed_at))
+
+  // Delivered again (Pappers retries): nothing new.
+  db.tables.monitoring_inbox.push(inboxRow("in-3", jembaMessage()), inboxRow("in-4", JSON.parse(fixture("pappers-webhook-veille.json"))))
+  calls.claude = 0
+  const again = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.claude, 0)
+  assert.equal(again.leadsAdded, 0)
+  assert.equal(db.tables.company_leads.length, 1)
+  assert.ok(db.tables.monitoring_inbox.every((r) => r.processed_at))
+})
+
+test("a company already on the site is not listed to vet; a message about another startup waits for its own check", async () => {
+  const db = seed()
+  db.tables.legal_entities.push({ organization_id: "org-other", siren: "882572894", is_primary: true })
+  // The fake client matches the embedded filter on a flat key.
+  db.tables.product_organizations = [ORG, "org-other"].map((id) => ({ organization_id: id, "product_catalog.slug": "ai-radar" }))
+  const other = jembaMessage()
+  other.donnees.entreprises[0].siren = "882572894"
+  db.tables.monitoring_inbox = [inboxRow("in-1", JSON.parse(fixture("pappers-webhook-veille.json"))), inboxRow("in-2", other)]
+  db.tables.company_leads = []
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(summary.leadsAdded, 0)
+  assert.equal(db.tables.company_leads.length, 0)
+  assert.ok(db.tables.monitoring_inbox.find((r) => r.id === "in-1").processed_at)
+  assert.equal(db.tables.monitoring_inbox.find((r) => r.id === "in-2").processed_at, null)
+})
+
+test("with a watch list, Radar startups are added to it once, and paid reads stop once Pappers has sent a message", async () => {
+  process.env.PAPPERS_API_KEY = "pappers-test-key"
+  process.env.PAPPERS_WATCH_LIST_ID = "L1"
+  const db = seed()
+  db.tables.monitoring_inbox = []
+  await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.watch.length, 1)
+  assert.equal(calls.watch[0].url, "https://api.pappers.fr/v2/surveillance/entreprise/liste?id_liste=L1")
+  assert.equal(calls.watch[0].method, "POST")
+  assert.deepEqual(calls.watch[0].body, [{ siren: "912345678" }])
+  assert.equal(db.tables.monitoring_state[0].pappers_watched_siren, "912345678")
+  // No message from Pappers yet: the record is still read, in case the webhook isn't set up.
+  assert.equal(calls.pappers, 2)
+
+  db.tables.monitoring_inbox.push(inboxRow("in-1", jembaMessage(), { processed_at: "2026-10-27T11:00:00Z" }))
+  calls.pappers = 0
+  await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.watch.length, 1)   // already on the list
+  assert.equal(calls.pappers, 0)        // no paid read
+})
+
+test("a wrong watch-list ID is reported with Pappers' own message, and the rest of the run goes on", async () => {
+  process.env.PAPPERS_API_KEY = "pappers-test-key"
+  process.env.PAPPERS_WATCH_LIST_ID = "nope"
+  watchStatus = 404
+  watchBody = { statusCode: 404, message: "Liste non trouvée" }
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.watch.length, 1)
+  assert.ok(summary.errors.includes("Pappers watch list: HTTP 404: Liste non trouvée (/surveillance/entreprise/liste)"))
+  assert.equal(db.tables.monitoring_state[0].pappers_watched_siren, undefined)
+  assert.equal(summary.candidatesCreated, 3)
+})
+
+test("the webhook address stores messages only with the right token and a well-formed body", async () => {
+  const db = fakeSupabase({ monitoring_inbox: [] })
+  const body = fixture("pappers-webhook-veille.json")
+  assert.equal((await receivePappersWebhook(db.client, "x", body)).status, 503)   // no secret set: refuse everything
+  process.env.PAPPERS_WEBHOOK_SECRET = "s3cret-value"
+  assert.equal((await receivePappersWebhook(db.client, null, body)).status, 401)
+  assert.equal((await receivePappersWebhook(db.client, "s3cret-valuf", body)).status, 401)
+  assert.equal((await receivePappersWebhook(db.client, "s3cret-value", "not json")).status, 400)
+  assert.equal((await receivePappersWebhook(db.client, "s3cret-value", "{}")).status, 400)
+  assert.equal(db.tables.monitoring_inbox.length, 0)
+  assert.deepEqual(await receivePappersWebhook(db.client, "s3cret-value", body), { status: 200, body: { ok: true } })
+  assert.equal(db.tables.monitoring_inbox[0].evenement, "notifications.veille")
+  assert.equal(db.tables.monitoring_inbox[0].list_id, "1234567890")
+  assert.equal(db.tables.monitoring_inbox[0].payload.donnees.siren_entrant[0].siren, "882572894")
+})
+
+test("if Pappers says a watch-list route doesn't exist, the next documented form is tried", async () => {
+  process.env.PAPPERS_API_KEY = "pappers-test-key"
+  process.env.PAPPERS_WATCH_LIST_ID = "L1"
+  watchPath = "/v2/liste"
+  const db = seed()
+  const summary = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.deepEqual(calls.watch.map((c) => new URL(c.url).pathname), ["/v2/surveillance/entreprise/liste", "/v2/surveillance/entreprise", "/v2/liste"])
+  assert.equal(db.tables.monitoring_state[0].pappers_watched_siren, "912345678")
+  assert.ok(!summary.errors.some((e) => e.startsWith("Pappers watch list")))
+
+  // No form exists: the last answer is reported.
+  watchPath = "/nowhere"
+  db.tables.monitoring_state[0].pappers_watched_siren = null
+  calls.watch = []
+  const again = await runMonitoring(db.client, { kind: "manual", organizationId: ORG, deadline: Date.now() + 60_000 })
+  assert.equal(calls.watch.length, 4)
+  assert.ok(again.errors.includes("Pappers watch list: HTTP 404: Route POST:/v2/surveillance/liste/entreprise not found (/surveillance/liste/entreprise)"))
 })

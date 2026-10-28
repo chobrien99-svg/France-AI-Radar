@@ -1,0 +1,275 @@
+{
+  "date_envoi": "2024-01-01 00:00:00",
+  "evenement": "notifications.entreprises",
+  "donnees": {
+    "nom_list": "GAFA",
+    "id_list": "1234567890",
+    "entreprises": [
+      {
+        "siren": "443061841",
+        "details_entreprise": {
+          "nom_entreprise": "GOOGLE FRANCE"
+        },
+        "information": null,
+        "nom_entreprise": {
+          "valeur": "GOOGLE FRANCE",
+          "ancienne_valeur": "GOOGLE",
+          "date": "2024-01-01"
+        },
+        "nom_commercial": [
+          {
+            "siret": "44306184100047",
+            "valeur": "GOOGLE FRANCE",
+            "ancienne_valeur": "GOOGLE",
+            "date": "2024-01-01"
+          }
+        ],
+        "forme_juridique": {
+          "valeur": "Société à responsabilité limitée (SARL)",
+          "ancienne_valeur": "Société par actions simplifiée (SAS)",
+          "date": "2024-01-01"
+        },
+        "siege_social": {
+          "valeur": "44306184100047",
+          "ancienne_valeur": "44306184100120",
+          "numero_voie": 8,
+          "indice_repetition": null,
+          "type_voie": "RUE",
+          "libelle_voie": "DE LONDRES",
+          "complement_adresse": null,
+          "adresse_ligne_1": "8 RUE DE LONDRES",
+          "adresse_ligne_2": null,
+          "code_postal": "75009",
+          "ville": "PARIS 9",
+          "pays": "France",
+          "code_pays": "FR",
+          "date": "2024-01-01"
+        },
+        "entreprise_cessee": {
+          "valeur": false,
+          "date": "2024-01-01"
+        },
+        "statut_diffusion": {
+          "valeur": "Partielle",
+          "date": "2024-01-01"
+        },
+        "code_naf": {
+          "valeur": "62.02A",
+          "ancienne_valeur": "62.02B",
+          "date": "2024-01-01"
+        },
+        "entreprise_employeuse": {
+          "valeur": true,
+          "date": "2024-01-01"
+        },
+        "enseigne": [
+          {
+            "siret": "44306184100047",
+            "valeur": "GOOGLE FRANCE",
+            "ancienne_valeur": "GOOGLE",
+            "date": "2024-01-01"
+          }
+        ],
+        "nouvel_etablissement": [
+          {
+            "siret": "44306184100047",
+            "numero_voie": 8,
+            "indice_repetition": null,
+            "type_voie": "RUE",
+            "libelle_voie": "DE LONDRES",
+            "complement_adresse": null,
+            "adresse_ligne_1": "8 RUE DE LONDRES",
+            "adresse_ligne_2": null,
+            "code_postal": "75009",
+            "ville": "PARIS 9",
+            "pays": "France",
+            "code_pays": "FR",
+            "date": "2024-01-01"
+          }
+        ],
+        "fermeture_etablissement": [
+          {
+            "siret": "44306184100047",
+            "numero_voie": 8,
+            "indice_repetition": null,
+            "type_voie": "RUE",
+            "libelle_voie": "DE LONDRES",
+            "complement_adresse": null,
+            "adresse_ligne_1": "8 RUE DE LONDRES",
+            "adresse_ligne_2": null,
+            "code_postal": "75009",
+            "ville": "PARIS 9",
+            "pays": "France",
+            "code_pays": "FR",
+            "date": "2024-01-01"
+          }
+        ],
+        "statut_rcs": {
+          "valeur": "Inscrit",
+          "date": "2024-01-01"
+        },
+        "objet_social": {
+          "valeur": "Fourniture de services et/ou conseils relatifs aux logiciels au réseau internet aux réseaux télématiques ou en ligne notamment L'intermediation en matière de vente de publicité en ligne la promotion sous toutes ses formes de la publicité en ligne la promotion directe de produits et services et la mise en oeuvre de centres de traitement de l'information",
+          "ancienne_valeur": "Achat et vente d'espaces publicitaires, ainsi que de tout autre produit ou service, en qualité de revendeur ou par tout autre moyen",
+          "date": "2024-01-01"
+        },
+        "capital": {
+          "valeur": 464884017,
+          "ancienne_valeur": 1000000,
+          "date": "2024-01-01"
+        },
+        "date_cloture_exercice": {
+          "valeur": "31/12",
+          "ancienne_valeur": null,
+          "date": "2024-01-01"
+        },
+        "chiffre_affaires": [
+          {
+            "valeur": 592480368,
+            "annee_cloture": 2021,
+            "date": "2022-08-04",
+            "token": null,
+            "type_comptes": "Consolidés"
+          }
+        ],
+        "resultat": [
+          {
+            "valeur": 80405308,
+            "annee_cloture": 2021,
+            "date": "2022-08-04",
+            "token": null,
+            "type_comptes": "Consolidés"
+          }
+        ],
+        "nouveaux_comptes_disponibles": [
+          {
+            "annee_cloture": 2021,
+            "date": "2022-08-04",
+            "token": null,
+            "type_comptes": "Consolidés"
+          }
+        ],
+        "nouveaux_comptes_publies": [
+          {
+            "annonce": "Bodacc C n°20230190, annonce n°6124",
+            "type": "Dépôt des comptes",
+            "date": "2023-10-02",
+            "annee_cloture": "2022",
+            "numero_parution": "20230190",
+            "bodacc": "C",
+            "numero_annonce": "6124"
+          }
+        ],
+        "nouvelle_annonce_procedure_collective_publiee": [
+          {
+            "annonce": "Bodacc C n°20230190, annonce n°6124",
+            "type": "Procédure collective",
+            "type_procedure_collective": "Liquidation judiciaire",
+            "date": "2023-10-02",
+            "numero_parution": "20230190",
+            "bodacc": "C",
+            "numero_annonce": "6124"
+          }
+        ],
+        "nouvelle_annonce_vente_publiee": [
+          {
+            "annonce": "Bodacc C n°20230190, annonce n°6124",
+            "type": "Vente",
+            "date": "2023-10-02",
+            "numero_parution": "20230190",
+            "bodacc": "C",
+            "numero_annonce": "6124"
+          }
+        ],
+        "nouvelle_annonce_publiee": [
+          {
+            "annonce": "Bodacc C n°20230190, annonce n°6124",
+            "type": "Modification",
+            "date": "2023-10-02",
+            "numero_parution": "20230190",
+            "bodacc": "C",
+            "numero_annonce": "6124"
+          }
+        ],
+        "nouveaux_statuts_publies": [
+          {
+            "acte": "Statuts mis à jour",
+            "date": "2023-10-02",
+            "token": null
+          }
+        ],
+        "nouvel_acte_publie": [
+          {
+            "acte": "Procès-verbal d’assemblée - Changement de président",
+            "date": "2023-10-02",
+            "token": null
+          }
+        ],
+        "nouvelle_declaration_beneficiaires_effectif_publiee": [
+          {
+            "acte": null,
+            "date": "2023-10-02"
+          }
+        ],
+        "nouveau_dirigeant": [
+          {
+            "prenom": [
+              "Paul"
+            ],
+            "nom": "Manicle",
+            "date_de_naissance_rgpd": "1975-10",
+            "denomination": null,
+            "siren": null,
+            "date": "03/05/2019"
+          }
+        ],
+        "dirigeant_partant": [
+          {
+            "prenom": [
+              "Manicle"
+            ],
+            "nom": "Paul",
+            "date_de_naissance_rgpd": "1975-10",
+            "denomination": null,
+            "siren": null,
+            "date": "03/05/2019"
+          }
+        ],
+        "qualite_dirigeant": [
+          {
+            "prenom": [
+              "Paul"
+            ],
+            "nom": "Manicle",
+            "date_de_naissance_rgpd": "1975-10",
+            "denomination": null,
+            "siren": null,
+            "valeur": [
+              "Gérant"
+            ],
+            "ancienne_valeur": [
+              "Commissaire aux comptes suppléant"
+            ],
+            "date": "03/05/2019"
+          }
+        ],
+        "nouvelle_decision_justice": [
+          {
+            "id": "5364",
+            "juridiction": "Tribunal de commerce de Paris",
+            "date": "2023-10-02",
+            "numero": "24-11.047",
+            "date_debut_affaire": "2023-09-15",
+            "position": "Defense",
+            "avocats": [
+              "Me Jean Dupont"
+            ],
+            "autres_parties": [
+              "Société ABC"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
