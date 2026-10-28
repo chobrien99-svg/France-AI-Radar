@@ -4,7 +4,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { mentions, normalizeText, searchTerms } from "../lib/monitoring/match.ts"
-import { normalizeSiren, parseBodacc, parseFeed, stripHtml } from "../lib/monitoring/parse.ts"
+import { normalizeSiren, pappersUrl, parseBodacc, parseFeed, parsePappersCompany, parsePappersSearch, stripHtml } from "../lib/monitoring/parse.ts"
 import { ANALYSIS_SCHEMA, buildPrompt, findPossibleDuplicate, isUsable, validateAnalysis } from "../lib/monitoring/analysis.ts"
 
 const fixture = (name) => readFileSync(new URL(`./fixtures/monitoring/${name}`, import.meta.url), "utf8")
@@ -100,6 +100,51 @@ test("normalizeSiren", () => {
   assert.equal(normalizeSiren("912 345 678"), "912345678")
   assert.equal(normalizeSiren("91234567"), null)
   assert.equal(normalizeSiren(null), null)
+})
+
+// ---------------------------------------------------------------- Pappers
+
+test("parsePappersSearch keeps valid companies with their details", () => {
+  const matches = parsePappersSearch(JSON.parse(fixture("pappers-recherche.json")))
+  assert.equal(matches.length, 2)
+  assert.deepEqual(matches[0], {
+    siren: "912345678", name: "JEMBA", legalForm: "SAS, société par actions simplifiée", city: "Lyon",
+    createdOn: "2022-03-14", nafCode: "62.01Z", activity: "Programmation informatique", capital: 12000, closed: false,
+  })
+  assert.equal(matches[1].siren, "801234567")
+  assert.equal(matches[1].closed, true)
+  assert.deepEqual(parsePappersSearch({ error: "x" }), [])
+})
+
+test("parsePappersCompany finds recent filings and new directors, skipping accounts and past events", () => {
+  const body = JSON.parse(fixture("pappers-entreprise.json"))
+  const { items, snapshot } = parsePappersCompany(body, "2026-08-01", null, "2026-10-28")
+  assert.deepEqual(snapshot, { capital: 15000, closed: false })
+  assert.deepEqual(items.map((i) => i.title), [
+    "Pappers: Documents filed (Procès-verbal d'assemblée générale extraordinaire, Statuts mis à jour) – JEMBA",
+    "Pappers: New Directeur général – JEMBA",
+  ])
+  const [actes, director] = items
+  assert.equal(actes.source, "pappers")
+  assert.equal(actes.sourceName, "Pappers")
+  assert.equal(actes.excerpt, "Augmentation du capital social")
+  assert.equal(actes.publishedAt, "2026-10-09T00:00:00.000Z")
+  assert.equal(actes.url, "https://www.pappers.fr/entreprise/912345678#actes-2026-10-09-proces-verbal-d-assemblee-generale-extraordinaire-statuts-mi")
+  assert.equal(director.url, pappersUrl("912345678", "dirigeant-2026-10-02-leo-dupre"))
+  assert.equal(director.excerpt, "Léo Dupré, Directeur général, since 2026-10-02")
+})
+
+test("parsePappersCompany reports a capital change and a closure against the last snapshot", () => {
+  const body = { ...JSON.parse(fixture("pappers-entreprise.json")), entreprise_cessee: true, date_cessation: "2026-10-20" }
+  const first = parsePappersCompany(body, "2026-10-27", null, "2026-10-28")
+  assert.equal(first.items.length, 0)   // nothing to compare with yet
+  const { items } = parsePappersCompany(body, "2026-10-27", { capital: 12000, closed: false }, "2026-10-28")
+  assert.deepEqual(items.map((i) => i.url), [
+    "https://www.pappers.fr/entreprise/912345678#capital-15000",
+    "https://www.pappers.fr/entreprise/912345678#cessation-2026-10-20",
+  ])
+  assert.match(items[0].excerpt, /from 12000 € to 15000 €/)
+  assert.equal(parsePappersCompany(body, "2026-10-27", { capital: 15000, closed: true }, "2026-10-28").items.length, 0)
 })
 
 // ---------------------------------------------------------------- Claude's answer

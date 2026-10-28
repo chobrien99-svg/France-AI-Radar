@@ -28,6 +28,11 @@ BEGIN
   VALUES ('00000000-0000-0000-0000-00000000000a', 'google_news', 'https://example.com/namesake', 'Namesake', 'other', 'Namesake', 'dismissed');
   RAISE NOTICE 'ok: dismissed finds can be stored';
 
+  -- Register events read from Pappers are a source of their own.
+  INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title)
+  VALUES ('00000000-0000-0000-0000-00000000000a', 'pappers', 'https://www.pappers.fr/entreprise/912345678#actes-2026-10-01', 'Actes', 'other', 'Actes');
+  RAISE NOTICE 'ok: pappers drafts accepted';
+
   -- Values outside the allowed lists are refused.
   BEGIN
     INSERT INTO signal_candidates (organization_id, source, source_url, raw_title, signal_type, title)
@@ -50,7 +55,8 @@ BEGIN
 
   -- Monitoring settings default to enabled with no aliases.
   INSERT INTO monitoring_state (organization_id) VALUES ('00000000-0000-0000-0000-00000000000a');
-  SELECT count(*) INTO n FROM monitoring_state WHERE enabled AND search_aliases = '{}' AND exclude_terms = '{}';
+  SELECT count(*) INTO n FROM monitoring_state WHERE enabled AND search_aliases = '{}' AND exclude_terms = '{}'
+    AND last_pappers_at IS NULL AND pappers_seen IS NULL;
   IF n <> 1 THEN RAISE EXCEPTION 'monitoring_state defaults wrong'; END IF;
   RAISE NOTICE 'ok: monitoring settings default to enabled';
 

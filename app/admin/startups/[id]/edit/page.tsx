@@ -15,6 +15,7 @@ import { LinkedLegalEntities } from "@/components/admin/linked-legal-entities"
 import { LinkedSectors } from "@/components/admin/linked-sectors"
 import { TechnicalClassification } from "@/components/admin/technical-classification"
 import { loadTechnicalProfile, loadVocabulary } from "@/lib/technical-profile"
+import { pappersConfigured } from "@/lib/monitoring/pappers"
 
 export default async function EditStartupPage({
   params,
@@ -224,6 +225,8 @@ export default async function EditStartupPage({
         organizationId={id}
         state={(monitoringRaw as MonitoringState) ?? null}
         hasSiren={legalEntities.some((e) => Boolean(e.siren))}
+        startupName={startup.name ?? ""}
+        pappersEnabled={pappersConfigured()}
       />
 
       <LinkedGrants

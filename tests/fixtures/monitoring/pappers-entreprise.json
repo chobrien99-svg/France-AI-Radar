@@ -1,0 +1,23 @@
+{
+  "siren": "912345678",
+  "nom_entreprise": "JEMBA",
+  "capital": 15000,
+  "entreprise_cessee": false,
+  "representants": [
+    { "qualite": "Président", "nom_complet": "Ada Martin", "personne_morale": false, "date_prise_de_poste": "2022-03-14", "actuel": true },
+    { "qualite": "Directeur général", "nom_complet": "Léo Dupré", "personne_morale": false, "date_prise_de_poste": "2026-10-02", "actuel": true },
+    { "qualite": "Directeur général délégué", "nom_complet": "Old Director", "date_prise_de_poste": "2026-09-30", "actuel": false }
+  ],
+  "depots_actes": [
+    {
+      "date_depot": "2026-10-09",
+      "disponible": true,
+      "actes": [
+        { "type": "Procès-verbal d'assemblée générale extraordinaire", "decision": "Augmentation du capital social", "date_acte": "2026-09-25" },
+        { "type": "Statuts mis à jour", "date_acte": "2026-09-25" }
+      ]
+    },
+    { "date_depot": "2026-09-20", "actes": [{ "type": "Comptes annuels", "decision": "Approbation des comptes" }] },
+    { "date_depot": "2025-01-10", "actes": [{ "type": "Procès-verbal", "decision": "Transfert du siège social" }] }
+  ]
+}

@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------
 // One signal monitoring run: for each AI Radar startup, collect new items
-// from BODACC, Google News and the press feeds, have Claude judge and draft
+// from BODACC, Pappers, Google News and the press feeds, have Claude judge and draft
 // each one, and queue the credible ones in signal_candidates for review.
 // Called nightly by /api/cron/monitor-signals and on demand ("Check now").
 // How it works: docs/signal-monitoring.md
@@ -9,7 +9,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { analysisConfigured, analyzeItem } from "@/lib/monitoring/analyze"
 import { findPossibleDuplicate, isUsable, type CompanyContext } from "@/lib/monitoring/analysis"
 import type { MatchTarget } from "@/lib/monitoring/match"
-import type { FoundItem } from "@/lib/monitoring/parse"
+import { parsePappersCompany, type FoundItem, type PappersSnapshot } from "@/lib/monitoring/parse"
+import { getCompany, PappersAccountError, pappersConfigured, pappersIntervalDays } from "@/lib/monitoring/pappers"
 import { fetchBodacc, fetchGoogleNews, fetchPressFeeds, pressMatches } from "@/lib/monitoring/sources"
 
 type Row = Record<string, unknown>
@@ -21,6 +22,8 @@ const MAX_ANALYSES = Number(process.env.MONITOR_MAX_ANALYSES) || 150
 const MAX_ITEMS_PER_ORG = 12
 /** How far back BODACC is read the first time a startup is checked. */
 const BODACC_FIRST_LOOKBACK_DAYS = 90
+/** Pappers events this recent are considered; ones already seen are skipped by URL. */
+const PAPPERS_LOOKBACK_DAYS = 90
 
 export type RunSummary = {
   runId: string | null
@@ -92,6 +95,9 @@ export async function runMonitoring(
   const press = await fetchPressFeeds()
   press.errors.forEach(note)
   const today = isoDay(new Date())
+  const pappersEvery = pappersIntervalDays()
+  // Turned off for the rest of the run after a refused key or empty credit balance.
+  let pappersOn = pappersConfigured() && (opts.kind === "manual" || pappersEvery > 0)
 
   for (const [index, org] of orgs.entries()) {
     if (Date.now() > opts.deadline || summary.itemsAnalyzed >= MAX_ANALYSES) {
@@ -118,6 +124,28 @@ export async function runMonitoring(
         found.push(...bodaccItems)
       } catch (err) {
         note(`${name}: BODACC ${err instanceof Error ? err.message : "failed"}`)
+      }
+    }
+    // Pappers: one company record (1 credit) per startup every pappersEvery days.
+    let pappersItems: FoundItem[] = []
+    let pappersSnapshot: PappersSnapshot | null = null
+    const lastPappers = (state?.last_pappers_at as string | null | undefined) ?? null
+    const previousSnapshot = (state?.pappers_seen as PappersSnapshot | null | undefined) ?? null
+    const pappersDue = opts.kind === "manual" || !lastPappers || Date.now() - Date.parse(lastPappers) >= pappersEvery * 86_400_000 - 3_600_000
+    if (siren && pappersOn && pappersDue) {
+      try {
+        const parsed = parsePappersCompany(
+          await getCompany(siren),
+          daysAgo(Math.max(PAPPERS_LOOKBACK_DAYS, pappersEvery * 2)),
+          previousSnapshot && typeof previousSnapshot === "object" && "closed" in previousSnapshot ? previousSnapshot : null,
+          today,
+        )
+        pappersItems = parsed.items
+        pappersSnapshot = parsed.snapshot
+        found.push(...pappersItems)
+      } catch (err) {
+        if (err instanceof PappersAccountError) pappersOn = false
+        note(err instanceof PappersAccountError ? err.message : `${name}: ${err instanceof Error ? err.message : "Pappers failed"}`)
       }
     }
     try {
@@ -215,10 +243,20 @@ export async function runMonitoring(
     const nextCursor = pendingDates.length ? dayBefore(pendingDates[0]) : doneDates.at(-1) ?? null
     if (nextCursor && (!lastBodacc || nextCursor > lastBodacc)) lastBodacc = nextCursor
 
+    // A capital or closure change is found by comparing with the stored
+    // snapshot, so keep the old one until that item has been dealt with.
+    const pappersUpdate: Record<string, unknown> = {}
+    if (pappersSnapshot) {
+      pappersUpdate.last_pappers_at = new Date().toISOString()
+      const changeUnread = pappersItems.some((it) => /#(capital|cessation)-/.test(it.url) && !processed.has(it.url))
+      if (!changeUnread) pappersUpdate.pappers_seen = pappersSnapshot
+    }
+
     await svc.from("monitoring_state").upsert({
       organization_id: id,
       last_checked_at: new Date().toISOString(),
       last_bodacc_date: lastBodacc,
+      ...pappersUpdate,
       updated_at: new Date().toISOString(),
     }, { onConflict: "organization_id" })
     summary.orgsChecked++
