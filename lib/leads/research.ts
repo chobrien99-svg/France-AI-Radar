@@ -7,7 +7,7 @@
 // consultancy or a freelancer. LinkedIn is never fetched; profiles are only
 // quoted from search results or from pages that link to them.
 import Anthropic from "@anthropic-ai/sdk"
-import { describeOfficer, type DirectoryFacts } from "@/lib/leads/parse"
+import { describeOfficer, peopleOf, type DirectoryFacts } from "@/lib/leads/parse"
 import { findWebsites } from "@/lib/leads/websites"
 
 // Web search with result filtering needs a Sonnet- or Opus-class model.
@@ -36,7 +36,7 @@ You get one company from the French register: its legal name, any trading name, 
 1. Search the legal name with the town, and any trading name given.
 2. Founders often sit on the board through personal holding companies ("X HOLDING"); the people behind them are listed. Search the founders' names together, and each name with words like "IA", "intelligence artificielle", "startup" or the town.
 3. New startups usually trade under a brand or product name that differs from the legal name, and the founders' own profiles are often not updated yet. Search the brand together with a founder's surname or the town, as a brand alone often matches unrelated companies. When a name keeps coming up next to the founders, search that name too.
-4. A new site is often not in search results yet. When addresses built from the company's names are listed as answering, open the most likely one first. When you find the brand's or the company's website, open it (its home, About or Team page) to confirm the founders and to collect the company's and founders' social links. Do not open LinkedIn pages; quote them only from search results or from pages that link to them.
+4. A new site is often not in search results yet. When addresses built from the company's names are listed as answering, open the most likely one first. When you find the brand's or the company's website, open it (its home, About or Team page) to confirm the founders and to collect the company's social links and each founder's own profile (on team pages these are often links on photos or icons pointing to linkedin.com/in/...). When the site doesn't link a founder's profile, one search for the founder's name with "LinkedIn" usually finds it. Do not open LinkedIn pages; quote them only from search results or from pages that link to them.
 Look for: website, founders, a product or demo, fundraising, incubator or accelerator programmes, press coverage.
 Then judge: "startup" if it builds its own AI product or technology; "consultancy" if it sells AI consulting, training, integration or freelance services, or is a holding or solo service business; "unclear" if there is still not enough public information (common for companies registered in the last weeks).
 Companies with the same name are common: only use results that match the town, the founders or the activity, and say so when unsure.
@@ -51,7 +51,7 @@ When you have finished searching, reply with only a JSON object (no prose, no co
 - brand (string or null: the trading or product name it uses online, if different from the legal name)
 - website (string or null: the company's or brand's own site, only if found)
 - founders (array of strings: "Name, role" for people found)
-- profiles (array of {"label", "url"}: company and founder pages such as LinkedIn, Instagram, X, GitHub, exactly as found)
+- profiles (array of {"label", "url"}: company pages such as LinkedIn, Instagram, X, GitHub, and each founder's own profile labelled "<Name>, LinkedIn", exactly as found)
 - links (array of {"title", "url"}: up to 5 of the most useful other pages you found, such as press or programme pages)`
 
 export function researchPrompt(siren: string, name: string, facts: DirectoryFacts | null, sites: string[] = []): string {
@@ -119,6 +119,44 @@ export function validateResearch(raw: unknown, evidence: Evidence): Omit<Researc
   }
 }
 
+const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+const bareUrl = (u: string) => u.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/+$/, "").toLowerCase()
+
+/**
+ * Founders' LinkedIn profiles that the tools returned but the answer left
+ * out (team pages often link them from an icon). A profile counts as a
+ * founder's when its address contains their surname: linkedin.com/in/simon-fourticq-…
+ */
+export function founderProfiles(evidence: Evidence, people: string[], already: { url: string }[] = []): { label: string; url: string }[] {
+  const urls = new Set([...evidence.urls, ...(evidence.text.match(/https?:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/[A-Za-z0-9%_-]+\/?/gi) ?? [])])
+  const taken = new Set(already.map((p) => bareUrl(p.url)))
+  const found: { label: string; url: string }[] = []
+  const names = [...new Set(people.map((p) => p.trim()).filter(Boolean))]
+  const parts = (name: string) => fold(name).split(/\s+/)
+  const slugWords = (url: string) => {
+    const slug = url.match(/linkedin\.com\/in\/([^/?#]+)/i)?.[1] ?? ""
+    try {
+      return fold(decodeURIComponent(slug)).split(/[-_]/)
+    } catch {
+      return fold(slug).split(/[-_]/)
+    }
+  }
+  for (const name of names) {
+    const [first, ...rest] = parts(name)
+    const surname = rest.at(-1) ?? ""
+    if (surname.length < 3) continue
+    // Two Cignonis: the first name must match too. A surname alone is enough when only one person has it.
+    const shared = names.filter((n) => parts(n).at(-1) === surname).length > 1
+    for (const url of urls) {
+      const words = slugWords(url)
+      if (!words.includes(surname) || (shared && !words.includes(first)) || taken.has(bareUrl(url))) continue
+      taken.add(bareUrl(url))
+      found.push({ label: `${name}, LinkedIn`, url })
+    }
+  }
+  return found
+}
+
 function extractJson(s: string): unknown {
   const start = s.indexOf("{")
   const end = s.lastIndexOf("}")
@@ -174,7 +212,9 @@ export async function researchCompany(siren: string, name: string, facts: Direct
       return { error: "answer was not JSON" }
     }
     const checked = validateResearch(parsed, evidence)
-    return "error" in checked ? checked : { ...checked, researchedWith: MODEL }
+    if ("error" in checked) return checked
+    const people = [...peopleOf(facts), ...(facts?.directors ?? []).flatMap((d) => d.people ?? []), ...checked.founders.map((f) => f.split(",")[0])]
+    return { ...checked, profiles: [...checked.profiles, ...founderProfiles(evidence, people, checked.profiles)].slice(0, 10), researchedWith: MODEL }
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) return { error: "ANTHROPIC_API_KEY is invalid" }
     if (err instanceof Anthropic.RateLimitError) return { error: "rate limited by the Claude API" }
