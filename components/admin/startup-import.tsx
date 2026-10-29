@@ -15,7 +15,12 @@ type CheckResponse = {
   draft: NormalizedDraft | null
   matchedFounders?: number[]
   created?: { id: string; slug: string }
+  /** A record with the same slug or SIREN, which the draft can fill in instead */
+  existing?: { id: string; name: string; slug: string } | null
+  updated?: Updated
 }
+
+type Updated = { id: string; slug: string; filled: string[]; added: string[] }
 
 const STRENGTH_LABEL: Record<number, string> = { 5: "Strong", 3: "Moderate", 2: "Neutral", 1: "Weak" }
 const eur = (n: number | null) => (n === null ? null : `€${n.toLocaleString("en-GB")}`)
@@ -24,24 +29,27 @@ export function StartupImport() {
   const [text, setText] = useState("")
   const [checked, setChecked] = useState<CheckResponse | null>(null)
   const [checkedText, setCheckedText] = useState("")
-  const [busy, setBusy] = useState<"check" | "create" | null>(null)
+  const [busy, setBusy] = useState<"check" | "create" | "update" | null>(null)
   const [created, setCreated] = useState<{ id: string; slug: string } | null>(null)
+  const [updated, setUpdated] = useState<Updated | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
 
-  async function send(mode: "check" | "create") {
+  async function send(mode: "check" | "create" | "update", targetId?: string) {
     setBusy(mode)
     setRequestError(null)
     try {
       const res = await fetch("/api/admin/startups/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, mode }),
+        body: JSON.stringify({ text, mode, targetId }),
       })
       const data = (await res.json().catch(() => null)) as CheckResponse | null
       if (!data) {
         setRequestError(`The server answered ${res.status} without details.`)
       } else if (data.created) {
         setCreated(data.created)
+      } else if (data.updated) {
+        setUpdated(data.updated)
       } else {
         setChecked(data)
         setCheckedText(text)
@@ -67,6 +75,24 @@ export function StartupImport() {
     )
   }
 
+  if (updated) {
+    return (
+      <div className="border-l-2 border-l-primary bg-accent p-5">
+        <p className="text-[14px] font-semibold text-foreground">Existing startup filled in</p>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          {updated.filled.length ? <>Filled empty fields: {updated.filled.join(", ")}. </> : <>No empty fields to fill. </>}
+          {updated.added.length ? <>Added: {updated.added.join(", ")}.</> : <>Nothing new to add.</>}
+          {" "}Fields that already had a value were left as they were.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button asChild><Link href={`/admin/startups/${updated.id}/edit`}>Open in the editor</Link></Button>
+          <Button variant="outline" asChild><Link href={`/startup/${updated.slug}`}>View the page</Link></Button>
+          <Button variant="outline" onClick={() => { setUpdated(null); setChecked(null); setText("") }}>Import another</Button>
+        </div>
+      </div>
+    )
+  }
+
   const stale = checked && checkedText !== text
   const canCreate = checked?.ok && !stale && busy === null
 
@@ -87,6 +113,11 @@ export function StartupImport() {
           <Button type="button" onClick={() => send("create")} disabled={!canCreate}>
             {busy === "create" ? "Creating…" : "Create draft startup"}
           </Button>
+          {checked?.existing && !stale && (
+            <Button type="button" variant="outline" onClick={() => send("update", checked.existing!.id)} disabled={busy !== null}>
+              {busy === "update" ? "Updating…" : `Update ${checked.existing.name} instead (fills empty fields only)`}
+            </Button>
+          )}
           {stale && <span className="text-[12px] text-muted-foreground">The text changed since the last check. Check again before creating.</span>}
         </div>
         {requestError && <p className="mt-2 text-[12px] text-destructive">{requestError}</p>}

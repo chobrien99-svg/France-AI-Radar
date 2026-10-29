@@ -3,7 +3,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { validateDraft } from "../lib/startup-import.ts"
-import { writeDraft, checkExisting } from "../lib/startup-import-server.ts"
+import { writeDraft, checkExisting, updateFromDraft } from "../lib/startup-import-server.ts"
 import { vocabFromMigrations } from "./vocab-from-migrations.mjs"
 import { fakeSupabase } from "./fake-supabase.mjs"
 
@@ -73,4 +73,77 @@ test("duplicate checks: taken slug blocks, same name / domain / SIREN warn", asy
   const w = await checkExisting(other.client, draft)
   assert.deepEqual(w.errors, [])
   assert.deepEqual(w.warnings.map((x) => x.path).sort(), ["company.name", "company.website"])
+})
+
+// ---------------------------------------------------------------- update an existing record
+
+function thinNavigatorRecord() {
+  // A sparse company from the Navigator, already holding one of the draft's rounds and its founder
+  return fakeSupabase({
+    ...seed,
+    organizations: [{ id: "o-1", name: "Exemple Biosystèmes", slug: "exemple-biosystemes", status: "active", website: "https://old.example.org", description: null, founded_date: null, city_id: null }],
+    organization_profiles: [{ organization_id: "o-1", product_description: "Kept as is", investor_brief: null }],
+    people: [{ id: "p-1", slug: "camille-exemple", full_name: "camille exemple" }],
+    organization_people: [{ organization_id: "o-1", person_id: "p-1", is_founder: true, people: { id: "p-1", slug: "camille-exemple", full_name: "camille exemple" } }],
+    funding_rounds: [{ organization_id: "o-1", stage: draft.fundingRounds[0].stage, announced_date: draft.fundingRounds[0].announced_date, amount_eur: 2 }],
+    legal_entities: [{ organization_id: "o-1", ...draft.legalEntities[0] }],
+    product_organizations: [],
+  })
+}
+
+test("the check offers to update the record with the same slug, and in update mode the slug is no conflict", async () => {
+  const { client } = thinNavigatorRecord()
+  const check = await checkExisting(client, draft)
+  assert.deepEqual(check.errors.map((e) => e.path), ["company.slug"])
+  assert.deepEqual(check.existing, { id: "o-1", name: "Exemple Biosystèmes", slug: "exemple-biosystemes" })
+
+  const update = await checkExisting(client, draft, "o-1")
+  assert.deepEqual(update.errors, [])
+  assert.deepEqual(update.founderMatches, { 0: { id: "p-1", slug: "camille-exemple" } }, "the founder already on the company is the same person")
+})
+
+test("updating fills only empty fields, joins the Radar, adds what is missing, and is safe to run twice", async () => {
+  const { client, tables } = thinNavigatorRecord()
+  const check = await checkExisting(client, draft, "o-1")
+  const res = await updateFromDraft(client, draft, "o-1", check.founderMatches)
+  assert.equal(res.ok, true)
+
+  const org = tables.organizations[0]
+  assert.equal(org.website, "https://old.example.org", "a value already there is never overwritten")
+  assert.equal(org.status, "active", "the status is kept")
+  assert.equal(org.description, draft.organization.description, "an empty field is filled")
+  assert.equal(org.city_id, "city-lyon")
+  assert.equal(org.signal_count, 1)
+  assert.equal(tables.organization_profiles[0].product_description, "Kept as is")
+  assert.equal(tables.organization_profiles[0].investor_brief, draft.profile.investor_brief)
+  assert.deepEqual(tables.product_organizations.map((r) => r.organization_id), ["o-1"], "it joins the Radar")
+
+  assert.equal(tables.funding_rounds.length, 1, "the round already recorded isn't duplicated")
+  assert.equal(tables.funding_rounds[0].amount_eur, 2, "and keeps its own amount")
+  assert.equal(tables.legal_entities.length, 1)
+  assert.equal(tables.people.length, 1, "no second profile for the same founder")
+  assert.equal(tables.organization_people.length, 1)
+  assert.equal(tables.signals.length, 1)
+  assert.equal(tables.grants.length, 1)
+  assert.equal(tables.program_organizations.length, 1)
+  assert.ok(res.filled.includes("description") && !res.filled.includes("website"))
+  assert.ok(res.added.includes("AI Radar membership"))
+
+  const counts = Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, v.length]))
+  const again = await updateFromDraft(client, draft, "o-1", check.founderMatches)
+  assert.equal(again.ok, true)
+  assert.deepEqual(again.filled, [])
+  assert.deepEqual(again.added, [])
+  assert.deepEqual(Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, v.length])), counts, "the second run changes nothing")
+})
+
+test("updating adds a section repeated within the draft only once, and only matches founders, not staff", async () => {
+  const { client, tables } = thinNavigatorRecord()
+  tables.organization_people[0].is_founder = false   // the same-name person is staff, not a founder
+  const doubled = { ...draft, signals: [draft.signals[0], { ...draft.signals[0] }] }
+  const check = await checkExisting(client, doubled, "o-1")
+  assert.deepEqual(check.founderMatches, {}, "staff with the same name isn't taken for the founder")
+  const res = await updateFromDraft(client, doubled, "o-1", check.founderMatches)
+  assert.equal(res.ok, true)
+  assert.equal(tables.signals.length, 1)
 })
