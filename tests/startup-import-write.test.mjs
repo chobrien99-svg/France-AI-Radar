@@ -136,3 +136,14 @@ test("updating fills only empty fields, joins the Radar, adds what is missing, a
   assert.deepEqual(again.added, [])
   assert.deepEqual(Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, v.length])), counts, "the second run changes nothing")
 })
+
+test("updating adds a section repeated within the draft only once, and only matches founders, not staff", async () => {
+  const { client, tables } = thinNavigatorRecord()
+  tables.organization_people[0].is_founder = false   // the same-name person is staff, not a founder
+  const doubled = { ...draft, signals: [draft.signals[0], { ...draft.signals[0] }] }
+  const check = await checkExisting(client, doubled, "o-1")
+  assert.deepEqual(check.founderMatches, {}, "staff with the same name isn't taken for the founder")
+  const res = await updateFromDraft(client, doubled, "o-1", check.founderMatches)
+  assert.equal(res.ok, true)
+  assert.equal(tables.signals.length, 1)
+})

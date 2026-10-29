@@ -85,7 +85,7 @@ export async function checkExisting(svc: SupabaseClient, draft: NormalizedDraft,
 
   // Updating: founders already linked to the target with the same name are that same person
   const targetFounders = targetId
-    ? (((await svc.from("organization_people").select("person_id, people(id, slug, full_name)").eq("organization_id", targetId)).data ?? []) as Row[])
+    ? (((await svc.from("organization_people").select("person_id, people(id, slug, full_name)").eq("organization_id", targetId).eq("is_founder", true)).data ?? []) as Row[])
       .map((r) => (Array.isArray(r.people) ? r.people[0] : r.people) as Row | null)
       .filter((p): p is Row => !!p)
     : []
@@ -354,7 +354,13 @@ export async function updateFromDraft(
     const addMissing = async <T extends Row>(table: string, items: T[], key: (r: Row) => unknown, label: string, map: (x: T) => Row = (x) => x) => {
       if (!items.length) return
       const have = new Set((await rows(table)).map((r) => JSON.stringify(key(r))))
-      const fresh = items.filter((x) => !have.has(JSON.stringify(key(map(x) as Row))))
+      // Skips what the record has, and repeats within the draft itself
+      const fresh = items.filter((x) => {
+        const k = JSON.stringify(key(map(x) as Row))
+        if (have.has(k)) return false
+        have.add(k)
+        return true
+      })
       if (!fresh.length) return
       must(await svc.from(table).insert(fresh.map((x) => ({ organization_id, ...map(x) }))), label)
       added.push(`${fresh.length} ${label.toLowerCase()}`)
