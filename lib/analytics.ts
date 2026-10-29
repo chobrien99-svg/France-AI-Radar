@@ -25,11 +25,15 @@ let initialized = false
 export function initPostHog() {
   if (typeof window === "undefined" || initialized) return
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com"
+  // Our own subdomain (a PostHog managed reverse proxy), so ad blockers don't drop the events.
+  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://t.franceairadar.com"
   if (!key) return
 
   posthog.init(key, {
     api_host: host,
+    // Through the proxy, links (toolbar, replays) must still point at the PostHog app.
+    ui_host: "https://eu.posthog.com",
+    defaults: "2026-05-30",
     person_profiles: "identified_only",
     capture_pageview: true,
     capture_pageleave: true,
