@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { isRadarOrg } from "@/lib/radar-data"
 
 export const runtime = "nodejs"
 
@@ -11,6 +12,9 @@ export async function POST(request: NextRequest) {
   const body = await request.json()
   const organization_id = body.organization_id
   if (!organization_id) return NextResponse.json({ error: "organization_id required" }, { status: 400 })
+  if (typeof organization_id !== "string" || !(await isRadarOrg(await createServiceClient(), organization_id))) {
+    return NextResponse.json({ error: "Startup not found" }, { status: 404 })
+  }
 
   const { error } = await supabase
     .from("alerts")

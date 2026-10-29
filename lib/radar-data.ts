@@ -5,6 +5,29 @@ import { stageFrom } from "@/lib/radar"
 type Row = Record<string, unknown>
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] : v) ?? null
 
+// The shared database also holds the Navigator's ~6,000 companies. Only those
+// linked to the "ai-radar" product belong on the Radar's public pages.
+
+/** IDs of every organization on the Radar. */
+export async function radarOrgIds(svc: SupabaseClient): Promise<Set<string>> {
+  const { data } = await svc
+    .from("product_organizations")
+    .select("organization_id, product_catalog!inner(slug)")
+    .eq("product_catalog.slug", "ai-radar")
+  return new Set(((data ?? []) as Row[]).map((r) => r.organization_id as string))
+}
+
+/** Is this organization on the Radar (not only in the Navigator)? */
+export async function isRadarOrg(svc: SupabaseClient, organizationId: string): Promise<boolean> {
+  const { data } = await svc
+    .from("product_organizations")
+    .select("organization_id, product_catalog!inner(slug)")
+    .eq("product_catalog.slug", "ai-radar")
+    .eq("organization_id", organizationId)
+    .limit(1)
+  return (data ?? []).length > 0
+}
+
 /**
  * Up to `count` other AI Radar startups for the "More on the Radar" strip,
  * same city first, then most recently active.
@@ -15,11 +38,7 @@ export async function loadRelatedStartups(
   cityId: string | null,
   count = 3
 ): Promise<CardStartup[]> {
-  const { data: radar } = await svc
-    .from("product_organizations")
-    .select("organization_id, product_catalog!inner(slug)")
-    .eq("product_catalog.slug", "ai-radar")
-  const ids = ((radar ?? []) as Row[]).map((r) => r.organization_id as string).filter((id) => id !== excludeId)
+  const ids = [...(await radarOrgIds(svc))].filter((id) => id !== excludeId)
   if (ids.length === 0) return []
 
   const { data: orgs } = await svc

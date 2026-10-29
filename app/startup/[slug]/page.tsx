@@ -11,7 +11,7 @@ import { Monogram } from "@/components/radar/monogram"
 import { StartupCardV2 } from "@/components/radar/cards"
 import { ShortlistButton, AlertToggle, ShareButtonV2 } from "@/components/radar/profile-actions"
 import { formatDate, formatEur, founderTags, relativeDate, signalColor, signalLabel, stageFrom, toneFor } from "@/lib/radar"
-import { loadRelatedStartups } from "@/lib/radar-data"
+import { isRadarOrg, loadRelatedStartups } from "@/lib/radar-data"
 import { loadTechnicalProfile, type TechnicalProfile, type TermLink } from "@/lib/technical-profile"
 import { CLAIMS, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, familyLabel, labelFor } from "@/lib/taxonomy"
 import { AnalyticsPageTrack } from "@/components/analytics-page-track"
@@ -83,6 +83,9 @@ export default async function StartupProfilePage({
 
   if (!ventureRaw) notFound()
   const venture = ventureRaw as Venture
+  // Navigator-only companies share the table but aren't Radar profiles; admins can still open them.
+  const onRadar = await isRadarOrg(svcForRead, venture.id)
+  if (!onRadar && !isAdmin) notFound()
 
   // Profile view tracking for Explorer tier
   const viewLimit = getProfileViewLimit(tier)
@@ -250,6 +253,12 @@ export default async function StartupProfilePage({
         tier={tier}
       />
 
+      {!onRadar && (
+        <div className="page-container" style={{ padding: "10px 0", fontSize: 13 }}>
+          <strong>Not on the Radar.</strong> This is a Navigator record: only admins can see this page.{" "}
+          <Link href="/admin/startups/import" className="r2-inline">Bring it onto the Radar with a Claude draft</Link>
+        </div>
+      )}
       {/* ---------------- Header band ---------------- */}
       <div className="r2-hero">
         <div className="page-container r2-hero-in">

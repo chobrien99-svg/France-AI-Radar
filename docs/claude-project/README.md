@@ -9,6 +9,8 @@
 1. In the Claude Project, upload a startup's documents and ask for a draft.
 2. Claude returns a readable draft (sections A–R) and ends with a JSON import block (section S).
 3. In the site, open **Admin › Startups › Import from Claude draft**, paste the reply (whole or just the block), click **Check draft**, review the problems and the preview, then click **Create draft startup**.
+
+   **The company already exists** (often a thin record from the Navigator database, which shares the same tables): the check reports that the slug or SIREN is taken and offers **Update {name} instead**. That fills only the record's empty fields and adds the founders, signals, rounds, grants, programmes, legal entities, sectors, tags and technical terms it doesn't have yet. Nothing already filled is overwritten, the status is kept, and the company joins the Radar. Running it twice changes nothing the second time.
 4. The startup is created as a **Draft** with its profile, technical classification and evidence, founders, signals, grants, funding rounds, programs, legal entities and sectors. Review it in the editor, then publish.
 
 The import is all-or-nothing: if any write fails, everything it created is removed. It blocks on an already-used slug, warns on a similar name, website domain or SIREN, and links an existing founder profile when the LinkedIn URL matches. Values it cannot map (an unknown term, sector or dropdown value) are skipped and listed, never guessed.

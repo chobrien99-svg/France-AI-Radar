@@ -8,6 +8,7 @@ import { BlurredText } from "@/components/blurred-gate"
 import { StartupCardV2, Redacted, type CardStartup } from "@/components/radar/cards"
 import { formatDate, founderTags, signalColor, signalLabel, stageFrom } from "@/lib/radar"
 import type { Profile } from "@/lib/types"
+import { radarOrgIds } from "@/lib/radar-data"
 
 type Row = Record<string, unknown>
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] : v) ?? null
@@ -90,7 +91,7 @@ export default async function FounderProfilePage({
   const [{ data: ventureLinksRaw }, { data: experienceRaw }] = await Promise.all([
     svc
       .from("organization_people")
-      .select("role, organizations(id, name, slug, description, short_description, logo_url, last_round, signal_count, founded_date, first_seen_at, cities!organizations_city_id_fkey(name))")
+      .select("role, organizations(id, name, slug, status, description, short_description, logo_url, last_round, signal_count, founded_date, first_seen_at, cities!organizations_city_id_fkey(name))")
       .eq("person_id", founder.id)
       .eq("is_founder", true),
     svc
@@ -100,11 +101,19 @@ export default async function FounderProfilePage({
       .order("start_date", { ascending: false, nullsFirst: false }),
   ])
 
-  const ventures = ((ventureLinksRaw ?? []) as Row[])
+  const radarIds = await radarOrgIds(svc)
+  const onRadar = (org: Row) => radarIds.has(org.id as string) && org.status === "active"
+  const allVentures = ((ventureLinksRaw ?? []) as Row[])
     .map((row) => ({ role: (row.role as string | null) ?? null, org: one(row.organizations as Row | Row[] | null) }))
     .filter((v): v is { role: string | null; org: Row } => !!v.org)
     // a person can hold several founder roles at one company — list it once
     .filter((v, i, all) => all.findIndex((w) => w.org.id === v.org.id) === i)
+  // Founders of Navigator-only companies aren't Radar profiles; admins still see everything, Radar companies first.
+  const founderOnRadar = allVentures.some((v) => onRadar(v.org))
+  if (!founderOnRadar && !isAdmin) notFound()
+  const ventures = isAdmin
+    ? [...allVentures].sort((a, b) => Number(onRadar(b.org)) - Number(onRadar(a.org)))
+    : allVentures.filter((v) => onRadar(v.org))
 
   const primary = ventures[0] ?? null
   const company = primary?.org ?? null
@@ -205,6 +214,11 @@ export default async function FounderProfilePage({
   return (
     <main>
       {/* ---------------- Header band ---------------- */}
+      {!founderOnRadar && (
+        <div className="page-container" style={{ padding: "10px 0", fontSize: 13 }}>
+          <strong>Not on the Radar.</strong> This person only founded Navigator companies: only admins can see this page.
+        </div>
+      )}
       <div className="r2-hero">
         <div className="page-container r2-hero-in">
           {company ? (

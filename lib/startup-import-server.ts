@@ -29,6 +29,8 @@ export type ExistingCheck = {
   warnings: Issue[]
   /** Founder index → existing person id (matched by LinkedIn URL) */
   founderMatches: Record<number, { id: string; slug: string | null }>
+  /** The record this draft could update instead (same slug, else same SIREN) */
+  existing: { id: string; name: string; slug: string } | null
 }
 
 const domainOf = (url: string | null) => {
@@ -40,8 +42,12 @@ const domainOf = (url: string | null) => {
   }
 }
 
-/** Duplicates against what is already in the database */
-export async function checkExisting(svc: SupabaseClient, draft: NormalizedDraft): Promise<ExistingCheck> {
+/**
+ * Duplicates against what is already in the database. With `targetId` (the
+ * "update existing" mode) that record's own slug, SIRENs and founders are
+ * expected, not conflicts.
+ */
+export async function checkExisting(svc: SupabaseClient, draft: NormalizedDraft, targetId?: string): Promise<ExistingCheck> {
   const errors: Issue[] = []
   const warnings: Issue[] = []
   const founderMatches: ExistingCheck["founderMatches"] = {}
@@ -56,20 +62,42 @@ export async function checkExisting(svc: SupabaseClient, draft: NormalizedDraft)
     sirens.length ? svc.from("legal_entities").select("siren, organizations(id, name, slug)").in("siren", sirens).limit(3) : Promise.resolve({ data: [] }),
   ])
 
-  if (bySlug) errors.push({ path: "company.slug", message: `The slug "${org.slug}" is already used by ${bySlug.name} (/startup/${bySlug.slug}). Change the slug, or update that startup instead.` })
+  const sirenOrgs = ((bySiren ?? []) as Row[]).map((r) => ({
+    siren: r.siren as string,
+    org: (Array.isArray(r.organizations) ? r.organizations[0] : r.organizations) as Row | null,
+  }))
+  const firstSirenOrg = sirenOrgs.find((r) => r.org)?.org
+  const existing = bySlug
+    ? { id: bySlug.id as string, name: bySlug.name as string, slug: bySlug.slug as string }
+    : firstSirenOrg ? { id: firstSirenOrg.id as string, name: firstSirenOrg.name as string, slug: firstSirenOrg.slug as string } : null
+  const isTarget = (id: unknown) => !!targetId && id === targetId
+
+  if (bySlug && !isTarget(bySlug.id)) errors.push({ path: "company.slug", message: `The slug "${org.slug}" is already used by ${bySlug.name} (/startup/${bySlug.slug}). Change the slug, or update that startup instead.` })
   for (const o of (byName ?? []) as Row[]) {
-    if (o.id !== bySlug?.id) warnings.push({ path: "company.name", message: `A company named "${o.name}" already exists (/startup/${o.slug}). Make sure this is not a duplicate.` })
+    if (o.id !== bySlug?.id && !isTarget(o.id)) warnings.push({ path: "company.name", message: `A company named "${o.name}" already exists (/startup/${o.slug}). Make sure this is not a duplicate.` })
   }
   for (const o of (byDomain ?? []) as Row[]) {
-    if (domainOf(o.website as string) === domain && o.id !== bySlug?.id) warnings.push({ path: "company.website", message: `${o.name} (/startup/${o.slug}) has the same website domain (${domain}).` })
+    if (domainOf(o.website as string) === domain && o.id !== bySlug?.id && !isTarget(o.id)) warnings.push({ path: "company.website", message: `${o.name} (/startup/${o.slug}) has the same website domain (${domain}).` })
   }
-  for (const r of (bySiren ?? []) as Row[]) {
-    const o = (Array.isArray(r.organizations) ? r.organizations[0] : r.organizations) as Row | null
-    if (o) warnings.push({ path: "legal_entities", message: `SIREN ${r.siren} is already linked to ${o.name} (/startup/${o.slug}).` })
+  for (const { siren, org: o } of sirenOrgs) {
+    if (o && !isTarget(o.id)) warnings.push({ path: "legal_entities", message: `SIREN ${siren} is already linked to ${o.name} (/startup/${o.slug}).` })
   }
+
+  // Updating: founders already linked to the target with the same name are that same person
+  const targetFounders = targetId
+    ? (((await svc.from("organization_people").select("person_id, people(id, slug, full_name)").eq("organization_id", targetId)).data ?? []) as Row[])
+      .map((r) => (Array.isArray(r.people) ? r.people[0] : r.people) as Row | null)
+      .filter((p): p is Row => !!p)
+    : []
+  const sameFullName = (a: string, b: string) => a.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() === b.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()
 
   // Founders: reuse a profile with the same LinkedIn URL; warn on same name
   await Promise.all(draft.founders.map(async (f, i) => {
+    const onTarget = targetFounders.find((p) => sameFullName(p.full_name as string, f.full_name))
+    if (onTarget) {
+      founderMatches[i] = { id: onTarget.id as string, slug: (onTarget.slug as string | null) ?? null }
+      return
+    }
     const linkedin = f.person.linkedin_url as string | null
     if (linkedin) {
       const { data } = await svc.from("people").select("id, slug, full_name").eq("linkedin_url", linkedin).limit(1).maybeSingle()
@@ -83,7 +111,7 @@ export async function checkExisting(svc: SupabaseClient, draft: NormalizedDraft)
     if (sameName) warnings.push({ path: `founders[${i}]`, message: `A person named ${f.full_name} already exists (/founder/${sameName.slug}). A new profile will be created; if it is the same person, link the existing one in the editor instead.` })
   }))
 
-  return { errors, warnings, founderMatches }
+  return { errors, warnings, founderMatches, existing }
 }
 
 /** Same slug rule as the admin startup routes; an existing slug (e.g. a differently accented spelling) is reused */
@@ -124,8 +152,11 @@ async function linkProgram(svc: SupabaseClient, organizationId: string, p: Norma
     if (error) throw new Error(`Program edition "${label}": ${error.message}`)
     editionId = data.id
   }
+  const { data: linked } = await svc.from("program_organizations").select("id").eq("program_edition_id", editionId).eq("organization_id", organizationId).maybeSingle()
+  if (linked) return false
   const { error } = await svc.from("program_organizations").insert({ program_edition_id: editionId, organization_id: organizationId, membership_role: p.membership_role })
   if (error) throw new Error(`Program link "${p.program_name}": ${error.message}`)
+  return true
 }
 
 export type WriteResult = { ok: true; id: string; slug: string } | { ok: false; error: string }
@@ -244,5 +275,142 @@ export async function writeDraft(svc: SupabaseClient, draft: NormalizedDraft, fo
     if (orgId) await svc.from("organizations").delete().eq("id", orgId)
     if (createdPeople.length) await svc.from("people").delete().in("id", createdPeople)
     return { ok: false, error: `${(e as Error).message}. Nothing was saved.` }
+  }
+}
+
+export type UpdateSummary = { filled: string[]; added: string[] }
+export type UpdateResult = ({ ok: true; id: string; slug: string } & UpdateSummary) | { ok: false; error: string }
+
+const isBlank = (v: unknown) => v === null || v === undefined || (typeof v === "string" && v.trim() === "") || (Array.isArray(v) && v.length === 0)
+const norm = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : v)
+
+/**
+ * Brings a draft into an existing record (typically a thin Navigator company)
+ * without overwriting anything: only empty fields are filled, and sections
+ * are added only when they aren't there yet. The record joins the Radar if
+ * it isn't on it. Every step checks first, so running it twice changes
+ * nothing the second time; a failure part-way keeps what was already added.
+ */
+export async function updateFromDraft(
+  svc: SupabaseClient,
+  draft: NormalizedDraft,
+  targetId: string,
+  founderMatches: ExistingCheck["founderMatches"],
+): Promise<UpdateResult> {
+  const { organization: org } = draft
+  const filled: string[] = []
+  const added: string[] = []
+  const must = <T>(res: { data: T; error: { message: string } | null }, what: string): T => {
+    if (res.error) throw new Error(`${what}: ${res.error.message}`)
+    return res.data
+  }
+  const rows = async (table: string) => ((await svc.from(table).select("*").eq("organization_id", targetId)).data ?? []) as Row[]
+
+  try {
+    const current = (await svc.from("organizations").select("*").eq("id", targetId).maybeSingle()).data as Row | null
+    if (!current) return { ok: false, error: "That startup no longer exists." }
+    const organization_id = targetId
+
+    // Organization: empty columns only
+    const [cityId, secondaryCityId] = await Promise.all([
+      org.city && isBlank(current.city_id) ? findOrCreateCity(svc, org.city, org.country) : null,
+      org.secondary_city && isBlank(current.secondary_city_id) ? findOrCreateCity(svc, org.secondary_city, org.country) : null,
+    ])
+    const candidate: Row = {
+      city_id: cityId, secondary_city_id: secondaryCityId, founded_date: org.founded_date, website: org.website,
+      linkedin_url: org.linkedin_url, email: org.email, phone: org.phone, description: org.description,
+      total_raised_eur: org.total_raised_eur, last_round: org.last_round, fundraising_status: org.fundraising_status,
+    }
+    const orgPatch = Object.fromEntries(Object.entries(candidate).filter(([k, v]) => !isBlank(v) && isBlank(current[k])))
+    if (Object.keys(orgPatch).length) {
+      must(await svc.from("organizations").update(orgPatch).eq("id", organization_id), "Startup")
+      filled.push(...Object.keys(orgPatch).map((k) => k.replace(/_id$/, "")))
+    }
+
+    // Profile: empty fields only
+    const profile = (await svc.from("organization_profiles").select("*").eq("organization_id", organization_id).maybeSingle()).data as Row | null
+    const profilePatch = Object.fromEntries(Object.entries(draft.profile).filter(([k, v]) => !isBlank(v) && isBlank(profile?.[k])))
+    if (Object.keys(profilePatch).length) {
+      must(
+        profile
+          ? await svc.from("organization_profiles").update(profilePatch).eq("organization_id", organization_id)
+          : await svc.from("organization_profiles").insert({ organization_id, ...profilePatch }),
+        "Profile",
+      )
+      filled.push(...Object.keys(profilePatch))
+    }
+
+    // Radar membership
+    const { data: product } = await svc.from("product_catalog").select("id").eq("slug", "ai-radar").maybeSingle()
+    if (product) {
+      const { data: member } = await svc.from("product_organizations").select("product_id").eq("product_id", product.id).eq("organization_id", organization_id).maybeSingle()
+      if (!member) {
+        must(await svc.from("product_organizations").insert({ product_id: product.id, organization_id }), "AI Radar membership")
+        added.push("AI Radar membership")
+      }
+    }
+
+    // Sections: add what isn't there yet
+    const addMissing = async <T extends Row>(table: string, items: T[], key: (r: Row) => unknown, label: string, map: (x: T) => Row = (x) => x) => {
+      if (!items.length) return
+      const have = new Set((await rows(table)).map((r) => JSON.stringify(key(r))))
+      const fresh = items.filter((x) => !have.has(JSON.stringify(key(map(x) as Row))))
+      if (!fresh.length) return
+      must(await svc.from(table).insert(fresh.map((x) => ({ organization_id, ...map(x) }))), label)
+      added.push(`${fresh.length} ${label.toLowerCase()}`)
+    }
+    const evidence = (e: { evidence_status: string; source_url: string | null; source_note: string | null }) =>
+      ({ evidence_status: e.evidence_status, source_url: e.source_url, source_note: e.source_note })
+
+    await addMissing("organization_tags", draft.tags, (r) => norm(r.tag), "Signal tags")
+    const hasPrimarySector = (await rows("organization_sectors")).some((r) => r.is_primary)
+    await addMissing("organization_sectors", draft.sectors.map((x) => ({ sector_id: x.sector_id, is_primary: x.is_primary && !hasPrimarySector })), (r) => r.sector_id, "Sectors")
+    const hasPrimaryLayer = (await rows("organization_technical_layers")).some((r) => r.is_primary)
+    const layers = [
+      ...(draft.primaryLayer ? [{ ...draft.primaryLayer, is_primary: !hasPrimaryLayer }] : []),
+      ...draft.secondaryLayers.map((l) => ({ ...l, is_primary: false })),
+    ].map((l) => ({ layer_id: l.layer_id, is_primary: l.is_primary, ...evidence(l) }))
+    await addMissing("organization_technical_layers", layers, (r) => r.layer_id, "Technical layers")
+    await addMissing("organization_technical_terms",
+      draft.terms.map((t) => ({ term_id: t.term_id, relationship_kind: t.relationship_kind, is_core: t.is_core, ...evidence(t) })),
+      (r) => [r.term_id, r.relationship_kind], "Technical terms")
+    await addMissing("organization_technology_claims", draft.claims.map((c) => ({ claim: c.claim, ...evidence(c) })), (r) => norm(r.claim), "Proprietary technology claims")
+
+    // Founders: reuse the matched person; link only if not linked yet
+    const linked = new Set((await rows("organization_people")).filter((r) => r.is_founder).map((r) => r.person_id))
+    let newFounders = 0
+    for (const [i, f] of draft.founders.entries()) {
+      let personId = founderMatches[i]?.id
+      if (personId && linked.has(personId)) continue
+      if (!personId) {
+        const slug = await uniquePersonSlug(svc, f.full_name)
+        personId = (must(await svc.from("people").insert({ ...f.person, slug }).select("id").single(), `Founder ${f.full_name}`) as { id: string }).id
+      }
+      must(await svc.from("organization_people").insert({ organization_id, person_id: personId, role: f.role, is_founder: true, is_current: true }), `Founder link ${f.full_name}`)
+      linked.add(personId)
+      newFounders++
+    }
+    if (newFounders) added.push(`${newFounders} founders`)
+
+    const signalsBefore = added.length
+    await addMissing("signals", draft.signals, (r) => (r.source_url ? norm(r.source_url) : [norm(r.title), r.signal_date]), "Signals")
+    if (added.length > signalsBefore) {
+      const all = await rows("signals")
+      const latest = all.map((r) => r.signal_date as string | null).filter(Boolean).sort().at(-1) ?? null
+      must(await svc.from("organizations").update({ signal_count: all.length, last_signal_date: latest }).eq("id", organization_id), "Signal count")
+    }
+    await addMissing("grants", draft.grants, (r) => norm(r.grant_name), "Grants")
+    await addMissing("funding_rounds",
+      draft.fundingRounds.map((r) => ({ ...r, amount_eur: r.amount_eur === null ? null : r.amount_eur / FUNDING_AMOUNT_UNIT })),
+      (r) => [norm(r.stage), r.announced_date], "Funding rounds")
+    let newPrograms = 0
+    for (const p of draft.programs) if (await linkProgram(svc, organization_id, p)) newPrograms++
+    if (newPrograms) added.push(`${newPrograms} programmes`)
+    await addMissing("legal_entities", draft.legalEntities, (r) => r.siren ?? norm(r.legal_name), "Legal entities")
+
+    return { ok: true, id: organization_id, slug: current.slug as string, filled, added }
+  } catch (e) {
+    const done = [...filled.map((f) => `filled ${f}`), ...added].join(", ")
+    return { ok: false, error: `${(e as Error).message}.${done ? ` Already saved before the error: ${done}. Running the update again only adds what is still missing.` : " Nothing was saved."}` }
   }
 }

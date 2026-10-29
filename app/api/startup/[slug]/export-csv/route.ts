@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { loadTechnicalProfile, type Evidence } from "@/lib/technical-profile"
 import { CLAIMS, EVIDENCE_STATUSES, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, RELATIONSHIP_KINDS, labelFor } from "@/lib/taxonomy"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { isRadarOrg } from "@/lib/radar-data"
 import { getExportLimit, hasActiveAccess, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
 
 export const runtime = "nodejs"
@@ -87,7 +88,8 @@ export async function GET(
     .eq("organization_type", "startup")
     .single()
 
-  if (!startup) {
+  // Navigator-only companies aren't Radar profiles (admins can still export them).
+  if (!startup || (!profile?.is_admin && (startup.status !== "active" || !(await isRadarOrg(svc, startup.id))))) {
     return NextResponse.json({ error: "Startup not found" }, { status: 404 })
   }
 
