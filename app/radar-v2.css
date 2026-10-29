@@ -29,7 +29,10 @@ body::before {
   --h-bg: var(--ink); --h-tx: #f5f8fc; --h-dm: #a3afc2; --h-dd: #8592a6;
   --h-line: rgba(255, 255, 255, 0.1); --h-tag: rgba(255, 255, 255, 0.24);
   --h-grid: rgba(255, 255, 255, 0.035); --h-acc: var(--e-blue-soft);
-  background: var(--h-bg);
+  /* Longhands only: Chrome can't write a var() shorthand back out once a part
+     is overridden below, so session replays (which copy the CSS text) would
+     lose the dark colour and show white text on the light page. */
+  background-color: var(--h-bg);
   color: var(--h-tx);
   border-bottom: 1px solid var(--h-line);
   background-image:
@@ -145,7 +148,7 @@ body::before {
 .r2-row .nm { font-family: var(--r2-serif); font-size: 17px; font-weight: 600; }
 .r2-row .ds { font-size: 13px; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .r2-empty { padding: 64px 0; text-align: center; color: var(--muted-foreground); }
-.r2-upsell { margin-top: 28px; border: 1px solid var(--border); border-left: 3px solid var(--clay); background: #fff; padding: 26px 28px; text-align: center; border-radius: 5px; }
+.r2-upsell { margin-top: 28px; border-style: solid; border-width: 1px 1px 1px 3px; border-color: var(--border) var(--border) var(--border) var(--clay); background: #fff; padding: 26px 28px; text-align: center; border-radius: 5px; }
 .r2-upsell h5 { font-family: var(--r2-serif); font-size: 19px; font-weight: 600; margin: 0 0 6px; }
 .r2-upsell p { font-size: 13.5px; color: var(--muted-foreground); margin: 0 0 16px; }
 
