@@ -6,7 +6,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { fakeSupabase } from "./fake-supabase.mjs"
 import { describeOfficer, parseDirectory, scoreLead } from "@/lib/leads/parse"
-import { collectEvidence, researchAdjustment, validateResearch } from "@/lib/leads/research"
+import { collectEvidence, founderProfiles, researchAdjustment, validateResearch } from "@/lib/leads/research"
 import { researchLeadNow, vetLeads } from "@/lib/leads/vet"
 import { dns, findWebsites, siteGuesses } from "@/lib/leads/websites"
 
@@ -257,6 +257,7 @@ test("research is given the trading name and the people behind founders' holding
   assert.match(prompt, /Trading name in the register: FIVE ANGELS/)
   assert.match(prompt, /Officers: FOURTICQ HOLDING \(Simon Fourticq\), Président de SAS; BEROUA HOLDING \(Assia Beroua\), Directeur Général/)
   assert.match(calls.claude[0].system, /trade under a brand or product name that differs from the legal name/)
+  assert.match(calls.claude[0].system, /each founder's own profile \(on team pages these are often links on photos or icons/)
   assert.doesNotMatch(prompt, /Addresses built from its names/)   // none of the guessed sites answered
 })
 
@@ -312,6 +313,19 @@ test("profiles quoted on a page Claude read are kept; invented ones are dropped"
   assert.equal(r.website, "https://five-angels.com")
   assert.deepEqual(r.profiles.map((p) => p.url), ["https://www.linkedin.com/in/assia-beroua/", "https://www.instagram.com/fiveangels_app/"])
   assert.deepEqual(r.links, [{ title: "About", url: "https://five-angels.com/about" }])
+})
+
+test("founders' LinkedIn profiles the answer left out are added from what the tools returned", () => {
+  const evidence = { urls: new Set(["https://fr.linkedin.com/in/simon-fourticq-4b2a1/"]), text:
+    '<a href="https://www.linkedin.com/in/assia-beroua/"><img src="li.svg"></a> <a href="https://www.linkedin.com/in/thomas-cignoni-609bb07b/"></a>' +
+    ' <a href="https://www.linkedin.com/in/jean-dupont/"></a> <a href="https://www.linkedin.com/company/five-angels-app"></a>' }
+  const people = ["Simon Fourticq", "Assia Beroua", "Mathieu Cignoni", "Thomas Cignoni", "Simon Fourticq"]
+  assert.deepEqual(founderProfiles(evidence, people, [{ url: "https://linkedin.com/in/assia-beroua" }]), [
+    { label: "Simon Fourticq, LinkedIn", url: "https://fr.linkedin.com/in/simon-fourticq-4b2a1/" },
+    // Two Cignonis: only Thomas's first name is in the address, so it isn't credited to Mathieu.
+    { label: "Thomas Cignoni, LinkedIn", url: "https://www.linkedin.com/in/thomas-cignoni-609bb07b/" },
+  ])
+  assert.deepEqual(founderProfiles({ urls: new Set(), text: "" }, people), [])
 })
 
 test("directory requests are paced, holdings included, and only personal holdings are followed", async () => {
