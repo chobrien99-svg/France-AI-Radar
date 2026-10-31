@@ -282,8 +282,10 @@ Strength values: 5 — Strong, 4 — Moderate-Strong, 3 — Moderate, 2 — Weak
 
 Stage values: Pre-Seed, Seed, Series A, Series B, Series C, Series D, Series E, Series F, Growth, Bridge, Debt, Grant, IPO, Secondary, Undisclosed, Other.
 
-| Stage | Amount (EUR) | Announced date | Estimated? (Yes/No) | Investors (for Notes) | Source URL | Source name |
-|---|---|---|---|---|---|---|
+Investors: name each investor as it is publicly known (fund, firm or person), and mark the lead investor(s) with "(lead)". Business angels who aren't named stay in Notes.
+
+| Stage | Amount (EUR) | Announced date | Estimated? (Yes/No) | Investors (lead marked) | Notes | Source URL | Source name |
+|---|---|---|---|---|---|---|---|
 
 ### M. Programs and affiliations
 
@@ -331,6 +333,7 @@ Rules for the block:
 - **Unknown → `null`**, empty lists → `[]`. Keep every key, even when empty.
 - Use the **exact labels** from Part 4 and Part 3 (e.g. `"AI-Native Applications"`, `"Develops"`, `"Reported"`, `"Pre-Seed"`, `"Media Mention"`). Terms go in the list for their facet: `specializations`, `methods`, `modalities`, `domains`.
 - Dates `"YYYY-MM-DD"` (`"YYYY-MM"` or `"YYYY"` when only that is known). Money as whole euros (`1500000`). Signal strength as a number 1–5. Signal-tag strength as `"Strong"`, `"Moderate"`, `"Neutral"` or `"Weak"`. Yes/No fields as `true`/`false` or `"Yes"`/`"No"`.
+- Each funding round's `investors` is a list of `{"name": "…", "is_lead": true/false}`, one per named investor (`[]` when none is named). The site matches them to its investor list by name and adds the ones it doesn't know.
 - Do not include a status: imports are always created as Draft.
 - Leave `company.first_seen_at` as `null`: the site sets it to the import date, which drives the Database's "Most recent" sort and "Added to the Radar" filter.
 - Valid JSON only: double quotes, no comments, no trailing commas.

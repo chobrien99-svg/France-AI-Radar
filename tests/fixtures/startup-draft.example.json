@@ -99,7 +99,7 @@
     { "grant_name": "Bourse French Tech", "granting_body": "Bpifrance", "amount_eur": 30000, "awarded_date": "2025-06", "program": null, "description": null, "source_url": null }
   ],
   "funding_rounds": [
-    { "stage": "Pre-Seed", "amount_eur": 1500000, "announced_date": "2026-01-20", "is_estimated": false, "notes": "Investors: a regional seed fund and business angels.", "source_url": "https://www.example.com/press", "source_name": "Company press release" }
+    { "stage": "Pre-Seed", "amount_eur": 1500000, "announced_date": "2026-01-20", "is_estimated": false, "investors": [{ "name": "Exemple Seed Fund", "is_lead": true }], "notes": "Also unnamed business angels.", "source_url": "https://www.example.com/press", "source_name": "Company press release" }
   ],
   "programs": [
     { "program_name": "Example Incubator", "program_type": "Incubator", "edition_label": "2025 cohort", "year": 2025, "role": "member" }

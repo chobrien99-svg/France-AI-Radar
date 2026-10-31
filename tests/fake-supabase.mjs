@@ -9,7 +9,7 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
   function query(table) {
     const filters = []
     let op = "select", payload = null, onConflict = null, ignoreDuplicates = false, mode = "many"
-    const like = (pattern, v) => new RegExp("^" + pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*") + "$", "i").test(String(v ?? ""))
+    const like = (pattern, v) => new RegExp("^" + pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".") + "$", "i").test(String(v ?? ""))
     const matches = (r) => filters.every(([k, f, v]) => (f === "eq" ? r[k] === v : f === "is" ? (r[k] ?? null) === v : f === "gte" ? r[k] != null && r[k] >= v : f === "in" ? v.includes(r[k]) : like(v, r[k])))
     const run = () => {
       if (op === "insert" && failOn === table) return { data: null, error: { message: `insert into ${table} failed` } }

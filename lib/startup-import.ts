@@ -100,7 +100,7 @@ export type NormalizedDraft = {
   }[]
   signals: { signal_type: string; signal_date: string | null; strength: number | null; title: string; description: string | null; source_url: string | null; source_name: string | null }[]
   grants: { grant_name: string; granting_body: string | null; amount_eur: number | null; awarded_date: string | null; program: string | null; description: string | null; source_url: string | null }[]
-  fundingRounds: { stage: string; amount_eur: number | null; announced_date: string | null; is_estimated: boolean; notes: string | null; source_url: string | null; source_name: string | null }[]
+  fundingRounds: { stage: string; amount_eur: number | null; announced_date: string | null; is_estimated: boolean; notes: string | null; source_url: string | null; source_name: string | null; investors: { name: string; is_lead: boolean }[] }[]
   programs: { program_name: string; program_type: string; edition_label: string | null; year: number | null; membership_role: string | null }[]
   legalEntities: { legal_name: string; legal_form: string | null; siren: string | null; siret: string | null; capital_eur: number | null; incorporation_date: string | null; registered_city: string | null; naf_code: string | null; naf_label: string | null }[]
   sectors: { sector_id: string; name: string; is_primary: boolean }[]
@@ -501,6 +501,13 @@ export function validateDraft(raw: unknown, vocab: ImportVocab, today = new Date
       notes: r.text(o.notes, `${path}.notes`),
       source_url: r.url(o.source_url, `${path}.source_url`),
       source_name: r.text(o.source_name, `${path}.source_name`),
+      // [{ "name", "is_lead" }] (a plain name string is accepted too); each name once, at most 20
+      investors: r.list(o.investors, `${path}.investors`).flatMap((inv, j) => {
+        const io = typeof inv === "string" ? { name: inv } : r.obj(inv, `${path}.investors[${j}]`)
+        const name = r.text(io.name, `${path}.investors[${j}].name`)?.replace(/\s+/g, " ")
+        if (!name) { r.warn(`${path}.investors[${j}]`, "Investor without a name; skipped."); return [] }
+        return [{ name: name.slice(0, 200), is_lead: r.bool(io.is_lead, `${path}.investors[${j}].is_lead`) ?? false }]
+      }).filter((inv, j, all) => all.findIndex((x) => x.name.toLowerCase() === inv.name.toLowerCase()) === j).slice(0, 20),
     })
   })
 

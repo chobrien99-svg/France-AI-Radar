@@ -12,6 +12,7 @@ import { StartupCardV2 } from "@/components/radar/cards"
 import { ShortlistButton, AlertToggle, ShareButtonV2 } from "@/components/radar/profile-actions"
 import { formatDate, formatEur, founderTags, relativeDate, signalColor, signalLabel, stageFrom, toneFor } from "@/lib/radar"
 import { isRadarOrg, loadRelatedStartups } from "@/lib/radar-data"
+import { loadRoundInvestors } from "@/lib/investors"
 import { loadTechnicalProfile, type TechnicalProfile, type TermLink } from "@/lib/technical-profile"
 import { CLAIMS, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, familyLabel, labelFor } from "@/lib/taxonomy"
 import { AnalyticsPageTrack } from "@/components/analytics-page-track"
@@ -218,11 +219,23 @@ export default async function StartupProfilePage({
   }>
 
   // Primary sector + related startups
-  const [{ data: sectorRows }, related, tech] = await Promise.all([
+  const [{ data: sectorRows }, related, tech, { data: roundRows }] = await Promise.all([
     svcForRead.from("organization_sectors").select("is_primary, sectors(name)").eq("organization_id", venture.id),
     loadRelatedStartups(svcForRead, venture.id, venture.city_id),
     loadTechnicalProfile(svcForRead, venture.id),
+    svcForRead.from("funding_rounds").select("id").eq("organization_id", venture.id).order("announced_date", { ascending: false, nullsFirst: false }),
   ])
+  // Every investor across the rounds, latest round first, each listed once (lead if it led any round)
+  const roundIds = ((roundRows ?? []) as { id: string }[]).map((r) => r.id)
+  const byRound = await loadRoundInvestors(svcForRead, roundIds)
+  const investors: { name: string; is_lead: boolean }[] = []
+  for (const id of roundIds) {
+    for (const inv of byRound[id] ?? []) {
+      const seen = investors.find((x) => x.name === inv.name)
+      if (seen) seen.is_lead ||= inv.is_lead
+      else investors.push({ name: inv.name, is_lead: inv.is_lead })
+    }
+  }
   const sectorNames = ((sectorRows ?? []) as Array<{ is_primary: boolean; sectors: { name: string } | { name: string }[] | null }>)
     .sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
     .map((r) => (Array.isArray(r.sectors) ? r.sectors[0] : r.sectors)?.name)
@@ -235,7 +248,7 @@ export default async function StartupProfilePage({
   // Founder names: any member with an active plan (as in the Database); blurred for everyone else.
   const blurNames = !(isAdmin || hasActiveSub)
   const limitHit = canFull && !hasViewAccess
-  const bodyProps = { venture, signals, founders, programs, profileData, tech, blurPremium, blurNames, isAuthenticated: !!user }
+  const bodyProps = { venture, signals, founders, programs, investors, profileData, tech, blurPremium, blurNames, isAuthenticated: !!user }
 
   return (
     <main>
@@ -436,6 +449,8 @@ type BodyProps = {
   signals: Signal[]
   founders: FounderLocal[]
   programs: ProgramLink[]
+  /** Investors across the funding rounds, latest round first */
+  investors: { name: string; is_lead: boolean }[]
   profileData: OrganizationProfile | null
   tech: TechnicalProfile
   blurPremium: boolean
@@ -699,8 +714,8 @@ function TechnicalSection({ tech, profileData, blurPremium }: { tech: TechnicalP
 // Right rail: founders, funding, programmes, facts on file
 // ------------------------------------------------------------------
 
-function Rail({ venture, founders, programs, profileData, tech, blurPremium, blurNames, sectorNames, place }: BodyProps & { sectorNames: string[]; place: string }) {
-  const hasFunding = venture.total_raised_eur || venture.last_round || profileData?.est_next_raise || profileData?.fundraising_signal_summary
+function Rail({ venture, founders, programs, investors, profileData, tech, blurPremium, blurNames, sectorNames, place }: BodyProps & { sectorNames: string[]; place: string }) {
+  const hasFunding = venture.total_raised_eur || venture.last_round || investors.length > 0 || profileData?.est_next_raise || profileData?.fundraising_signal_summary
   const website = venture.website?.replace(/^https?:\/\//, "").replace(/\/$/, "")
 
   return (
@@ -741,6 +756,14 @@ function Rail({ venture, founders, programs, profileData, tech, blurPremium, blu
           <div className="r2-box-b">
             <div className="r2-kv"><span className="k">Total raised</span><span className="v"><BlurredText blur={blurPremium}>{formatEur(venture.total_raised_eur)}</BlurredText></span></div>
             <div className="r2-kv"><span className="k">Last round</span><span className="v"><BlurredText blur={blurPremium}>{venture.last_round ?? "—"}</BlurredText></span></div>
+            {investors.length > 0 && (
+              <div className="r2-kv">
+                <span className="k">Investors</span>
+                <span className="v" style={{ textAlign: "right" }}>
+                  <BlurredText blur={blurPremium}>{investors.map((i) => (i.is_lead ? `${i.name} (lead)` : i.name)).join(", ")}</BlurredText>
+                </span>
+              </div>
+            )}
             {profileData?.est_next_raise && (
               <div className="r2-kv"><span className="k">Est. next raise</span><span className="v" style={{ color: "var(--clay-ink)" }}><BlurredText blur={blurPremium}>{profileData.est_next_raise}</BlurredText></span></div>
             )}
