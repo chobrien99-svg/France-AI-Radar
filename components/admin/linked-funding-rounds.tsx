@@ -182,8 +182,18 @@ export function LinkedFundingRounds({ organizationId, rounds: initial }: Props) 
   async function removeInvestor(roundId: string, investorId: string | undefined) {
     if (!investorId) return
     setLoading(true)
-    await fetch(`/api/admin/startups/${organizationId}/funding-rounds/${roundId}/investors?investor_id=${investorId}`, { method: "DELETE" })
-    setRounds((prev) => prev.map((r) => r.id !== roundId ? r : { ...r, investors: r.investors.filter((x) => x.investor_id !== investorId) }))
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/startups/${organizationId}/funding-rounds/${roundId}/investors?investor_id=${investorId}`, { method: "DELETE" })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        setError(body.error ?? "Failed to remove the investor.")
+      } else {
+        setRounds((prev) => prev.map((r) => r.id !== roundId ? r : { ...r, investors: r.investors.filter((x) => x.investor_id !== investorId) }))
+      }
+    } catch {
+      setError("Could not reach the server to remove the investor.")
+    }
     setLoading(false)
   }
 

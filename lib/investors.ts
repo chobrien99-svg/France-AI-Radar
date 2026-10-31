@@ -38,15 +38,21 @@ async function uniqueOrgSlug(svc: SupabaseClient, name: string): Promise<string>
 export async function findOrCreateInvestor(svc: SupabaseClient, rawName: string): Promise<{ id: string; name: string; created: boolean }> {
   const name = rawName.replace(/\s+/g, " ").trim()
   if (!name) throw new Error("Investor name is empty")
-  // Vowels and c may carry accents ("Élaia" / "Elaia"): let them match any
-  // one letter in the database query, then compare exactly once folded.
-  const pattern = fold(name).replace(/[%_\\]/g, "").replace(/[aeiouyc]/g, "_")
+  // The database query can't fold accents or spacing, so it casts a wider
+  // net: any run of spaces between words, and any one letter where a letter
+  // that takes accents stands ("Élaia" / "Elaia", "Peña" / "Pena"). The exact
+  // comparison is then made on the folded names.
+  const pattern = fold(name)
+    .replace(/[%_\\]/g, "")
+    .split(" ")
+    .map((w) => w.replace(/[aeiouycnszlrdtg]/g, "_"))
+    .join("%")
   const { data: candidates } = await svc
     .from("organizations")
     .select("id, name")
     .eq("organization_type", "investor")
     .ilike("name", pattern)
-    .limit(50)
+    .limit(200)
   const match = ((candidates ?? []) as { id: string; name: string }[]).find((c) => fold(c.name) === fold(name))
   if (match) return { ...match, created: false }
   const slug = await uniqueOrgSlug(svc, name)

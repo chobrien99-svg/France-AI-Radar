@@ -187,3 +187,14 @@ test("updating adds the investors an existing round lacks, without duplicating a
   const again = await updateFromDraft(client, withInvestors, "o-1", check.founderMatches)
   assert.deepEqual(again.added, [])
 })
+
+test("an investor is matched despite extra spaces or an accent on a consonant", async () => {
+  const { findOrCreateInvestor } = await import("../lib/investors.ts")
+  const { client, tables } = fakeSupabase({ organizations: [
+    { id: "inv-1", name: "Elaia  Partners", organization_type: "investor" },
+    { id: "inv-2", name: "Peña Ventures", organization_type: "investor" },
+  ] })
+  assert.equal((await findOrCreateInvestor(client, "Elaia Partners")).id, "inv-1")
+  assert.equal((await findOrCreateInvestor(client, "Pena Ventures")).id, "inv-2")
+  assert.equal(tables.organizations.length, 2, "nothing created")
+})
