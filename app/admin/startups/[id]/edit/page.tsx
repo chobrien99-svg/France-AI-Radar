@@ -10,6 +10,7 @@ import { LinkedSignals } from "@/components/admin/linked-signals"
 import { MonitoringSettings, type MonitoringState } from "@/components/admin/monitoring-settings"
 import { LinkedGrants } from "@/components/admin/linked-grants"
 import { LinkedFundingRounds } from "@/components/admin/linked-funding-rounds"
+import { loadRoundInvestors } from "@/lib/investors"
 import { LinkedPrograms } from "@/components/admin/linked-programs"
 import { LinkedLegalEntities } from "@/components/admin/linked-legal-entities"
 import { LinkedSectors } from "@/components/admin/linked-sectors"
@@ -91,11 +92,13 @@ export default async function EditStartupPage({
     source_url: string | null; source_name: string | null
   }>
 
-  const fundingRounds = (fundingRoundsRaw ?? []) as Array<{
+  const roundRows = (fundingRoundsRaw ?? []) as Array<{
     id: string; stage: string; amount_eur: number | null;
     announced_date: string | null; source_url: string | null;
     source_name: string | null; notes: string | null; is_estimated: boolean
   }>
+  const roundInvestors = await loadRoundInvestors(supabase, roundRows.map((r) => r.id))
+  const fundingRounds = roundRows.map((r) => ({ ...r, investors: roundInvestors[r.id] ?? [] }))
 
   const programLinks = (programLinksRaw ?? []).map((row: Record<string, unknown>) => {
     // program_editions may come as object or array depending on Supabase inference

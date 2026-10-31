@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminUser } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
+import { findOrCreateInvestor, linkInvestor } from "@/lib/investors"
 
 export const runtime = "nodejs"
 
@@ -35,7 +36,21 @@ export async function POST(
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data, { status: 201 })
+
+  // Investors typed with the round: [{ name, is_lead }]
+  const investors: { investor_id: string; name: string; is_lead: boolean }[] = []
+  const typed = Array.isArray(body.investors) ? (body.investors as { name?: unknown; is_lead?: unknown }[]) : []
+  try {
+    for (const inv of typed.slice(0, 20)) {
+      if (typeof inv?.name !== "string" || !inv.name.trim()) continue
+      const investor = await findOrCreateInvestor(supabase, inv.name)
+      await linkInvestor(supabase, data.id, investor, inv.is_lead === true)
+      investors.push({ investor_id: investor.id, name: investor.name, is_lead: inv.is_lead === true })
+    }
+  } catch (e) {
+    return NextResponse.json({ ...data, investors, error: `Round saved, but ${(e as Error).message}` }, { status: 201 })
+  }
+  return NextResponse.json({ ...data, investors }, { status: 201 })
 }
 
 export async function DELETE(

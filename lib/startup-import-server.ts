@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { loadVocabulary } from "@/lib/technical-profile"
+import { findOrCreateInvestor, linkInvestor } from "@/lib/investors"
 import type { ImportVocab, Issue, NormalizedDraft } from "@/lib/startup-import"
 
 // ------------------------------------------------------------------
@@ -159,6 +160,17 @@ async function linkProgram(svc: SupabaseClient, organizationId: string, p: Norma
   return true
 }
 
+/** Links a round's investors, matching the shared investor list by name and creating the ones it lacks. Returns how many were newly linked. */
+async function linkRoundInvestors(svc: SupabaseClient, roundId: string, investors: { name: string; is_lead: boolean }[], created: string[] = []): Promise<number> {
+  let added = 0
+  for (const inv of investors) {
+    const investor = await findOrCreateInvestor(svc, inv.name)
+    if (investor.created) created.push(investor.id)
+    if (await linkInvestor(svc, roundId, investor, inv.is_lead)) added++
+  }
+  return added
+}
+
 export type WriteResult = { ok: true; id: string; slug: string } | { ok: false; error: string }
 
 /**
@@ -169,6 +181,7 @@ export type WriteResult = { ok: true; id: string; slug: string } | { ok: false; 
 export async function writeDraft(svc: SupabaseClient, draft: NormalizedDraft, founderMatches: ExistingCheck["founderMatches"]): Promise<WriteResult> {
   const { organization: org } = draft
   const createdPeople: string[] = []
+  const createdInvestors: string[] = []
   let orgId: string | null = null
 
   const must = <T>(res: { data: T; error: { message: string } | null }, what: string): T => {
@@ -258,22 +271,22 @@ export async function writeDraft(svc: SupabaseClient, draft: NormalizedDraft, fo
       must(await svc.from("organizations").update({ signal_count: draft.signals.length, last_signal_date: latest }).eq("id", organization_id), "Signal count")
     }
     if (draft.grants.length) must(await svc.from("grants").insert(draft.grants.map((g) => ({ organization_id, ...g }))), "Grants")
-    if (draft.fundingRounds.length) {
-      must(
-        await svc.from("funding_rounds").insert(draft.fundingRounds.map((r) => ({
-          organization_id, ...r, amount_eur: r.amount_eur === null ? null : r.amount_eur / FUNDING_AMOUNT_UNIT,
-        }))),
+    for (const { investors, ...r } of draft.fundingRounds) {
+      const round = must(
+        await svc.from("funding_rounds").insert({ organization_id, ...r, amount_eur: r.amount_eur === null ? null : r.amount_eur / FUNDING_AMOUNT_UNIT }).select("id").single(),
         "Funding rounds",
-      )
+      ) as { id: string }
+      await linkRoundInvestors(svc, round.id, investors, createdInvestors)
     }
     for (const p of draft.programs) await linkProgram(svc, organization_id, p)
     if (draft.legalEntities.length) must(await svc.from("legal_entities").insert(draft.legalEntities.map((e) => ({ organization_id, ...e }))), "Legal entities")
 
     return { ok: true, id: created.id, slug: created.slug }
   } catch (e) {
-    // Undo: the organization's links cascade; founder profiles created here are removed too
+    // Undo: the organization's links cascade; founder profiles and investors created here are removed too
     if (orgId) await svc.from("organizations").delete().eq("id", orgId)
     if (createdPeople.length) await svc.from("people").delete().in("id", createdPeople)
+    if (createdInvestors.length) await svc.from("organizations").delete().in("id", createdInvestors)
     return { ok: false, error: `${(e as Error).message}. Nothing was saved.` }
   }
 }
@@ -406,9 +419,25 @@ export async function updateFromDraft(
       must(await svc.from("organizations").update({ signal_count: all.length, last_signal_date: latest }).eq("id", organization_id), "Signal count")
     }
     await addMissing("grants", draft.grants, (r) => norm(r.grant_name), "Grants")
-    await addMissing("funding_rounds",
-      draft.fundingRounds.map((r) => ({ ...r, amount_eur: r.amount_eur === null ? null : r.amount_eur / FUNDING_AMOUNT_UNIT })),
-      (r) => [norm(r.stage), r.announced_date], "Funding rounds")
+    // Rounds: add the missing ones, and the investors each round (new or already recorded) lacks
+    const roundKey = (r: Row) => JSON.stringify([norm(r.stage), r.announced_date])
+    const existingRounds = new Map((await rows("funding_rounds")).map((r) => [roundKey(r), r.id as string]))
+    let newRounds = 0
+    let newInvestorLinks = 0
+    for (const { investors, ...r } of draft.fundingRounds) {
+      let roundId = existingRounds.get(roundKey(r))
+      if (!roundId) {
+        roundId = (must(
+          await svc.from("funding_rounds").insert({ organization_id, ...r, amount_eur: r.amount_eur === null ? null : r.amount_eur / FUNDING_AMOUNT_UNIT }).select("id").single(),
+          "Funding rounds",
+        ) as { id: string }).id
+        existingRounds.set(roundKey(r), roundId)
+        newRounds++
+      }
+      newInvestorLinks += await linkRoundInvestors(svc, roundId, investors)
+    }
+    if (newRounds) added.push(`${newRounds} funding rounds`)
+    if (newInvestorLinks) added.push(`${newInvestorLinks} round investors`)
     let newPrograms = 0
     for (const p of draft.programs) if (await linkProgram(svc, organization_id, p)) newPrograms++
     if (newPrograms) added.push(`${newPrograms} programmes`)

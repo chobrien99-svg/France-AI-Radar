@@ -3,6 +3,7 @@ import { loadTechnicalProfile, type Evidence } from "@/lib/technical-profile"
 import { CLAIMS, EVIDENCE_STATUSES, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, RELATIONSHIP_KINDS, labelFor } from "@/lib/taxonomy"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { isRadarOrg } from "@/lib/radar-data"
+import { loadRoundInvestors } from "@/lib/investors"
 import { getExportLimit, hasActiveAccess, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
 
 export const runtime = "nodejs"
@@ -290,13 +291,16 @@ export async function GET(
     lines.push("")
     lines.push("=== FUNDING ROUNDS ===")
     lines.push("")
-    const fundingHeaders = ["Stage", "Amount (EUR)", "Date", "Source", "Estimated", "Notes"]
+    const fundingHeaders = ["Stage", "Amount (EUR)", "Date", "Investors", "Source", "Estimated", "Notes"]
     lines.push(fundingHeaders.map(csvEscape).join(","))
+    const investorsByRound = await loadRoundInvestors(svc, fundingData.map((r) => r.id as string))
     for (const r of fundingData) {
+      const investors = (investorsByRound[r.id] ?? []).map((i) => (i.is_lead ? `${i.name} (lead)` : i.name)).join("; ")
       lines.push([
         csvEscape(r.stage),
         csvEscape(r.amount_eur ? formatEur(r.amount_eur * 1_000_000) : ""), // stored in €M
         csvEscape(formatDate(r.announced_date)),
+        csvEscape(investors),
         csvEscape(r.source_name),
         csvEscape(r.is_estimated ? "Yes" : "No"),
         csvEscape(r.notes),

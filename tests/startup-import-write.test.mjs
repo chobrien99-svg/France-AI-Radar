@@ -85,7 +85,7 @@ function thinNavigatorRecord() {
     organization_profiles: [{ organization_id: "o-1", product_description: "Kept as is", investor_brief: null }],
     people: [{ id: "p-1", slug: "camille-exemple", full_name: "camille exemple" }],
     organization_people: [{ organization_id: "o-1", person_id: "p-1", is_founder: true, people: { id: "p-1", slug: "camille-exemple", full_name: "camille exemple" } }],
-    funding_rounds: [{ organization_id: "o-1", stage: draft.fundingRounds[0].stage, announced_date: draft.fundingRounds[0].announced_date, amount_eur: 2 }],
+    funding_rounds: [{ id: "fr-1", organization_id: "o-1", stage: draft.fundingRounds[0].stage, announced_date: draft.fundingRounds[0].announced_date, amount_eur: 2 }],
     legal_entities: [{ organization_id: "o-1", ...draft.legalEntities[0] }],
     product_organizations: [],
   })
@@ -146,4 +146,44 @@ test("updating adds a section repeated within the draft only once, and only matc
   const res = await updateFromDraft(client, doubled, "o-1", check.founderMatches)
   assert.equal(res.ok, true)
   assert.equal(tables.signals.length, 1)
+})
+
+// ---------------------------------------------------------------- investors on rounds
+
+const withInvestors = {
+  ...draft,
+  fundingRounds: [{ ...draft.fundingRounds[0], investors: [{ name: "Elaia Partners", is_lead: true }, { name: "New Angel Club", is_lead: false }] }],
+}
+
+test("the draft reads each round's investors: names or objects, each once", () => {
+  const raw = structuredClone(example)
+  raw.funding_rounds[0].investors = [{ name: " Elaia  Partners ", is_lead: "yes" }, "New Angel Club", { name: "elaia partners" }, { is_lead: true }]
+  const v = validateDraft(raw, vocab)
+  assert.deepEqual(v.draft.fundingRounds[0].investors, [{ name: "Elaia Partners", is_lead: true }, { name: "New Angel Club", is_lead: false }])
+  assert.ok(v.warnings.some((w) => w.path === "funding_rounds[0].investors[3]"))
+})
+
+test("creating links investors: an existing one is matched despite case and accents, a missing one is created", async () => {
+  const { client, tables } = fakeSupabase({ ...seed, organizations: [{ id: "inv-1", name: "Élaia Partners", slug: "elaia-partners", organization_type: "investor" }] })
+  const res = await writeDraft(client, withInvestors, {})
+  assert.equal(res.ok, true)
+  assert.equal(tables.funding_rounds[0].investors, undefined, "the investors aren't a column of the round")
+  const investors = tables.organizations.filter((o) => o.organization_type === "investor")
+  assert.deepEqual(investors.map((o) => o.name), ["Élaia Partners", "New Angel Club"])
+  assert.deepEqual(tables.funding_round_investors.map((l) => [l.investor_id, l.is_lead]), [["inv-1", true], [investors[1].id, false]])
+})
+
+test("updating adds the investors an existing round lacks, without duplicating a link", async () => {
+  const { client, tables } = thinNavigatorRecord()
+  tables.organizations.push({ id: "inv-1", name: "Elaia Partners", slug: "elaia-partners", organization_type: "investor" })
+  tables.funding_round_investors = [{ id: "l-1", funding_round_id: "fr-1", investor_id: "inv-1", is_lead: false }]
+  const check = await checkExisting(client, withInvestors, "o-1")
+  const res = await updateFromDraft(client, withInvestors, "o-1", check.founderMatches)
+  assert.equal(res.ok, true)
+  assert.equal(tables.funding_rounds.length, 1)
+  assert.equal(tables.funding_round_investors.length, 2)
+  assert.equal(tables.funding_round_investors[0].is_lead, true, "an existing link can become the lead")
+  assert.ok(res.added.includes("1 round investors"))
+  const again = await updateFromDraft(client, withInvestors, "o-1", check.founderMatches)
+  assert.deepEqual(again.added, [])
 })
