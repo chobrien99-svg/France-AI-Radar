@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { loadVocabulary } from "@/lib/technical-profile"
-import { findOrCreateInvestor, linkInvestor } from "@/lib/investors"
+import { exactNamePattern, findOrCreateInvestor, fold, foldedNamePattern, linkInvestor } from "@/lib/investors"
 import type { ImportVocab, Issue, NormalizedDraft } from "@/lib/startup-import"
 
 // ------------------------------------------------------------------
@@ -25,11 +25,20 @@ export async function loadImportVocab(svc: SupabaseClient): Promise<ImportVocab>
   }
 }
 
+/** An existing person with the same name as a draft founder */
+export type FounderCandidate = { id: string; slug: string | null; full_name: string; companies: string[] }
+
 export type ExistingCheck = {
   errors: Issue[]
   warnings: Issue[]
-  /** Founder index → existing person id (matched by LinkedIn URL) */
-  founderMatches: Record<number, { id: string; slug: string | null }>
+  /**
+   * Founder index → existing person to link instead of creating one. `fill`
+   * is set when the editor chose the profile: its empty fields are then
+   * filled from the draft.
+   */
+  founderMatches: Record<number, { id: string; slug: string | null; fill?: boolean }>
+  /** Founder index → existing people with the same name, which the editor may choose instead */
+  founderCandidates: Record<number, FounderCandidate[]>
   /** The record this draft could update instead (same slug, else same SIREN) */
   existing: { id: string; name: string; slug: string } | null
 }
@@ -52,6 +61,7 @@ export async function checkExisting(svc: SupabaseClient, draft: NormalizedDraft,
   const errors: Issue[] = []
   const warnings: Issue[] = []
   const founderMatches: ExistingCheck["founderMatches"] = {}
+  const founderCandidates: ExistingCheck["founderCandidates"] = {}
   const { organization: org } = draft
   const domain = domainOf(org.website)
   const sirens = draft.legalEntities.map((e) => e.siren).filter((s): s is string => !!s)
@@ -108,11 +118,88 @@ export async function checkExisting(svc: SupabaseClient, draft: NormalizedDraft,
         return
       }
     }
-    const { data: sameName } = await svc.from("people").select("id, slug").ilike("full_name", f.full_name).limit(1).maybeSingle()
-    if (sameName) warnings.push({ path: `founders[${i}]`, message: `A person named ${f.full_name} already exists (/founder/${sameName.slug}). A new profile will be created; if it is the same person, link the existing one in the editor instead.` })
+    const candidates = await sameNamePeople(svc, f.full_name)
+    if (candidates.length) {
+      founderCandidates[i] = candidates
+      const which = candidates.length === 1 ? "A person" : `${candidates.length} people`
+      warnings.push({ path: `founders[${i}]`, message: `${which} named ${f.full_name} already exist${candidates.length === 1 ? "s" : ""}. A new profile will be created unless you choose the existing one in the Founders preview below.` })
+    }
   }))
 
-  return { errors, warnings, founderMatches, existing }
+  return { errors, warnings, founderMatches, founderCandidates, existing }
+}
+
+/**
+ * Applies the editor's choices of existing profiles (founder index → person
+ * id) to the check. Each must be one of the same-name profiles offered for
+ * that founder and not already used for another one; otherwise an error is
+ * added and nothing is linked for it.
+ */
+export function applyFounderLinks(check: ExistingCheck, draft: NormalizedDraft, links: unknown): void {
+  if (!links || typeof links !== "object" || Array.isArray(links)) return
+  const used = new Set(Object.values(check.founderMatches).map((m) => m.id))
+  for (const [key, personId] of Object.entries(links as Record<string, unknown>)) {
+    const i = Number(key)
+    const founder = Number.isInteger(i) ? draft.founders[i] : undefined
+    if (founder && check.founderMatches[i]?.id === personId) continue   // already that profile (e.g. the company's own founder when updating)
+    const candidate = founder ? check.founderCandidates[i]?.find((c) => c.id === personId) : undefined
+    if (!founder || !candidate || used.has(candidate.id)) {
+      check.errors.push({
+        path: founder ? `founders[${i}]` : "",
+        message: `The existing profile chosen for ${founder?.full_name ?? "a founder"} can't be used (it isn't a match for that name, or is already used for another founder). Check the draft again.`,
+      })
+      continue
+    }
+    used.add(candidate.id)
+    check.founderMatches[i] = { id: candidate.id, slug: candidate.slug, fill: true }
+  }
+}
+
+/** Up to 3 people with this name (case and accents ignored), with the companies they're linked to. */
+async function sameNamePeople(svc: SupabaseClient, fullName: string): Promise<FounderCandidate[]> {
+  // The same spelling (case aside) is looked up on its own, so it is never
+  // crowded out of the wider, accent-tolerant search by unrelated names.
+  const [{ data: exact }, { data: similar }] = await Promise.all([
+    svc.from("people").select("id, slug, full_name").ilike("full_name", exactNamePattern(fullName)).limit(3),
+    svc.from("people").select("id, slug, full_name").ilike("full_name", foldedNamePattern(fullName)).limit(1000),
+  ])
+  const seen = new Set<unknown>()
+  const people = ([...(exact ?? []), ...(similar ?? [])] as Row[])
+    .filter((p) => fold(p.full_name as string) === fold(fullName) && !seen.has(p.id) && seen.add(p.id))
+    .slice(0, 3)
+  if (!people.length) return []
+  const { data: links } = await svc.from("organization_people").select("person_id, organizations(name)").in("person_id", people.map((p) => p.id))
+  return people.map((p) => ({
+    id: p.id as string,
+    slug: (p.slug as string | null) ?? null,
+    full_name: p.full_name as string,
+    companies: [...new Set(((links ?? []) as Row[])
+      .filter((l) => l.person_id === p.id)
+      .map((l) => ((Array.isArray(l.organizations) ? l.organizations[0] : l.organizations) as Row | null)?.name as string | undefined)
+      .filter((n): n is string => !!n))],
+  }))
+}
+
+/**
+ * Fills the empty fields of an existing person the editor chose to reuse,
+ * from the draft's founder. Nothing already there is changed (name and slug
+ * never are); yes/no facts only go from no to yes. Returns the fields filled.
+ */
+export async function fillPersonBlanks(svc: SupabaseClient, personId: string, person: Record<string, unknown>): Promise<string[]> {
+  const { data: current } = await svc.from("people").select("*").eq("id", personId).maybeSingle()
+  if (!current) return []
+  const patch: Row = {}
+  for (const [k, v] of Object.entries(person)) {
+    if (k === "full_name" || k === "slug") continue
+    const now = (current as Row)[k]
+    if (typeof v === "boolean") { if (v && !now) patch[k] = true; continue }
+    if (typeof v === "number") { if (v > 0 && !now) patch[k] = v; continue }
+    if (!isBlank(v) && isBlank(now)) patch[k] = v
+  }
+  if (!Object.keys(patch).length) return []
+  const { error } = await svc.from("people").update(patch).eq("id", personId)
+  if (error) throw new Error(`Founder profile: ${error.message}`)
+  return Object.keys(patch)
 }
 
 /** Same slug rule as the admin startup routes; an existing slug (e.g. a differently accented spelling) is reused */
@@ -171,7 +258,7 @@ async function linkRoundInvestors(svc: SupabaseClient, roundId: string, investor
   return added
 }
 
-export type WriteResult = { ok: true; id: string; slug: string } | { ok: false; error: string }
+export type WriteResult = { ok: true; id: string; slug: string; notes: string[] } | { ok: false; error: string }
 
 /**
  * Creates the startup as a Draft with everything in the import. All-or-
@@ -281,7 +368,22 @@ export async function writeDraft(svc: SupabaseClient, draft: NormalizedDraft, fo
     for (const p of draft.programs) await linkProgram(svc, organization_id, p)
     if (draft.legalEntities.length) must(await svc.from("legal_entities").insert(draft.legalEntities.map((e) => ({ organization_id, ...e }))), "Legal entities")
 
-    return { ok: true, id: created.id, slug: created.slug }
+    // Last, so a failure above never leaves a shared profile changed: fill
+    // the empty fields of existing profiles the editor chose to reuse. The
+    // startup is saved by then, so a failure here is reported, not undone.
+    const notes: string[] = []
+    for (const [i, f] of draft.founders.entries()) {
+      const match = founderMatches[i]
+      if (!match?.fill) continue
+      try {
+        const fields = await fillPersonBlanks(svc, match.id, f.person)
+        if (fields.length) notes.push(`${f.full_name}'s existing profile: filled ${fields.join(", ")}.`)
+      } catch (e) {
+        notes.push(`${f.full_name} is linked to the existing profile, but its empty fields could not be filled (${(e as Error).message}). Fill them in the editor.`)
+      }
+    }
+
+    return { ok: true, id: created.id, slug: created.slug, notes }
   } catch (e) {
     // Undo: the organization's links cascade; founder profiles and investors created here are removed too
     if (orgId) await svc.from("organizations").delete().eq("id", orgId)
@@ -400,6 +502,10 @@ export async function updateFromDraft(
     let newFounders = 0
     for (const [i, f] of draft.founders.entries()) {
       let personId = founderMatches[i]?.id
+      if (personId && founderMatches[i]?.fill) {
+        const fields = await fillPersonBlanks(svc, personId, f.person)
+        if (fields.length) filled.push(`${f.full_name}: ${fields.join(", ")}`)
+      }
       if (personId && linked.has(personId)) continue
       if (!personId) {
         const slug = await uniquePersonSlug(svc, f.full_name)

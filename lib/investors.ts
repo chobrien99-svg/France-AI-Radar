@@ -5,7 +5,25 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 export type InvestorLink = { investor_id: string; name: string; is_lead: boolean }
 
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim()
+/** A name with case, accents and spacing removed, for comparing names. */
+export const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim()
+
+/**
+ * An ilike pattern that finds a name whatever its accents or spacing. The
+ * database query can't fold accents or spacing, so it casts a wider net: any
+ * run of spaces between words, and any one letter where a letter that takes
+ * accents stands ("Élaia" / "Elaia", "Peña" / "Pena"). Compare the results
+ * with `fold` to keep the exact matches.
+ */
+export const foldedNamePattern = (name: string) =>
+  fold(name)
+    .replace(/[%_\\]/g, "")
+    .split(" ")
+    .map((w) => w.replace(/[aeiouycnszlrdtg]/g, "_"))
+    .join("%")
+
+/** An ilike pattern for exactly this name, case aside (wildcards in it are escaped). */
+export const exactNamePattern = (name: string) => name.replace(/\s+/g, " ").trim().replace(/[%_\\]/g, (c) => `\\${c}`)
 
 /** Up to 8 investors whose name contains `q`, for the editor's suggestions. */
 export async function searchInvestors(svc: SupabaseClient, q: string): Promise<{ id: string; name: string }[]> {
@@ -38,22 +56,12 @@ async function uniqueOrgSlug(svc: SupabaseClient, name: string): Promise<string>
 export async function findOrCreateInvestor(svc: SupabaseClient, rawName: string): Promise<{ id: string; name: string; created: boolean }> {
   const name = rawName.replace(/\s+/g, " ").trim()
   if (!name) throw new Error("Investor name is empty")
-  // The database query can't fold accents or spacing, so it casts a wider
-  // net: any run of spaces between words, and any one letter where a letter
-  // that takes accents stands ("Élaia" / "Elaia", "Peña" / "Pena"). The exact
-  // comparison is then made on the folded names.
-  const pattern = fold(name)
-    .replace(/[%_\\]/g, "")
-    .split(" ")
-    .map((w) => w.replace(/[aeiouycnszlrdtg]/g, "_"))
-    .join("%")
-  const { data: candidates } = await svc
-    .from("organizations")
-    .select("id, name")
-    .eq("organization_type", "investor")
-    .ilike("name", pattern)
-    .limit(200)
-  const match = ((candidates ?? []) as { id: string; name: string }[]).find((c) => fold(c.name) === fold(name))
+  const pattern = foldedNamePattern(name)
+  // The same spelling (case aside) is looked up on its own, so it can't be
+  // crowded out of the wider search by unrelated names.
+  const search = (p: string, n: number) => svc.from("organizations").select("id, name").eq("organization_type", "investor").ilike("name", p).limit(n)
+  const [{ data: exact }, { data: similar }] = await Promise.all([search(exactNamePattern(name), 5), search(pattern, 1000)])
+  const match = ([...(exact ?? []), ...(similar ?? [])] as { id: string; name: string }[]).find((c) => fold(c.name) === fold(name))
   if (match) return { ...match, created: false }
   const slug = await uniqueOrgSlug(svc, name)
   const { data, error } = await svc

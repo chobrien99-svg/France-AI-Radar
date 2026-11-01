@@ -14,11 +14,17 @@ type CheckResponse = {
   warnings: Issue[]
   draft: NormalizedDraft | null
   matchedFounders?: number[]
-  created?: { id: string; slug: string }
+  /** Founder index → existing people with the same name */
+  founderCandidates?: Record<string, Candidate[]>
+  created?: Created
   /** A record with the same slug or SIREN, which the draft can fill in instead */
   existing?: { id: string; name: string; slug: string } | null
   updated?: Updated
 }
+
+type Created = { id: string; slug: string; notes?: string[] }
+
+type Candidate = { id: string; slug: string | null; full_name: string; companies: string[] }
 
 type Updated = { id: string; slug: string; filled: string[]; added: string[] }
 
@@ -30,9 +36,11 @@ export function StartupImport() {
   const [checked, setChecked] = useState<CheckResponse | null>(null)
   const [checkedText, setCheckedText] = useState("")
   const [busy, setBusy] = useState<"check" | "create" | "update" | null>(null)
-  const [created, setCreated] = useState<{ id: string; slug: string } | null>(null)
+  const [created, setCreated] = useState<Created | null>(null)
   const [updated, setUpdated] = useState<Updated | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
+  /** Founder index → existing person chosen instead of a new profile */
+  const [founderLinks, setFounderLinks] = useState<Record<number, string>>({})
 
   async function send(mode: "check" | "create" | "update", targetId?: string) {
     setBusy(mode)
@@ -41,7 +49,7 @@ export function StartupImport() {
       const res = await fetch("/api/admin/startups/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, mode, targetId }),
+        body: JSON.stringify({ text, mode, targetId, founderLinks: mode === "check" ? undefined : founderLinks }),
       })
       const data = (await res.json().catch(() => null)) as CheckResponse | null
       if (!data) {
@@ -53,6 +61,7 @@ export function StartupImport() {
       } else {
         setChecked(data)
         setCheckedText(text)
+        if (mode === "check") setFounderLinks({})
       }
     } catch {
       setRequestError("Could not reach the server. Check your connection and try again.")
@@ -67,6 +76,7 @@ export function StartupImport() {
         <p className="mt-1 text-[13px] text-muted-foreground">
           It is saved as a <b>Draft</b>, so it is not visible on the site yet. Review it in the editor, then set its status to Published.
         </p>
+        {created.notes?.map((n) => <p key={n} className="mt-2 text-[13px] text-foreground">{n}</p>)}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild><Link href={`/admin/startups/${created.id}/edit`}>Open in the editor</Link></Button>
           <Button variant="outline" onClick={() => { setCreated(null); setChecked(null); setText("") }}>Import another</Button>
@@ -123,7 +133,18 @@ export function StartupImport() {
         {requestError && <p className="mt-2 text-[12px] text-destructive">{requestError}</p>}
       </div>
 
-      {checked && !stale && <CheckResult result={checked} />}
+      {checked && !stale && (
+        <CheckResult
+          result={checked}
+          founderLinks={founderLinks}
+          onLink={(i, id) => setFounderLinks((prev) => {
+            const next = { ...prev }
+            if (id) next[i] = id
+            else delete next[i]
+            return next
+          })}
+        />
+      )}
     </div>
   )
 }
@@ -132,7 +153,9 @@ export function StartupImport() {
 // Result of a check: issues first, then a preview of what will be saved
 // ------------------------------------------------------------------
 
-function CheckResult({ result }: { result: CheckResponse }) {
+type LinkProps = { founderLinks: Record<number, string>; onLink: (founderIndex: number, personId: string | null) => void }
+
+function CheckResult({ result, founderLinks, onLink }: { result: CheckResponse } & LinkProps) {
   const { errors, warnings, draft } = result
   return (
     <div className="space-y-5">
@@ -147,7 +170,15 @@ function CheckResult({ result }: { result: CheckResponse }) {
       {warnings.length > 0 && (
         <IssueList tone="warning" title={`${warnings.length} note${warnings.length > 1 ? "s" : ""}: items adjusted or skipped`} issues={warnings} />
       )}
-      {draft && <Preview draft={draft} matchedFounders={result.matchedFounders ?? []} />}
+      {draft && (
+        <Preview
+          draft={draft}
+          matchedFounders={result.matchedFounders ?? []}
+          candidates={result.founderCandidates ?? {}}
+          founderLinks={founderLinks}
+          onLink={onLink}
+        />
+      )}
     </div>
   )
 }
@@ -199,7 +230,7 @@ function Evidence({ e }: { e: { evidence_status: string; source_url: string | nu
   )
 }
 
-function Preview({ draft, matchedFounders }: { draft: NormalizedDraft; matchedFounders: number[] }) {
+function Preview({ draft, matchedFounders, candidates, founderLinks, onLink }: { draft: NormalizedDraft; matchedFounders: number[]; candidates: Record<string, Candidate[]> } & LinkProps) {
   const { organization: o, profile: p } = draft
   return (
     <div className="space-y-5 border border-border p-5">
@@ -274,13 +305,44 @@ function Preview({ draft, matchedFounders }: { draft: NormalizedDraft; matchedFo
 
       <Section title={`Founders (${draft.founders.length})`}>
         {draft.founders.length === 0 && <Line k="Founders" v={null} />}
-        {draft.founders.map((f, i) => (
-          <Line
-            key={f.full_name}
-            k={f.full_name}
-            v={<>{f.role ?? "Role unknown"} · {matchedFounders.includes(i) ? "links the existing profile" : "new founder profile"}{f.person.short_bio ? ` · ${f.person.short_bio}` : ""}</>}
-          />
-        ))}
+        {draft.founders.map((f, i) => {
+          const options = candidates[i] ?? []
+          const chosen = options.find((c) => c.id === founderLinks[i])
+          const status = chosen
+            ? "uses the existing profile (only its empty fields are filled)"
+            : matchedFounders.includes(i) ? "links the existing profile" : "new founder profile"
+          return (
+            <Line
+              key={f.full_name}
+              k={f.full_name}
+              v={
+                <>
+                  {f.role ?? "Role unknown"} · {status}{f.person.short_bio ? ` · ${f.person.short_bio}` : ""}
+                  {options.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <select
+                        className="max-w-full border border-border bg-background px-2 py-1 text-[12px]"
+                        aria-label={`Profile for ${f.full_name}`}
+                        value={chosen?.id ?? ""}
+                        onChange={(e) => onLink(i, e.target.value || null)}
+                      >
+                        <option value="">Create a new profile</option>
+                        {options.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            Use existing: {c.full_name}{c.companies.length ? ` (${c.companies.join(", ")})` : " (no company yet)"}
+                          </option>
+                        ))}
+                      </select>
+                      {chosen?.slug && (
+                        <a className="text-[12px] underline" href={`/founder/${chosen.slug}`} target="_blank" rel="noopener noreferrer">view profile</a>
+                      )}
+                    </div>
+                  )}
+                </>
+              }
+            />
+          )
+        })}
       </Section>
 
       <Section title={`Signals, grants, funding, programs, legal entities`}>
