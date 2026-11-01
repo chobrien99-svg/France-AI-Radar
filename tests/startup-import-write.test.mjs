@@ -3,7 +3,7 @@ import { test } from "node:test"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { validateDraft } from "../lib/startup-import.ts"
-import { writeDraft, checkExisting, updateFromDraft } from "../lib/startup-import-server.ts"
+import { writeDraft, checkExisting, updateFromDraft, applyFounderLinks } from "../lib/startup-import-server.ts"
 import { vocabFromMigrations } from "./vocab-from-migrations.mjs"
 import { fakeSupabase } from "./fake-supabase.mjs"
 
@@ -197,4 +197,84 @@ test("an investor is matched despite extra spaces or an accent on a consonant", 
   assert.equal((await findOrCreateInvestor(client, "Elaia Partners")).id, "inv-1")
   assert.equal((await findOrCreateInvestor(client, "Pena Ventures")).id, "inv-2")
   assert.equal(tables.organizations.length, 2, "nothing created")
+})
+
+// ---------------------------------------------------------------- choosing an existing same-name profile
+
+function sameNamePerson() {
+  return {
+    people: [
+      { id: "p-old", slug: "camille-exemple", full_name: "Camille Exémple", linkedin_url: null, bio: "Already written.", short_bio: null, is_repeat_founder: false },
+      { id: "p-other", slug: "someone", full_name: "Someone Else" },
+    ],
+    organization_people: [{ id: "op-1", organization_id: "o-nav", person_id: "p-old", role: "Founder", is_founder: true, organizations: { name: "Eukarys" } }],
+  }
+}
+
+test("the check offers same-name profiles (accents ignored) with their companies", async () => {
+  const { client } = fakeSupabase({ ...seed, ...sameNamePerson() })
+  const check = await checkExisting(client, draft)
+  assert.deepEqual(check.founderMatches, {})
+  assert.deepEqual(check.founderCandidates, { 0: [{ id: "p-old", slug: "camille-exemple", full_name: "Camille Exémple", companies: ["Eukarys"] }] })
+  assert.match(check.warnings.find((w) => w.path === "founders[0]").message, /choose the existing one/)
+})
+
+test("a chosen profile is linked instead of a new one, and only its empty fields are filled", async () => {
+  const { client, tables } = fakeSupabase({ ...seed, ...sameNamePerson() })
+  const check = await checkExisting(client, draft)
+  applyFounderLinks(check, draft, { 0: "p-old" })
+  assert.deepEqual(check.errors, [])
+  const res = await writeDraft(client, draft, check.founderMatches)
+  assert.equal(res.ok, true)
+  assert.equal(tables.people.length, 2, "no new profile")
+  const person = tables.people.find((p) => p.id === "p-old")
+  assert.equal(person.full_name, "Camille Exémple", "the name is never changed")
+  assert.equal(person.slug, "camille-exemple")
+  assert.equal(person.bio, "Already written.", "an existing value is kept")
+  assert.equal(person.linkedin_url, draft.founders[0].person.linkedin_url, "an empty field is filled")
+  const newLink = tables.organization_people.find((l) => l.organization_id === res.id)
+  assert.equal(newLink.person_id, "p-old")
+})
+
+test("a failed import leaves the chosen profile unchanged", async () => {
+  const { client, tables } = fakeSupabase({ ...seed, ...sameNamePerson() }, { failOn: "legal_entities" })
+  const check = await checkExisting(client, draft)
+  applyFounderLinks(check, draft, { 0: "p-old" })
+  const res = await writeDraft(client, draft, check.founderMatches)
+  assert.equal(res.ok, false)
+  const person = tables.people.find((p) => p.id === "p-old")
+  assert.ok(person, "the shared profile is not deleted")
+  assert.equal(person.linkedin_url, null, "nor changed")
+})
+
+test("a choice that isn't an offered match is refused", async () => {
+  const { client } = fakeSupabase({ ...seed, ...sameNamePerson() })
+  for (const links of [{ 0: "p-other" }, { 5: "p-old" }, { x: "p-old" }]) {
+    const check = await checkExisting(client, draft)
+    applyFounderLinks(check, draft, links)
+    assert.equal(check.errors.length, 1, JSON.stringify(links))
+    assert.deepEqual(check.founderMatches, {})
+  }
+})
+
+test("updating with a chosen profile links it and reports the fields filled", async () => {
+  const target = { id: "o-1", name: "Exemple Biosystèmes", slug: "exemple-biosystemes", status: "active" }
+  const { client, tables } = fakeSupabase({ ...seed, ...sameNamePerson(), organizations: [target], product_organizations: [] })
+  const check = await checkExisting(client, draft, "o-1")
+  assert.equal(check.founderCandidates[0]?.[0]?.id, "p-old", "the target has no founders yet, so the same-name profile is offered")
+  applyFounderLinks(check, draft, { 0: "p-old" })
+  assert.deepEqual(check.errors, [])
+  const res = await updateFromDraft(client, draft, "o-1", check.founderMatches)
+  assert.equal(res.ok, true)
+  assert.ok(res.filled.some((f) => f.startsWith(`${draft.founders[0].full_name}: `) && f.includes("linkedin_url")))
+  assert.ok(tables.organization_people.some((l) => l.organization_id === "o-1" && l.person_id === "p-old" && l.is_founder))
+})
+
+test("choosing the profile that is already matched is accepted as is", async () => {
+  const { client } = fakeSupabase({ ...seed, ...sameNamePerson() })
+  const check = await checkExisting(client, draft)
+  check.founderMatches[0] = { id: "p-old", slug: "camille-exemple" }   // as when updating the company it already founded
+  applyFounderLinks(check, draft, { 0: "p-old" })
+  assert.deepEqual(check.errors, [])
+  assert.equal(check.founderMatches[0].fill, undefined)
 })

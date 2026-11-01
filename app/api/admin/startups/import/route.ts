@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getAdminUser } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
 import { extractDraftJson, validateDraft } from "@/lib/startup-import"
-import { checkExisting, loadImportVocab, updateFromDraft, writeDraft } from "@/lib/startup-import-server"
+import { applyFounderLinks, checkExisting, loadImportVocab, updateFromDraft, writeDraft } from "@/lib/startup-import-server"
 
 export const runtime = "nodejs"
 
@@ -12,12 +12,15 @@ export const runtime = "nodejs"
 //   POST { text, mode: "update", targetId } → fills the empty fields of an existing
 //        record (same slug or SIREN) and adds what it lacks; nothing is overwritten
 // "create" and "update" never trust an earlier check: everything is validated again here.
+// Both take `founderLinks: { "<founder index>": "<person id>" }`: existing profiles
+// the editor chose for founders whose name is already in the database. Each
+// must be one of the same-name profiles the check offered for that founder.
 
 export async function POST(request: NextRequest) {
   const admin = await getAdminUser()
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  const body = (await request.json().catch(() => ({}))) as { text?: unknown; mode?: unknown; targetId?: unknown }
+  const body = (await request.json().catch(() => ({}))) as { text?: unknown; mode?: unknown; targetId?: unknown; founderLinks?: unknown }
   if (typeof body.text !== "string") return NextResponse.json({ error: "text required" }, { status: 400 })
   const mode = body.mode === "create" ? "create" : body.mode === "update" ? "update" : "check"
   const targetId = mode === "update" && typeof body.targetId === "string" ? body.targetId : undefined
@@ -40,12 +43,14 @@ export async function POST(request: NextRequest) {
   if (targetId && existing.existing?.id !== targetId) {
     existing.errors.push({ path: "", message: "This draft doesn't match that startup (different slug and SIREN). Check the draft again." })
   }
+  // Existing profiles the editor chose instead of creating new ones
+  if (mode !== "check") applyFounderLinks(existing, validation.draft, body.founderLinks)
   const errors = [...validation.errors, ...existing.errors]
   const warnings = [...validation.warnings, ...existing.warnings]
   const matchedFounders = Object.keys(existing.founderMatches).map(Number)
 
   if (mode === "check" || errors.length) {
-    return NextResponse.json({ ok: errors.length === 0, errors, warnings, draft: validation.draft, matchedFounders, existing: existing.existing })
+    return NextResponse.json({ ok: errors.length === 0, errors, warnings, draft: validation.draft, matchedFounders, founderCandidates: existing.founderCandidates, existing: existing.existing })
   }
 
   if (targetId) {
