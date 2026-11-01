@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { loadVocabulary } from "@/lib/technical-profile"
-import { findOrCreateInvestor, fold, foldedNamePattern, linkInvestor } from "@/lib/investors"
+import { exactNamePattern, findOrCreateInvestor, fold, foldedNamePattern, linkInvestor } from "@/lib/investors"
 import type { ImportVocab, Issue, NormalizedDraft } from "@/lib/startup-import"
 
 // ------------------------------------------------------------------
@@ -157,8 +157,16 @@ export function applyFounderLinks(check: ExistingCheck, draft: NormalizedDraft, 
 
 /** Up to 3 people with this name (case and accents ignored), with the companies they're linked to. */
 async function sameNamePeople(svc: SupabaseClient, fullName: string): Promise<FounderCandidate[]> {
-  const { data } = await svc.from("people").select("id, slug, full_name").ilike("full_name", foldedNamePattern(fullName)).limit(50)
-  const people = ((data ?? []) as Row[]).filter((p) => fold(p.full_name as string) === fold(fullName)).slice(0, 3)
+  // The same spelling (case aside) is looked up on its own, so it is never
+  // crowded out of the wider, accent-tolerant search by unrelated names.
+  const [{ data: exact }, { data: similar }] = await Promise.all([
+    svc.from("people").select("id, slug, full_name").ilike("full_name", exactNamePattern(fullName)).limit(3),
+    svc.from("people").select("id, slug, full_name").ilike("full_name", foldedNamePattern(fullName)).limit(1000),
+  ])
+  const seen = new Set<unknown>()
+  const people = ([...(exact ?? []), ...(similar ?? [])] as Row[])
+    .filter((p) => fold(p.full_name as string) === fold(fullName) && !seen.has(p.id) && seen.add(p.id))
+    .slice(0, 3)
   if (!people.length) return []
   const { data: links } = await svc.from("organization_people").select("person_id, organizations(name)").in("person_id", people.map((p) => p.id))
   return people.map((p) => ({
@@ -250,7 +258,7 @@ async function linkRoundInvestors(svc: SupabaseClient, roundId: string, investor
   return added
 }
 
-export type WriteResult = { ok: true; id: string; slug: string } | { ok: false; error: string }
+export type WriteResult = { ok: true; id: string; slug: string; notes: string[] } | { ok: false; error: string }
 
 /**
  * Creates the startup as a Draft with everything in the import. All-or-
@@ -361,13 +369,21 @@ export async function writeDraft(svc: SupabaseClient, draft: NormalizedDraft, fo
     if (draft.legalEntities.length) must(await svc.from("legal_entities").insert(draft.legalEntities.map((e) => ({ organization_id, ...e }))), "Legal entities")
 
     // Last, so a failure above never leaves a shared profile changed: fill
-    // the empty fields of existing profiles the editor chose to reuse
+    // the empty fields of existing profiles the editor chose to reuse. The
+    // startup is saved by then, so a failure here is reported, not undone.
+    const notes: string[] = []
     for (const [i, f] of draft.founders.entries()) {
       const match = founderMatches[i]
-      if (match?.fill) await fillPersonBlanks(svc, match.id, f.person).catch(() => [])
+      if (!match?.fill) continue
+      try {
+        const fields = await fillPersonBlanks(svc, match.id, f.person)
+        if (fields.length) notes.push(`${f.full_name}'s existing profile: filled ${fields.join(", ")}.`)
+      } catch (e) {
+        notes.push(`${f.full_name} is linked to the existing profile, but its empty fields could not be filled (${(e as Error).message}). Fill them in the editor.`)
+      }
     }
 
-    return { ok: true, id: created.id, slug: created.slug }
+    return { ok: true, id: created.id, slug: created.slug, notes }
   } catch (e) {
     // Undo: the organization's links cascade; founder profiles and investors created here are removed too
     if (orgId) await svc.from("organizations").delete().eq("id", orgId)

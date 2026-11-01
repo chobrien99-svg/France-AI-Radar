@@ -234,6 +234,32 @@ test("a chosen profile is linked instead of a new one, and only its empty fields
   assert.equal(person.linkedin_url, draft.founders[0].person.linkedin_url, "an empty field is filled")
   const newLink = tables.organization_people.find((l) => l.organization_id === res.id)
   assert.equal(newLink.person_id, "p-old")
+  assert.ok(res.notes.some((n) => n.includes("linkedin_url")), "the fields filled are reported")
+})
+
+test("if the chosen profile can't be filled, the import says so instead of claiming it was", async () => {
+  const { client } = fakeSupabase({ ...seed, ...sameNamePerson() })
+  const check = await checkExisting(client, draft)
+  applyFounderLinks(check, draft, { 0: "p-old" })
+  const from = client.from
+  client.from = (t) => {
+    const q = from(t)
+    if (t !== "people") return q
+    const update = q.update
+    q.update = (p) => { update(p); return { eq: async () => ({ data: null, error: { message: "column rejected" } }) } }
+    return q
+  }
+  const res = await writeDraft(client, draft, check.founderMatches)
+  assert.equal(res.ok, true, "the startup itself is saved")
+  assert.ok(res.notes.some((n) => /could not be filled.*column rejected/.test(n)))
+})
+
+test("the exact same name is found even when many similar names exist", async () => {
+  // Names the accent-tolerant pattern also catches ("Camille Exemple" ~ "Cxmxllx Exxmplx")
+  const crowd = Array.from({ length: 1200 }, (_, n) => ({ id: `x-${n}`, slug: `x-${n}`, full_name: `Camille Exemplf${n % 10}`.slice(0, 15) }))
+  const { client } = fakeSupabase({ ...seed, people: [...crowd, { id: "p-real", slug: "camille-exemple", full_name: "Camille Exemple" }], organization_people: [] })
+  const check = await checkExisting(client, draft)
+  assert.equal(check.founderCandidates[0]?.[0]?.id, "p-real")
 })
 
 test("a failed import leaves the chosen profile unchanged", async () => {

@@ -8,7 +8,7 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
 
   function query(table) {
     const filters = []
-    let op = "select", payload = null, onConflict = null, ignoreDuplicates = false, mode = "many"
+    let op = "select", payload = null, onConflict = null, ignoreDuplicates = false, mode = "many", max = Infinity
     const like = (pattern, v) => new RegExp("^" + pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".") + "$", "i").test(String(v ?? ""))
     const matches = (r) => filters.every(([k, f, v]) => (f === "eq" ? r[k] === v : f === "is" ? (r[k] ?? null) === v : f === "gte" ? r[k] != null && r[k] >= v : f === "in" ? v.includes(r[k]) : like(v, r[k])))
     const run = () => {
@@ -31,14 +31,14 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
         data = rows(table).filter(matches)
         tables[table] = rows(table).filter((r) => !matches(r))
       } else {
-        data = rows(table).filter(matches)
+        data = rows(table).filter(matches).slice(0, max)
       }
       if (mode === "single") return data.length === 1 ? { data: data[0], error: null } : { data: null, error: { message: "not exactly one row" } }
       if (mode === "maybe") return { data: data[0] ?? null, error: null }
       return { data, error: null }
     }
     const b = {
-      select() { return b }, order() { return b }, limit() { return b },
+      select() { return b }, order() { return b }, limit(n) { max = n; return b },
       insert(p) { op = "insert"; payload = p; return b },
       upsert(p, o) { op = "upsert"; payload = p; onConflict = o?.onConflict ?? null; ignoreDuplicates = Boolean(o?.ignoreDuplicates); return b },
       update(p) { op = "update"; payload = p; return b },

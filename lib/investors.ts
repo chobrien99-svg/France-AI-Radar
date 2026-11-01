@@ -22,6 +22,9 @@ export const foldedNamePattern = (name: string) =>
     .map((w) => w.replace(/[aeiouycnszlrdtg]/g, "_"))
     .join("%")
 
+/** An ilike pattern for exactly this name, case aside (wildcards in it are escaped). */
+export const exactNamePattern = (name: string) => name.replace(/\s+/g, " ").trim().replace(/[%_\\]/g, (c) => `\\${c}`)
+
 /** Up to 8 investors whose name contains `q`, for the editor's suggestions. */
 export async function searchInvestors(svc: SupabaseClient, q: string): Promise<{ id: string; name: string }[]> {
   const term = q.trim().replace(/[%_]/g, "")
@@ -54,13 +57,11 @@ export async function findOrCreateInvestor(svc: SupabaseClient, rawName: string)
   const name = rawName.replace(/\s+/g, " ").trim()
   if (!name) throw new Error("Investor name is empty")
   const pattern = foldedNamePattern(name)
-  const { data: candidates } = await svc
-    .from("organizations")
-    .select("id, name")
-    .eq("organization_type", "investor")
-    .ilike("name", pattern)
-    .limit(200)
-  const match = ((candidates ?? []) as { id: string; name: string }[]).find((c) => fold(c.name) === fold(name))
+  // The same spelling (case aside) is looked up on its own, so it can't be
+  // crowded out of the wider search by unrelated names.
+  const search = (p: string, n: number) => svc.from("organizations").select("id, name").eq("organization_type", "investor").ilike("name", p).limit(n)
+  const [{ data: exact }, { data: similar }] = await Promise.all([search(exactNamePattern(name), 5), search(pattern, 1000)])
+  const match = ([...(exact ?? []), ...(similar ?? [])] as { id: string; name: string }[]).find((c) => fold(c.name) === fold(name))
   if (match) return { ...match, created: false }
   const slug = await uniqueOrgSlug(svc, name)
   const { data, error } = await svc

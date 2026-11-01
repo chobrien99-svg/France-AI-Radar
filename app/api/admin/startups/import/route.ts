@@ -65,5 +65,5 @@ export async function POST(request: NextRequest) {
   if (!result.ok) {
     return NextResponse.json({ ok: false, errors: [{ path: "", message: result.error }], warnings, draft: validation.draft, matchedFounders }, { status: 500 })
   }
-  return NextResponse.json({ ok: true, created: { id: result.id, slug: result.slug }, warnings }, { status: 201 })
+  return NextResponse.json({ ok: true, created: { id: result.id, slug: result.slug, notes: result.notes }, warnings }, { status: 201 })
 }

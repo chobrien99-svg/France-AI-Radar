@@ -16,11 +16,13 @@ type CheckResponse = {
   matchedFounders?: number[]
   /** Founder index → existing people with the same name */
   founderCandidates?: Record<string, Candidate[]>
-  created?: { id: string; slug: string }
+  created?: Created
   /** A record with the same slug or SIREN, which the draft can fill in instead */
   existing?: { id: string; name: string; slug: string } | null
   updated?: Updated
 }
+
+type Created = { id: string; slug: string; notes?: string[] }
 
 type Candidate = { id: string; slug: string | null; full_name: string; companies: string[] }
 
@@ -34,7 +36,7 @@ export function StartupImport() {
   const [checked, setChecked] = useState<CheckResponse | null>(null)
   const [checkedText, setCheckedText] = useState("")
   const [busy, setBusy] = useState<"check" | "create" | "update" | null>(null)
-  const [created, setCreated] = useState<{ id: string; slug: string } | null>(null)
+  const [created, setCreated] = useState<Created | null>(null)
   const [updated, setUpdated] = useState<Updated | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
   /** Founder index → existing person chosen instead of a new profile */
@@ -74,6 +76,7 @@ export function StartupImport() {
         <p className="mt-1 text-[13px] text-muted-foreground">
           It is saved as a <b>Draft</b>, so it is not visible on the site yet. Review it in the editor, then set its status to Published.
         </p>
+        {created.notes?.map((n) => <p key={n} className="mt-2 text-[13px] text-foreground">{n}</p>)}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild><Link href={`/admin/startups/${created.id}/edit`}>Open in the editor</Link></Button>
           <Button variant="outline" onClick={() => { setCreated(null); setChecked(null); setText("") }}>Import another</Button>
