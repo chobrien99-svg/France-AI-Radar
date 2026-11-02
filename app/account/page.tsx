@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WatchlistRemoveButton } from "@/components/account/watchlist-remove-button"
+import { AlertRemoveButton } from "@/components/account/alert-remove-button"
 import { CreateListDialog } from "@/components/account/create-list-dialog"
 import { DeleteListButton } from "@/components/account/delete-list-button"
 import { ProfileEditor } from "@/components/account/profile-editor"
@@ -368,9 +369,10 @@ export default async function AccountPage() {
                       <div>
                         <p className="text-[14px] font-semibold text-foreground">{s.name}</p>
                         <p className="mt-0.5 text-[12px] text-muted-foreground">
-                          All signals · {alert.is_active ? "Active" : "Paused"}
+                          All signals · {alert.is_active ? "Daily email" : "Paused"}
                         </p>
                       </div>
+                      <AlertRemoveButton startupId={s.id} />
                     </div>
                   )
                 })}

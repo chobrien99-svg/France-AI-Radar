@@ -24,22 +24,35 @@ type SimpleEmail = {
   name?: string | null
   /** Plain-text paragraphs (escaped for HTML here). */
   paragraphs: string[]
+  /** Optional linked headings, each with a short list of lines (e.g. signals per startup). */
+  sections?: { heading: string; url: string; lines: string[] }[]
+  /** Plain-text paragraphs after the sections. */
+  afterSections?: string[]
   button: { label: string; url: string }
   /** Small print under the button. */
   note?: string
 }
 
 /** Renders the site's simple house-style email as HTML and plain text. */
-export function renderSimpleEmail({ name, paragraphs, button, note }: SimpleEmail) {
+export function renderSimpleEmail({ name, paragraphs, sections = [], afterSections = [], button, note }: SimpleEmail) {
   const first = firstName(name)
   const greeting = first ? `Hi ${first},` : "Hi,"
+  const sectionsHtml = sections
+    .map(
+      (s) => `  <p style="margin-bottom:4px"><a href="${escapeHtml(s.url)}" style="color:#114563;font-weight:bold">${escapeHtml(s.heading)}</a></p>
+  <ul style="margin-top:0;padding-left:20px">
+${s.lines.map((l) => `    <li>${escapeHtml(l)}</li>`).join("\n")}
+  </ul>`
+    )
+    .join("\n")
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:520px">
   <p>${escapeHtml(greeting)}</p>
 ${paragraphs.map((p) => `  <p>${escapeHtml(p)}</p>`).join("\n")}
-  <p><a href="${button.url}" style="display:inline-block;background:#114563;color:#ffffff;text-decoration:none;padding:10px 20px;font-weight:bold">${escapeHtml(button.label)}</a></p>
+${sectionsHtml ? sectionsHtml + "\n" : ""}${afterSections.map((p) => `  <p>${escapeHtml(p)}</p>\n`).join("")}  <p><a href="${button.url}" style="display:inline-block;background:#114563;color:#ffffff;text-decoration:none;padding:10px 20px;font-weight:bold">${escapeHtml(button.label)}</a></p>
 ${note ? `  <p style="color:#666;font-size:13px">${escapeHtml(note)}</p>\n` : ""}  <p>The AI Radar team<br>French Tech Journal</p>
 </div>`
-  const text = [greeting, ...paragraphs, `${button.label}: ${button.url}`, ...(note ? [note] : []), "The AI Radar team\nFrench Tech Journal"].join("\n\n")
+  const sectionsText = sections.map((s) => [`${s.heading} (${s.url})`, ...s.lines.map((l) => `- ${l}`)].join("\n"))
+  const text = [greeting, ...paragraphs, ...sectionsText, ...afterSections, `${button.label}: ${button.url}`, ...(note ? [note] : []), "The AI Radar team\nFrench Tech Journal"].join("\n\n")
   return { html, text }
 }
 

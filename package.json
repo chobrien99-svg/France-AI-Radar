@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --import ./tests/alias-loader.mjs --test tests/*.test.mjs",
-    "test:db": "supabase/tests/run_taxonomy_tests.sh && supabase/tests/run_signal_monitoring_tests.sh"
+    "test:db": "supabase/tests/run_taxonomy_tests.sh && supabase/tests/run_signal_monitoring_tests.sh && supabase/tests/run_signal_alerts_tests.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.137.0",
