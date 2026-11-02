@@ -96,3 +96,15 @@ The score only orders the list: nothing is added, ignored or published automatic
 |---|---|---|
 | `LEAD_RESEARCH_PER_DAY` | 10 | Companies researched on the web per day; `0` turns the research off. |
 | `LEAD_RESEARCH_MODEL` | `claude-sonnet-5-5` | Model for the research (needs web search support). |
+
+## Subscriber alerts
+
+When a subscriber clicks **Set Alert** on a startup, they get an email each morning (06:41 UTC, `/api/cron/signal-alerts` in `vercel.json`) listing that startup's new signals. A subscriber with several alerts gets one email covering all of them. The code is in `lib/signal-alerts.ts`.
+
+- **Who:** Professional and Enterprise subscribers, users on a running trial of those plans, and admins. Explorer and lapsed accounts keep their alerts but get no email until they're on a plan that includes alerts.
+- **What counts as new:** a signal added to the site (approved in **Admin › Signals**, typed in on a startup's edit page, or imported) after the alert was set, in the last 7 days. Signals dated more than 60 days ago are skipped, so typing in a startup's history doesn't email everyone.
+- **Only once:** the table `alert_deliveries` records each signal sent to each user. If an email fails, it's tried again the next morning.
+- **Only Radar startups:** Navigator-only companies are never included.
+- **Stopping:** the user clicks **Alert Set** on the startup's page, or **Remove** under **Account › Alerts**.
+
+It uses the same email settings as the other site emails (`RESEND_API_KEY`, `WELCOME_EMAIL_FROM`). Migration: `supabase/migrations/20261103_signal_alert_deliveries.sql`, which must be applied before the daily job runs (until then the job stops with an error and sends nothing).

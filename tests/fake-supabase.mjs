@@ -17,7 +17,8 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
       if (op === "insert" || op === "upsert") {
         const list = (Array.isArray(payload) ? payload : [payload]).flatMap((p) => {
           if (op === "upsert" && onConflict) {
-            const hit = rows(table).find((r) => r[onConflict] === p[onConflict])
+            const keys = onConflict.split(",")
+            const hit = rows(table).find((r) => keys.every((k) => r[k] === p[k]))
             if (hit) return ignoreDuplicates ? [] : [Object.assign(hit, p)]
           }
           const row = { id: `${table}-${nextId++}`, ...p }

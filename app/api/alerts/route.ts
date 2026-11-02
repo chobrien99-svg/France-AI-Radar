@@ -16,6 +16,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Startup not found" }, { status: 404 })
   }
 
+  // One alert per startup: the table has no unique constraint, so check first.
+  const { data: existing } = await supabase
+    .from("alerts")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("organization_id", organization_id)
+    .limit(1)
+  if (existing && existing.length > 0) return NextResponse.json({ alert: true })
+
   const { error } = await supabase
     .from("alerts")
     .insert({
