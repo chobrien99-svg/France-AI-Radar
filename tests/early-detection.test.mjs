@@ -211,3 +211,55 @@ test("unknown or unregistered source fails clearly", async () => {
   await assert.rejects(runSource(db.client, "nope", { kind: "manual", fetchImpl: serve("").fetchImpl }), /No connector/)
   await assert.rejects(runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve("").fetchImpl }), /not registered/)
 })
+
+test("review: allowed moves only, company link keeps the evidence, identity decisions are reversible and audited", async () => {
+  const { changeState, decideSubject, addNote, ReviewError } = await import("@/lib/detection/review")
+  const db = fakeSupabase(seed(), { rpc })
+  await runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve(CSV).fetchImpl, sleep: noSleep })
+  const before = snapshot(db.tables)
+  const t = db.tables
+  const cand = t.detection_candidates.find((c) => c.title === "NEUROSEG")
+  cand.state = "new"
+  const other = t.detection_candidates.find((c) => c.title === "PREDICTIA")
+  other.state = "new"
+  const editor = "admin-1"
+
+  await assert.rejects(changeState(db.client, cand.id, "approved_signal", editor), ReviewError, "can't approve before review")
+  await assert.rejects(changeState(db.client, cand.id, "published", editor), /Unknown state/)
+  await changeState(db.client, cand.id, "under_review", editor, { note: "Checking the thesis." })
+  assert.equal(cand.state, "under_review")
+  assert.equal(cand.reviewed_by, editor)
+
+  await assert.rejects(changeState(db.client, cand.id, "verified_company", editor), /slug/)
+  await assert.rejects(changeState(db.client, cand.id, "verified_company", editor, { organizationSlug: "nope" }), /No organization/)
+  await changeState(db.client, cand.id, "verified_company", editor, { organizationSlug: "isir-sas" })
+  assert.equal(cand.organization_id, "o-startup")
+  const project = t.projects.find((p) => p.id === cand.project_id)
+  assert.deepEqual([project.organization_id, project.commercialization_status], ["o-startup", "incorporated"])
+  assert.equal(t.candidate_evidence.filter((e) => e.candidate_id === cand.id).length, 1, "pre-company evidence kept")
+
+  const person = t.candidate_subjects.find((s) => s.candidate_id === cand.id && s.role === "person")
+  await assert.rejects(decideSubject(db.client, person.id, "confirm", editor, "o-isir"), /suggested matches/)
+  await decideSubject(db.client, person.id, "confirm", editor, "p-1")
+  assert.deepEqual([person.status, person.matched_person_id], ["confirmed", "p-1"])
+  assert.equal(t.project_links.filter((l) => l.person_id === "p-1" && l.status === "verified").length, 1)
+  assert.ok(t.external_identities.some((i) => i.entity_id === "p-1" && i.scheme === "theses_fr" && i.value === "s400001"))
+  await decideSubject(db.client, person.id, "confirm", editor, "p-2")
+  assert.equal(t.project_links.filter((l) => l.person_id === "p-1").length, 0, "changing the match removes the old link")
+  await decideSubject(db.client, person.id, "unmatched", editor)
+  assert.deepEqual([person.status, person.matched_person_id], ["unmatched", null])
+  assert.equal(t.project_links.filter((l) => l.person_id).length, 0)
+
+  await assert.rejects(changeState(db.client, other.id, "merged", editor, { mergeIntoId: other.id }), /another candidate/)
+  await changeState(db.client, other.id, "merged", editor, { mergeIntoId: cand.id })
+  assert.equal(other.merged_into_id, cand.id)
+  assert.ok(t.candidate_events.some((e) => e.candidate_id === cand.id && e.action === "merge_received"))
+  await changeState(db.client, other.id, "under_review", editor)
+  assert.equal(other.merged_into_id, null, "reopening clears the merge")
+
+  await assert.rejects(addNote(db.client, cand.id, editor, "  "), /empty/)
+  await addNote(db.client, cand.id, editor, "Founder confirmed by phone.")
+  const actions = t.candidate_events.filter((e) => e.candidate_id === cand.id).map((e) => e.action)
+  assert.deepEqual(actions, ["created", "state_changed", "state_changed", "subject_confirmed", "subject_confirmed", "subject_unmatched", "merge_received", "note"])
+  assert.equal(snapshot(db.tables), before, "review actions never write to public tables")
+})
