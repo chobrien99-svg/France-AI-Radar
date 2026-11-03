@@ -4,8 +4,11 @@
 //
 // Repeat-safe: the same content is stored once (source_id, external_id,
 // content_hash); a changed item adds a new version and keeps the old one.
-// The first run of a source (or a "backfill") is marked as a history import,
-// so old items are never presented as news.
+// History mode: until a source's history import is complete, everything it
+// stores is marked as history, so old items are never presented as news.
+// "Complete" means a history-mode run finished and no item that failed during
+// history mode is still unresolved (read correctly later, or dismissed by an
+// editor). A partial first import therefore keeps the source in history mode.
 import { createHash } from "node:crypto"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { ADAPTERS } from "@/lib/connectors/registry"
@@ -27,6 +30,9 @@ export type RunSummary = {
   candidatesCreated: number
   candidatesUpdated: number
   notRelevant: number
+  failuresResolved: number
+  isHistoryImport: boolean
+  historyComplete: boolean
   errors: string[]
 }
 
@@ -74,7 +80,8 @@ export async function runSource(svc: SupabaseClient, slug: string, opts: Options
   const sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
   const summary: RunSummary = {
     runId: null, status: "succeeded", fetched: 0, newRecords: 0, changedRecords: 0, unchangedRecords: 0,
-    failedRecords: 0, candidatesCreated: 0, candidatesUpdated: 0, notRelevant: 0, errors: [],
+    failedRecords: 0, candidatesCreated: 0, candidatesUpdated: 0, notRelevant: 0, failuresResolved: 0,
+    isHistoryImport: false, historyComplete: false, errors: [],
   }
   const note = (msg: string) => { if (summary.errors.length < MAX_ERRORS) summary.errors.push(msg) }
 
@@ -85,16 +92,20 @@ export async function runSource(svc: SupabaseClient, slug: string, opts: Options
   if (!source) throw new Error(`Source "${slug}" is not registered (run the Early Detection migration)`)
   const src = source as Row
   const sourceId = src.id as string
-  const isBackfill = opts.kind === "backfill" || !src.last_success_at
+  const isBackfill = opts.kind === "backfill" || !src.history_complete
+  summary.isHistoryImport = isBackfill
 
   const { data: run, error: runError } = await svc.from("ingestion_runs")
-    .insert({ source_id: sourceId, kind: opts.kind, status: "running", cursor_before: src.cursor ?? null })
+    .insert({ source_id: sourceId, kind: opts.kind, status: "running", is_history_import: isBackfill, cursor_before: src.cursor ?? null })
     .select("id").single()
   if (runError) throw new Error(`Run log: ${runError.message}`)
   summary.runId = (run as Row).id as string
 
+  // Keys of items that failed this run: never treated as resolved by another item sharing the key.
+  const failedKeys = new Set<string>()
   const fail = async (rawExternalId: string | null, raw: unknown, err: unknown) => {
     summary.failedRecords++
+    if (rawExternalId) failedKeys.add(rawExternalId)
     const message = err instanceof Error ? err.message : String(err)
     note(`${rawExternalId ?? "item"}: ${message}`)
     await svc.from("ingestion_failures").insert({ source_id: sourceId, run_id: summary.runId, external_id: rawExternalId, raw, error: message })
@@ -112,6 +123,7 @@ export async function runSource(svc: SupabaseClient, slug: string, opts: Options
     summary.status = "failed"
     note(err instanceof Error ? err.message : String(err))
     await finish(svc, summary, sourceId, src, now(), null)
+    summary.historyComplete = (await refreshHistoryState(svc, sourceId)).complete
     return summary
   }
 
@@ -133,7 +145,12 @@ export async function runSource(svc: SupabaseClient, slug: string, opts: Options
   }
 
   // 3. Store new and changed items.
-  const toBuild: { recordId: string; item: NormalizedItem; isBackfill: boolean; firstSeenAt: string }[] = []
+  const toBuild: { recordId: string; item: NormalizedItem; isBackfill: boolean; firstSeenAt: string; keys: string[] }[] = []
+  // Keys of items handled successfully this run: they resolve earlier failures for the same item.
+  const resolvedKeys = new Set<string>()
+  const looseKey = (raw: Record<string, string>) => {
+    try { const k = adapter.looseKey?.(raw); return k ? `~${k}` : null } catch { return null }
+  }
   const seenIds: string[] = []
   const seenThisRun = new Set<string>()
   for (const raw of items) {
@@ -141,9 +158,10 @@ export async function runSource(svc: SupabaseClient, slug: string, opts: Options
     try {
       item = adapter.normalize(raw)
     } catch (err) {
-      await fail(null, raw, err)
+      await fail(looseKey(raw), raw, err)
       continue
     }
+    const keys = [item.externalId, looseKey(raw)].filter((k): k is string => !!k)
     const key = `${item.externalId}`
     if (seenThisRun.has(key)) continue   // the same item listed twice in one file
     seenThisRun.add(key)
@@ -154,7 +172,8 @@ export async function runSource(svc: SupabaseClient, slug: string, opts: Options
     if (same) {
       summary.unchangedRecords++
       seenIds.push(same.id)
-      if (!same.processed) toBuild.push({ recordId: same.id, item, isBackfill: same.isBackfill, firstSeenAt: same.firstSeenAt })
+      if (!same.processed) toBuild.push({ recordId: same.id, item, isBackfill: same.isBackfill, firstSeenAt: same.firstSeenAt, keys })
+      else keys.forEach((k) => resolvedKeys.add(k))
       continue
     }
     const firstSeenAt = now().toISOString()
@@ -180,7 +199,7 @@ export async function runSource(svc: SupabaseClient, slug: string, opts: Options
     }
     if (versions.length) summary.changedRecords++
     else summary.newRecords++
-    toBuild.push({ recordId: (inserted as Row).id as string, item, isBackfill, firstSeenAt })
+    toBuild.push({ recordId: (inserted as Row).id as string, item, isBackfill, firstSeenAt, keys })
   }
 
   for (let i = 0; i < seenIds.length; i += 200) {
@@ -196,14 +215,61 @@ export async function runSource(svc: SupabaseClient, slug: string, opts: Options
       else if (result === "updated") summary.candidatesUpdated++
       else summary.notRelevant++
       await svc.from("source_records").update({ processed_at: now().toISOString() }).eq("id", b.recordId)
+      b.keys.forEach((k) => resolvedKeys.add(k))
     } catch (err) {
       await fail(b.item.externalId, null, new Error(`candidate: ${err instanceof Error ? err.message : String(err)}`))
     }
   }
 
+  // Earlier failures for items read correctly this time are resolved.
+  const keys = [...resolvedKeys].filter((k) => !failedKeys.has(k))
+  for (let i = 0; i < keys.length; i += 200) {
+    const { data } = await svc.from("ingestion_failures").update({ resolved_at: now().toISOString() })
+      .eq("source_id", sourceId).is("resolved_at", null).in("external_id", keys.slice(i, i + 200)).select("id")
+    summary.failuresResolved += (data ?? []).length
+  }
+
   summary.status = summary.failedRecords > 0 ? "partial" : "succeeded"
   await finish(svc, summary, sourceId, src, now(), cursorAfter)
+  summary.historyComplete = (await refreshHistoryState(svc, sourceId)).complete
   return summary
+}
+
+/**
+ * Whether the source's history import is complete: a history-mode run
+ * finished, and no item that failed during history mode is unresolved.
+ * Stored on detection_sources.history_complete; the next run reads it.
+ */
+export async function refreshHistoryState(svc: SupabaseClient, sourceId: string) {
+  const [{ data: runs, error: runsError }, { data: open, error: openError }] = await Promise.all([
+    svc.from("ingestion_runs").select("id, status").eq("source_id", sourceId).eq("is_history_import", true),
+    svc.from("ingestion_failures").select("id, run_id").eq("source_id", sourceId).is("resolved_at", null),
+  ])
+  if (runsError || openError) throw new Error(`History state: ${(runsError ?? openError)!.message}`)
+  const historyRuns = (runs ?? []) as Row[]
+  const historyRunIds = new Set(historyRuns.map((r) => r.id as string))
+  const finished = historyRuns.some((r) => r.status === "succeeded" || r.status === "partial")
+  const blocking = ((open ?? []) as Row[]).filter((f) => historyRunIds.has(f.run_id as string)).length
+  const complete = finished && blocking === 0
+  await svc.from("detection_sources").update({ history_complete: complete }).eq("id", sourceId)
+  return { complete, openHistoryFailures: blocking }
+}
+
+/**
+ * An editor gives up on unreadable items (all, or the given ids). Ends
+ * history mode if nothing else is pending. If the publisher later fixes a
+ * dismissed item in a way we can't recognise, it will appear as a new find.
+ */
+export async function dismissFailures(svc: SupabaseClient, slug: string, ids: string[] | "all", at = new Date()) {
+  const { data: source, error } = await svc.from("detection_sources").select("id").eq("slug", slug).maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!source) throw new Error(`Source "${slug}" not found`)
+  const sourceId = (source as Row).id as string
+  let q = svc.from("ingestion_failures").update({ resolved_at: at.toISOString() }).eq("source_id", sourceId).is("resolved_at", null)
+  if (ids !== "all") q = q.in("id", ids)
+  const { data, error: updateError } = await q.select("id")
+  if (updateError) throw new Error(updateError.message)
+  return { dismissed: (data ?? []).length, ...(await refreshHistoryState(svc, sourceId)) }
 }
 
 async function finish(svc: SupabaseClient, s: RunSummary, sourceId: string, src: Row, at: Date, cursorAfter: unknown) {

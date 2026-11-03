@@ -67,12 +67,18 @@ export async function buildCandidate(
     const candidateId = existing.id as string
     const added = await addEvidence(svc, candidateId, record, draft)
     if (added) {
-      must(await svc.from("detection_candidates").update({ last_evidence_at: record.firstSeenAt }).eq("id", candidateId), "Candidate update")
+      // A change found outside history mode is news: the candidate leaves the
+      // history import and moves up the queue (sorted by latest evidence).
+      must(await svc.from("detection_candidates")
+        .update({ last_evidence_at: record.firstSeenAt, ...(record.isBackfill ? {} : { is_backfill: false }) })
+        .eq("id", candidateId), "Candidate update")
       must(await svc.from("candidate_events").insert({
         candidate_id: candidateId,
         action: "evidence_added",
-        note: "The source published a changed version of this item; both versions are kept.",
-        details: { source_record_id: record.id },
+        note: record.isBackfill
+          ? "The source published a changed version of this item during the history import; both versions are kept."
+          : "The source published a changed version of this item; both versions are kept. Now listed as a new find.",
+        details: { source_record_id: record.id, is_backfill: record.isBackfill },
       }), "Audit trail")
     }
     // Finish a candidate whose first build stopped before its subjects were stored.

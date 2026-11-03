@@ -13,6 +13,14 @@ import { scoreAiRelevance } from "@/lib/detection/relevance"
 
 const CSV = readFileSync(new URL("./fixtures/early-detection/iphd.csv", import.meta.url), "utf8")
 const noSleep = async () => {}
+// The sample without its unreadable row (the "Anne Roux" line has no project name).
+const CLEAN_CSV = CSV.split("\r\n").filter((l) => !l.includes("Anne;Roux")).join("\r\n")
+const REPAIRED_CSV = CSV.replace("Anne;Roux;Anne Roux;;", "Anne;Roux;Anne Roux;CHEMIA;")
+/** A laureate row in the export's 26 columns. */
+const row = ({ year, first, last, project, summary }) =>
+  [year, "8", "Lauréat", "", "", first, last, `${first} ${last}`, project, summary, "", "", "", "", "", "Bretagne", "", "", "", "", "", "", "", "Numérique", "", ""].join(";")
+const NEW_LAUREATE = row({ year: "2027", first: "Léa", last: "Morel", project: "VISIONAGRI", summary: "Vision par ordinateur pour détecter les maladies des vignes." })
+const withRow = (csv, line) => csv.replace(/\r\n$/, "") + "\r\n" + line + "\r\n"
 const PUBLIC_TABLES = ["organizations", "people", "organization_people", "signals", "product_organizations", "funding_rounds", "legal_entities", "program_organizations"]
 
 const fold = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -149,22 +157,29 @@ test("acceptance: a sample award becomes a private project candidate linked to p
 
   assert.equal(t.candidate_events.filter((e) => e.candidate_id === cand.id && e.action === "created").length, 1)
   const run = t.ingestion_runs[0]
-  assert.deepEqual([run.status, run.candidates_created, run.failed_records], ["partial", 2, 1])
+  assert.deepEqual([run.status, run.candidates_created, run.failed_records, run.is_history_import], ["partial", 2, 1, true])
   assert.ok(t.detection_sources[0].last_success_at)
+  assert.equal(t.detection_sources[0].history_complete, false, "an unreadable row keeps the source in history mode")
+  assert.equal(t.ingestion_failures[0].external_id, "~2024:anne-roux", "the unreadable row can be recognised later")
 })
 
-test("re-running the same file adds nothing; a changed item keeps both versions", async () => {
+test("re-running the same file adds nothing; a changed item keeps both versions and resurfaces as a new find", async () => {
   const db = fakeSupabase(seed(), { rpc })
-  await runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve(CSV).fetchImpl, sleep: noSleep })
+  const first0 = await runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve(CLEAN_CSV).fetchImpl, sleep: noSleep })
+  assert.deepEqual([first0.status, first0.isHistoryImport, first0.historyComplete], ["succeeded", true, true])
   const counts = () => ["source_records", "detection_candidates", "projects", "awards", "candidate_subjects", "candidate_evidence"].map((k) => db.tables[k].length)
   const first = counts()
 
-  const again = await runSource(db.client, "esr-iphd", { kind: "cron", fetchImpl: serve(CSV).fetchImpl, sleep: noSleep })
+  const again = await runSource(db.client, "esr-iphd", { kind: "cron", fetchImpl: serve(CLEAN_CSV).fetchImpl, sleep: noSleep })
+  assert.equal(again.isHistoryImport, false)
   assert.deepEqual([again.newRecords, again.changedRecords, again.unchangedRecords, again.candidatesCreated], [0, 0, 3, 0])
   assert.deepEqual(counts(), first, "nothing duplicated")
 
-  const edited = CSV.replace("Premier dispositif validé en clinique.", "Premier dispositif validé en clinique, essai multicentrique en cours.")
-  const changed = await runSource(db.client, "esr-iphd", { kind: "cron", fetchImpl: serve(edited).fetchImpl, sleep: noSleep })
+  const cand0 = db.tables.detection_candidates.find((c) => c.title === "NEUROSEG")
+  assert.equal(cand0.is_backfill, true)
+  const before = cand0.last_evidence_at
+  const edited = CLEAN_CSV.replace("Premier dispositif validé en clinique.", "Premier dispositif validé en clinique, essai multicentrique en cours.")
+  const changed = await runSource(db.client, "esr-iphd", { kind: "cron", fetchImpl: serve(edited).fetchImpl, sleep: noSleep, now: () => new Date(Date.now() + 60_000) })
   assert.deepEqual([changed.newRecords, changed.changedRecords, changed.candidatesCreated, changed.candidatesUpdated], [0, 1, 0, 1])
   const versions = db.tables.source_records.filter((r) => r.external_id === "2026:neuroseg:helene-durand")
   assert.equal(versions.length, 2, "old version kept")
@@ -172,6 +187,9 @@ test("re-running the same file adds nothing; a changed item keeps both versions"
   const cand = db.tables.detection_candidates.find((c) => c.title === "NEUROSEG")
   assert.equal(db.tables.candidate_evidence.filter((e) => e.candidate_id === cand.id).length, 2)
   assert.ok(db.tables.candidate_events.some((e) => e.candidate_id === cand.id && e.action === "evidence_added"))
+  assert.equal(cand.is_backfill, false, "the update is a new find: shown under New finds, with the New find badge")
+  assert.equal(cand.last_evidence_at, versions[1].first_seen_at, "sorted by its latest evidence")
+  assert.ok(cand.last_evidence_at > before)
   assert.equal(db.tables.detection_candidates.length, first[1], "still one candidate per laureate")
 })
 
@@ -317,4 +335,56 @@ test("undoing or changing a confirmed match downgrades the identifiers it verifi
   assert.equal(t.project_links.filter((l) => l.project_id === other.project_id && l.organization_id === "o-isir").length, 1, "the other candidate's link kept")
   await decideSubject(db.client, otherLab.id, "reject", editor)
   assert.equal(rnsr().status, "rejected", "downgraded once nothing backs it")
+})
+
+test("a partial history import stays in history mode until its unreadable rows are fixed", async () => {
+  const db = fakeSupabase(seed(), { rpc })
+  const t = db.tables
+  const go = (csv) => runSource(db.client, "esr-iphd", { kind: "cron", fetchImpl: serve(csv).fetchImpl, sleep: noSleep })
+
+  const first = await go(CSV)
+  assert.deepEqual([first.status, first.isHistoryImport, first.historyComplete], ["partial", true, false])
+
+  // Still history mode: even a laureate appearing now is marked as history (conservative).
+  const second = await go(withRow(CSV, NEW_LAUREATE))
+  assert.deepEqual([second.isHistoryImport, second.historyComplete], [true, false])
+  assert.equal(t.source_records.find((r) => r.external_id.startsWith("2027:")).is_backfill, true)
+
+  // The publisher fixes the broken row: it is history, not news, and the history import completes.
+  const third = await go(withRow(REPAIRED_CSV, NEW_LAUREATE))
+  const repaired = t.source_records.find((r) => r.external_id === "2024:chemia:anne-roux")
+  assert.equal(repaired.is_backfill, true, "a repaired historical row is never presented as news")
+  assert.equal(third.failuresResolved, 2, "both earlier failures for that row resolved")
+  assert.equal(third.historyComplete, true)
+  assert.equal(t.detection_sources[0].history_complete, true)
+
+  // From now on, new items are news.
+  const fourth = await go(withRow(withRow(REPAIRED_CSV, NEW_LAUREATE), row({ year: "2027", first: "Hugo", last: "Petit", project: "DEEPSOIL", summary: "Apprentissage profond appliqué aux sols." })))
+  assert.equal(fourth.isHistoryImport, false)
+  assert.equal(t.source_records.find((r) => r.external_id === "2027:deepsoil:hugo-petit").is_backfill, false)
+  const news = t.detection_candidates.find((c) => c.title === "DEEPSOIL")
+  assert.equal(news.is_backfill, false, "listed as a new find")
+})
+
+test("an editor can dismiss unreadable rows to finish the history import; a failed download never finishes it", async () => {
+  const { dismissFailures } = await import("@/lib/connectors/run")
+  const db = fakeSupabase(seed(), { rpc })
+  const t = db.tables
+
+  const failed = await runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve("down", 503).fetchImpl, sleep: noSleep })
+  assert.deepEqual([failed.status, failed.historyComplete], ["failed", false])
+
+  await runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve(CSV).fetchImpl, sleep: noSleep })
+  assert.equal(t.detection_sources[0].history_complete, false)
+  const res = await dismissFailures(db.client, "esr-iphd", "all")
+  assert.deepEqual([res.dismissed, res.complete], [1, true])
+
+  await runSource(db.client, "esr-iphd", { kind: "cron", fetchImpl: serve(withRow(CSV, NEW_LAUREATE)).fetchImpl, sleep: noSleep })
+  assert.equal(t.source_records.find((r) => r.external_id.startsWith("2027:")).is_backfill, false, "news after the editor closed the history import")
+  assert.equal(t.detection_sources[0].history_complete, true, "a row that fails again outside history mode doesn't reopen it")
+
+  // An explicit "Re-import as history" marks what it finds as history again.
+  const reimport = await runSource(db.client, "esr-iphd", { kind: "backfill", fetchImpl: serve(withRow(CSV, row({ year: "2027", first: "Zoé", last: "Lambert", project: "NEUROLANG", summary: "Modèles de langage pour l'aphasie." }))).fetchImpl, sleep: noSleep })
+  assert.equal(reimport.isHistoryImport, true)
+  assert.equal(t.source_records.find((r) => r.external_id.startsWith("2027:neurolang")).is_backfill, true)
 })

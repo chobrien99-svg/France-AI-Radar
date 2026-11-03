@@ -27,19 +27,28 @@ run "$bin/pg_ctl" -D "$data" -o "-p $port -k $data -c listen_addresses=''" -l "$
 
 migration="$root/supabase/migrations/20261104_early_detection_foundation.sql"
 rollback="$root/supabase/rollbacks/20261104_early_detection_foundation.sql"
+history="$root/supabase/migrations/20261105_early_detection_history_state.sql"
+history_rollback="$root/supabase/rollbacks/20261105_early_detection_history_state.sql"
 "${psql[@]}" -f "$here/early_detection_stub.sql"
 
-echo "== migration (twice)"
+echo "== migrations (twice)"
 "${psql[@]}" -f "$migration"
+"${psql[@]}" -f "$history"
 "${psql[@]}" -f "$migration"
+"${psql[@]}" -f "$history"
+test "$("${psql[@]}" -c "SELECT history_complete FROM detection_sources WHERE slug = 'esr-iphd'" | tr -d ' ')" = f
+echo "  history state columns added; i-PhD source starts in history mode"
 
 echo "== assertions"
 PGOPTIONS="-c client_min_messages=notice" "${psql[@]}" -f "$here/early_detection_test.sql" 2>&1 | sed -n "s/^psql:[^ ]* NOTICE:  /  /p; /ERROR/p"; test "${PIPESTATUS[0]}" = 0
 
 echo "== rollback, then re-apply"
+"${psql[@]}" -f "$history_rollback"
+test "$("${psql[@]}" -c "SELECT count(*) FROM information_schema.columns WHERE column_name IN ('history_complete', 'is_history_import')" | tr -d ' ')" = 0
 "${psql[@]}" -f "$rollback"
 test "$("${psql[@]}" -c "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('detection_sources', 'detection_candidates', 'source_records', 'projects', 'awards')" | tr -d ' ')" = 0
 test "$("${psql[@]}" -c "SELECT count(*) FROM pg_proc WHERE proname LIKE 'detection_match_%'" | tr -d ' ')" = 0
 test "$("${psql[@]}" -c "SELECT count(*) FROM people" | tr -d ' ')" = 3
 "${psql[@]}" -f "$migration"
+"${psql[@]}" -f "$history"
 echo "All Early Detection migration tests passed."

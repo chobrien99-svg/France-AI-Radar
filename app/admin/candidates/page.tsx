@@ -21,6 +21,8 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
   let query = svc.from("detection_candidates")
     .select("id, kind, title, summary, why_surfaced, ai_relevance, ai_terms, is_backfill, created_at, last_evidence_at, candidate_subjects(role, proposed_name, status)")
     .eq("state", state)
+    // Latest evidence first, so a changed item resurfaces above older imports.
+    .order("last_evidence_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .limit(200)
   if (history === "new") query = query.eq("is_backfill", false)

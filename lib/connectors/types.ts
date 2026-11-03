@@ -59,5 +59,11 @@ export type SourceAdapter = {
   /** Reads the whole source (or the next page after `cursor`). */
   fetchItems(fetchImpl: FetchLike, cursor: unknown): Promise<{ items: Record<string, string>[]; cursor: unknown }>
   normalize(raw: Record<string, string>): NormalizedItem
+  /**
+   * Optional: a looser key that can be built even from an item normalize()
+   * rejects (e.g. year + person when the project name is missing). Lets a
+   * failed item be recognised once the publisher fixes it.
+   */
+  looseKey?(raw: Record<string, string>): string | null
   toCandidate(item: NormalizedItem): CandidateDraft
 }

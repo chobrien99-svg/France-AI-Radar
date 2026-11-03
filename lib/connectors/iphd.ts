@@ -68,6 +68,12 @@ export const iphdAdapter: SourceAdapter = {
     }
   },
 
+  looseKey(raw) {
+    const year = Number.parseInt(clean(raw.millesime), 10)
+    const person = personName(raw)
+    return Number.isFinite(year) && person ? `${year}:${slugPart(person)}` : null
+  },
+
   toCandidate(item: NormalizedItem): CandidateDraft {
     const p = item.payload as Record<string, string | undefined>
     const year = item.editionYear

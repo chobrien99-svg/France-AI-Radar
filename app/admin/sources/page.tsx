@@ -60,12 +60,18 @@ export default async function SourcesPage() {
                   <dt className="text-muted-foreground">Last read</dt><dd>{when(s.last_run_at)}{last ? ` · ${STATUS[last.status as string] ?? last.status}` : ""}</dd>
                   <dt className="text-muted-foreground">Last successful read</dt><dd>{when(s.last_success_at)}{failing ? ` · ${s.consecutive_failures} failed since` : ""}</dd>
                   {last && (<><dt className="text-muted-foreground">Last read found</dt><dd>{String(last.fetched)} items: {String(last.new_records)} new, {String(last.changed_records)} changed, {String(last.unchanged_records)} unchanged{Number(last.failed_records) ? `, ${last.failed_records} unreadable` : ""}; {String(last.candidates_created)} new candidates</dd></>)}
+                  <dt className="text-muted-foreground">History import</dt>
+                  <dd>{s.history_complete
+                    ? "complete: new and changed items are news"
+                    : s.last_run_at
+                      ? `not complete${open.length ? `: ${open.length} unreadable item${open.length === 1 ? "" : "s"} to retry or dismiss` : ""}. Until it is, everything read is marked as history.`
+                      : "not started"}</dd>
                   <dt className="text-muted-foreground">Publisher updates</dt><dd>{s.cadence as string}</dd>
                   {s.url ? (<><dt className="text-muted-foreground">Source page</dt><dd><a className="underline" href={s.url as string} target="_blank" rel="noopener noreferrer">open ↗</a></dd></>) : null}
                 </dl>
                 {s.notes ? <p className="mt-2 text-[12px] text-muted-foreground">{s.notes as string}</p> : null}
                 {ADAPTERS[s.slug as string] ? (
-                  <SourceControls slug={s.slug as string} enabled={!!s.enabled} neverRead={!s.last_success_at} />
+                  <SourceControls slug={s.slug as string} enabled={!!s.enabled} neverRead={!s.last_success_at} openFailures={open.length} />
                 ) : (
                   <p className="mt-3 text-[12px] text-muted-foreground">No connector for this source yet.</p>
                 )}

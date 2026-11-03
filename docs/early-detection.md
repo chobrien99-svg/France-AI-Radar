@@ -30,13 +30,14 @@ Scores are there to sort the queue, not to decide:
 ## Running it
 
 - **The first read is a history import.** On Admin › Sources, click **Import history**. Every laureate found is stored, and the AI-relevant ones become candidates marked *History import*, so they are never presented as news.
-- **Later reads** (**Read now**, or the daily read) mark only genuinely new or changed items as new finds.
+- **History mode lasts until the import is complete.** If some items can't be read, the source stays in history mode: everything it reads is still marked as history, including items that are fixed later. The import completes when every unreadable item has either been read correctly on a later run, or been dismissed with **Dismiss unreadable** (if the publisher later fixes a dismissed item in a way the Radar can't recognise, it will appear as a new find). The Sources page shows whether the import is complete.
+- **Later reads** (**Read now**, or the daily read) mark only genuinely new or changed items as new finds. A candidate from the history import whose source item changes afterwards becomes a new find too. It moves under *New finds only*, gets the *New find* badge and rises to the top: the queue is sorted by latest evidence.
 - **The daily read** runs at 02:47 UTC for sources switched on, and only if `EARLY_DETECTION_ENABLED=1` is set in Vercel. It is off by default.
 - **Failures.** A download is tried 3 times before the read is logged as failed. Items that can't be read are listed on the Sources page and tried again on the next read. A source that keeps failing is flagged in red on both pages.
 
 ## Data and access
 
-- **Migration:** `supabase/migrations/20261104_early_detection_foundation.sql`. Rollback: `supabase/rollbacks/20261104_early_detection_foundation.sql`. Tests: `npm run test:db`.
+- **Migrations:** `supabase/migrations/20261104_early_detection_foundation.sql` and `20261105_early_detection_history_state.sql`, each with a rollback in `supabase/rollbacks/`. Tests: `npm run test:db`.
 - **Access:** all 12 tables are staff-only. Row-level security is on with no policies, and the public and logged-in roles have no access, so only the server (admin pages and the daily read) can use them.
 - **Awards** are stored separately from funding rounds. A prize or grant is never an equity round.
 - **Code:** `lib/connectors/` (reading sources), `lib/detection/` (relevance, candidates, review actions), `app/admin/candidates`, `app/admin/sources`.
