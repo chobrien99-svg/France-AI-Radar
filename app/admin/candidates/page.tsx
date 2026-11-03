@@ -19,8 +19,11 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
   const svc = await createServiceClient()
 
   // Editions (e.g. i-PhD 2026): yearly awards make the latest cohort the freshest signal.
-  const { data: awardRows } = await svc.from("awards").select("recipient_project_id, program_name, edition_year").not("edition_year", "is", null)
-  const awards = (awardRows ?? []) as Row[]
+  // Only awards to a project: candidates are filtered and labelled through their project,
+  // and awards made directly to a person or organization have no project to attach to.
+  const { data: awardRows } = await svc.from("awards").select("recipient_project_id, program_name, edition_year")
+    .not("edition_year", "is", null).not("recipient_project_id", "is", null)
+  const awards = ((awardRows ?? []) as Row[]).filter((a) => a.recipient_project_id)
   const years = [...new Set(awards.map((a) => Number(a.edition_year)))].sort((a, b) => b - a)
   const year = years.includes(Number(params.year)) ? Number(params.year) : null
   const yearProjects = year === null ? null : awards.filter((a) => Number(a.edition_year) === year).map((a) => a.recipient_project_id as string)
@@ -123,9 +126,9 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-[15px] font-semibold text-foreground">{c.title as string}</span>
                     <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{c.kind === "project" ? "Pre-company project" : String(c.kind)}</span>
-                    {editionByProject.get(c.project_id as string) && (
+                    {c.project_id && editionByProject.get(c.project_id as string) ? (
                       <span className="bg-secondary px-1.5 text-[11px] font-medium text-foreground">{editionByProject.get(c.project_id as string)}</span>
-                    )}
+                    ) : null}
                     {c.is_backfill ? <span className="bg-secondary px-1.5 text-[11px] text-muted-foreground">History import</span> : <span className="bg-primary/10 px-1.5 text-[11px] text-primary">New find</span>}
                   </div>
                   <p className="mt-1 text-[12px] text-muted-foreground">
