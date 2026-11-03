@@ -1,18 +1,20 @@
 // A small in-memory stand-in for the Supabase client: enough of the query
 // builder (select/insert/update/upsert/delete, eq/is/gte/ilike/in, single) to run
-// the import's write path. `failOn` makes inserts into one table fail.
-export function fakeSupabase(seed = {}, { failOn } = {}) {
+// the import's write path. `failOn` makes inserts into one table fail
+// (`setFailOn` changes it later); `rpc` maps function names to handlers.
+export function fakeSupabase(seed = {}, { failOn, rpc = {} } = {}) {
+  let failing = failOn
   const tables = structuredClone(seed)
   let nextId = 1
   const rows = (t) => (tables[t] ??= [])
 
   function query(table) {
     const filters = []
-    let op = "select", payload = null, onConflict = null, ignoreDuplicates = false, mode = "many", max = Infinity
+    let op = "select", payload = null, onConflict = null, ignoreDuplicates = false, mode = "many", max = Infinity, offset = 0
     const like = (pattern, v) => new RegExp("^" + pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".") + "$", "i").test(String(v ?? ""))
     const matches = (r) => filters.every(([k, f, v]) => (f === "eq" ? r[k] === v : f === "is" ? (r[k] ?? null) === v : f === "gte" ? r[k] != null && r[k] >= v : f === "in" ? v.includes(r[k]) : like(v, r[k])))
     const run = () => {
-      if (op === "insert" && failOn === table) return { data: null, error: { message: `insert into ${table} failed` } }
+      if ((op === "insert" || op === "upsert") && failing === table) return { data: null, error: { message: `insert into ${table} failed` } }
       let data
       if (op === "insert" || op === "upsert") {
         const list = (Array.isArray(payload) ? payload : [payload]).flatMap((p) => {
@@ -32,7 +34,7 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
         data = rows(table).filter(matches)
         tables[table] = rows(table).filter((r) => !matches(r))
       } else {
-        data = rows(table).filter(matches).slice(0, max)
+        data = rows(table).filter(matches).slice(offset, offset + max)
       }
       if (mode === "single") return data.length === 1 ? { data: data[0], error: null } : { data: null, error: { message: "not exactly one row" } }
       if (mode === "maybe") return { data: data[0] ?? null, error: null }
@@ -40,6 +42,7 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
     }
     const b = {
       select() { return b }, order() { return b }, limit(n) { max = n; return b },
+      range(from, to) { offset = from; max = to - from + 1; return b },
       insert(p) { op = "insert"; payload = p; return b },
       upsert(p, o) { op = "upsert"; payload = p; onConflict = o?.onConflict ?? null; ignoreDuplicates = Boolean(o?.ignoreDuplicates); return b },
       update(p) { op = "update"; payload = p; return b },
@@ -55,5 +58,6 @@ export function fakeSupabase(seed = {}, { failOn } = {}) {
     }
     return b
   }
-  return { client: { from: query }, tables }
+  const callRpc = async (name, args) => (rpc[name] ? rpc[name](args, tables) : { data: null, error: { message: `no function ${name}` } })
+  return { client: { from: query, rpc: callRpc }, tables, setFailOn(t) { failing = t } }
 }

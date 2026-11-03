@@ -77,9 +77,13 @@ CREATE TABLE IF NOT EXISTS source_records (
   ingested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   is_backfill BOOLEAN NOT NULL DEFAULT false,        -- read during a history import
   run_id UUID REFERENCES ingestion_runs(id) ON DELETE SET NULL,
+  -- Set once the candidate step has handled this version (created, updated or
+  -- judged not relevant). NULL means a later run tries again.
+  processed_at TIMESTAMPTZ,
   UNIQUE (source_id, external_id, content_hash)
 );
 CREATE INDEX IF NOT EXISTS idx_source_records_item ON source_records (source_id, external_id, first_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_source_records_unprocessed ON source_records (source_id) WHERE processed_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS ingestion_failures (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
