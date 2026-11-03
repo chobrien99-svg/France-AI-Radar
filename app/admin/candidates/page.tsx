@@ -11,15 +11,30 @@ const HISTORY = [
   { value: "history", label: "History import only" },
 ] as const
 
-export default async function CandidatesPage({ searchParams }: { searchParams: Promise<{ state?: string; history?: string }> }) {
+export default async function CandidatesPage({ searchParams }: { searchParams: Promise<{ state?: string; history?: string; year?: string }> }) {
   await requireAdmin()
   const params = await searchParams
   const state: State = STATES.includes(params.state as State) ? (params.state as State) : "new"
   const history = HISTORY.some((h) => h.value === params.history) ? params.history! : "all"
   const svc = await createServiceClient()
 
+  // Editions (e.g. i-PhD 2026): yearly awards make the latest cohort the freshest signal.
+  const { data: awardRows } = await svc.from("awards").select("recipient_project_id, program_name, edition_year").not("edition_year", "is", null)
+  const awards = (awardRows ?? []) as Row[]
+  const years = [...new Set(awards.map((a) => Number(a.edition_year)))].sort((a, b) => b - a)
+  const year = years.includes(Number(params.year)) ? Number(params.year) : null
+  const yearProjects = year === null ? null : awards.filter((a) => Number(a.edition_year) === year).map((a) => a.recipient_project_id as string)
+  const editionByProject = new Map<string, string>()
+  for (const a of awards) {
+    const label = `${a.program_name ?? "Award"} ${a.edition_year}`
+    const prev = editionByProject.get(a.recipient_project_id as string)
+    editionByProject.set(a.recipient_project_id as string, prev ? `${prev}, ${label}` : label)
+  }
+  // Project ids of the chosen edition year (null = all years; a placeholder id when none, so nothing matches).
+  const yearIds = yearProjects === null ? null : yearProjects.length ? yearProjects : ["00000000-0000-0000-0000-000000000000"]
+
   let query = svc.from("detection_candidates")
-    .select("id, kind, title, summary, why_surfaced, ai_relevance, ai_terms, is_backfill, created_at, last_evidence_at, candidate_subjects(role, proposed_name, status)")
+    .select("id, kind, title, summary, why_surfaced, ai_relevance, ai_terms, is_backfill, created_at, last_evidence_at, project_id, candidate_subjects(role, proposed_name, status)")
     .eq("state", state)
     // Latest evidence first, so a changed item resurfaces above older imports.
     .order("last_evidence_at", { ascending: false, nullsFirst: false })
@@ -27,16 +42,22 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
     .limit(200)
   if (history === "new") query = query.eq("is_backfill", false)
   if (history === "history") query = query.eq("is_backfill", true)
+  if (yearIds) query = query.in("project_id", yearIds)
 
   const [{ data: rows, error }, counts, { data: sources }] = await Promise.all([
     query,
-    Promise.all(STATES.map(async (s) => [s, (await svc.from("detection_candidates").select("id", { count: "exact", head: true }).eq("state", s)).count ?? 0] as const)),
+    Promise.all(STATES.map(async (s) => {
+      let q = svc.from("detection_candidates").select("id", { count: "exact", head: true }).eq("state", s)
+      if (yearIds) q = q.in("project_id", yearIds)
+      return [s, (await q).count ?? 0] as const
+    })),
     svc.from("detection_sources").select("name, enabled, last_run_at, last_success_at, consecutive_failures"),
   ])
   const countBy = Object.fromEntries(counts) as Record<State, number>
   const failing = ((sources ?? []) as Row[]).filter((s) => Number(s.consecutive_failures) > 0)
 
-  const href = (s: string, h = history) => `/admin/candidates?state=${s}${h !== "all" ? `&history=${h}` : ""}`
+  const href = (s: string, h = history, y: number | null = year) =>
+    `/admin/candidates?state=${s}${h !== "all" ? `&history=${h}` : ""}${y !== null ? `&year=${y}` : ""}`
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -64,13 +85,22 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
           </Link>
         ))}
       </div>
-      <div className="mb-5 flex gap-3 text-[12px]">
+      <div className="mb-2 flex flex-wrap gap-3 text-[12px]">
         {HISTORY.map((h) => (
           <Link key={h.value} href={href(state, h.value)} className={history === h.value ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}>
             {h.label}
           </Link>
         ))}
       </div>
+      {years.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-baseline gap-3 text-[12px]">
+          <span className="text-muted-foreground">Edition:</span>
+          <Link href={href(state, history, null)} className={year === null ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}>All years</Link>
+          {years.map((y) => (
+            <Link key={y} href={href(state, history, y)} className={year === y ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"}>{y}</Link>
+          ))}
+        </div>
+      )}
 
       {error ? (
         <p className="border-l-2 border-l-destructive bg-card p-4 text-[13px] text-foreground">
@@ -78,7 +108,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
         </p>
       ) : (rows ?? []).length === 0 ? (
         <p className="text-[13px] text-muted-foreground">
-          {state === "new" ? "Nothing new. Candidates appear here after a source is read (Admin › Sources)." : "Nothing here."}
+          {year !== null ? `Nothing here for ${year}.` : state === "new" ? "Nothing new. Candidates appear here after a source is read (Admin › Sources)." : "Nothing here."}
         </p>
       ) : (
         <ul className="space-y-2">
@@ -93,6 +123,9 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-[15px] font-semibold text-foreground">{c.title as string}</span>
                     <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{c.kind === "project" ? "Pre-company project" : String(c.kind)}</span>
+                    {editionByProject.get(c.project_id as string) && (
+                      <span className="bg-secondary px-1.5 text-[11px] font-medium text-foreground">{editionByProject.get(c.project_id as string)}</span>
+                    )}
                     {c.is_backfill ? <span className="bg-secondary px-1.5 text-[11px] text-muted-foreground">History import</span> : <span className="bg-primary/10 px-1.5 text-[11px] text-primary">New find</span>}
                   </div>
                   <p className="mt-1 text-[12px] text-muted-foreground">
