@@ -248,3 +248,67 @@ export async function releaseMatch(
   }
   return { previous_id: previousId, link_removed: linkRemoved, identifiers_downgraded: downgraded, identifiers_kept: kept }
 }
+
+// ------------------------------------------------------------------
+// What an editor finds out about a pre-company project: the brand it uses,
+// its website, its LinkedIn page. Stored on the (private) project.
+// ------------------------------------------------------------------
+
+export type ProjectDetails = { brand_name: string | null; website_url: string | null; linkedin_url: string | null }
+
+/** "izena.fr" → "https://izena.fr/". Null for empty; throws ReviewError if it isn't a web address. */
+export function normalizeWebsite(input: unknown): string | null {
+  const raw = typeof input === "string" ? input.trim() : ""
+  if (!raw) return null
+  let url: URL
+  try {
+    url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`)
+  } catch {
+    throw new ReviewError(`"${raw}" isn't a web address`)
+  }
+  if (!["http:", "https:"].includes(url.protocol) || !url.hostname.includes(".") || /\s/.test(raw)) {
+    throw new ReviewError(`"${raw}" isn't a web address`)
+  }
+  return url.toString()
+}
+
+/** Any LinkedIn page, always https. Throws ReviewError for anything else. */
+export function normalizeLinkedIn(input: unknown): string | null {
+  const url = normalizeWebsite(input)
+  if (!url) return null
+  const u = new URL(url)
+  if (!/(^|\.)linkedin\.com$/.test(u.hostname) || u.pathname === "/") {
+    throw new ReviewError("Give the address of a LinkedIn page, e.g. https://www.linkedin.com/company/…")
+  }
+  u.protocol = "https:"
+  return u.toString()
+}
+
+export async function updateProjectDetails(svc: SupabaseClient, candidateId: string, actorId: string, input: Record<string, unknown>) {
+  const c = await loadCandidate(svc, candidateId)
+  if (!c.project_id) throw new ReviewError("This candidate has no project to describe")
+
+  const next: Partial<ProjectDetails> = {}
+  if ("brand_name" in input) {
+    const brand = typeof input.brand_name === "string" ? input.brand_name.trim().replace(/\s+/g, " ") : ""
+    if (brand.length > 200) throw new ReviewError("The brand name is too long (200 characters at most)")
+    next.brand_name = brand || null
+  }
+  if ("website_url" in input) next.website_url = normalizeWebsite(input.website_url)
+  if ("linkedin_url" in input) next.linkedin_url = normalizeLinkedIn(input.linkedin_url)
+  if (Object.keys(next).length === 0) throw new ReviewError("Nothing to save")
+
+  const project = must(await svc.from("projects").select("id, brand_name, website_url, linkedin_url").eq("id", c.project_id as string).maybeSingle(), "Project") as Row | null
+  if (!project) throw new ReviewError("Project not found")
+  const changed = (Object.keys(next) as (keyof ProjectDetails)[]).filter((k) => (project[k] ?? null) !== next[k])
+  if (changed.length === 0) return { changed: [] as string[] }
+  const before = Object.fromEntries(changed.map((k) => [k, project[k] ?? null]))   // captured before the update
+
+  must(await svc.from("projects").update(next).eq("id", project.id as string), "Project update")
+  await log(svc, {
+    candidate_id: candidateId, actor_id: actorId, action: "details_updated",
+    note: changed.map((k) => `${k === "brand_name" ? "brand" : k === "website_url" ? "website" : "LinkedIn"}: ${next[k] ?? "removed"}`).join(" · "),
+    details: { before, after: Object.fromEntries(changed.map((k) => [k, next[k]])) },
+  })
+  return { changed }
+}

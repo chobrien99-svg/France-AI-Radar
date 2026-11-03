@@ -37,7 +37,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
   const yearIds = yearProjects === null ? null : yearProjects.length ? yearProjects : ["00000000-0000-0000-0000-000000000000"]
 
   let query = svc.from("detection_candidates")
-    .select("id, kind, title, summary, why_surfaced, ai_relevance, ai_terms, is_backfill, created_at, last_evidence_at, project_id, candidate_subjects(role, proposed_name, status)")
+    .select("id, kind, title, summary, why_surfaced, ai_relevance, ai_terms, is_backfill, created_at, last_evidence_at, project_id, projects(brand_name), candidate_subjects(role, proposed_name, status)")
     .eq("state", state)
     // Latest evidence first, so a changed item resurfaces above older imports.
     .order("last_evidence_at", { ascending: false, nullsFirst: false })
@@ -126,6 +126,10 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
                   <div className="flex flex-wrap items-baseline gap-2">
                     <span className="text-[15px] font-semibold text-foreground">{c.title as string}</span>
                     <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{c.kind === "project" ? "Pre-company project" : String(c.kind)}</span>
+                    {(() => {
+                      const p = (Array.isArray(c.projects) ? c.projects[0] : c.projects) as { brand_name?: string | null } | null
+                      return p?.brand_name ? <span className="text-[12px] text-foreground">trading as <span className="font-semibold">{p.brand_name}</span></span> : null
+                    })()}
                     {c.project_id && editionByProject.get(c.project_id as string) ? (
                       <span className="bg-secondary px-1.5 text-[11px] font-medium text-foreground">{editionByProject.get(c.project_id as string)}</span>
                     ) : null}

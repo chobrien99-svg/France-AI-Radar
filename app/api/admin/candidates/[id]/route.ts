@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminUser } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
-import { ReviewError, addNote, changeState, decideSubject } from "@/lib/detection/review"
+import { ReviewError, addNote, changeState, decideSubject, updateProjectDetails } from "@/lib/detection/review"
 
 export const runtime = "nodejs"
 
@@ -9,6 +9,7 @@ export const runtime = "nodejs"
 //   { action: "state", to, note?, organization_slug?, merge_into_id? }
 //   { action: "note", note }
 //   { action: "subject", subject_id, decision: "confirm" | "unmatched" | "reject" | "reopen", option_id? }
+//   { action: "details", brand_name?, website_url?, linkedin_url? }   (empty string clears a field)
 // Every action is checked and logged in lib/detection/review.ts. Nothing here publishes.
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = await getAdminUser()
@@ -35,6 +36,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (body.action === "subject") {
       await decideSubject(svc, String(body.subject_id ?? ""), String(body.decision ?? ""), admin.id, str(body.option_id))
       return NextResponse.json({ ok: true })
+    }
+    if (body.action === "details") {
+      // Only the fields actually sent are changed.
+      const fields = Object.fromEntries(["brand_name", "website_url", "linkedin_url"].filter((k) => k in body).map((k) => [k, body[k]]))
+      return NextResponse.json({ ok: true, ...(await updateProjectDetails(svc, id, admin.id, fields)) })
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 })
   } catch (err) {
