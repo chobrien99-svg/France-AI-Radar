@@ -475,3 +475,50 @@ test("Company verified: only a startup or corporate can be linked, and leaving t
   assert.deepEqual([cand.organization_id, project.organization_id], [null, null], "a rejected candidate asserts no company")
   assert.equal(t.candidate_evidence.filter((e) => e.candidate_id === cand.id).length, 1, "evidence kept throughout")
 })
+
+test("brand name, website and LinkedIn: cleaned up, validated, private, and recorded in the history", async () => {
+  const { updateProjectDetails, normalizeWebsite, normalizeLinkedIn, ReviewError } = await import("@/lib/detection/review")
+  assert.equal(normalizeWebsite("izena.fr"), "https://izena.fr/")
+  assert.equal(normalizeWebsite("  https://izena.fr/equipe "), "https://izena.fr/equipe")
+  assert.equal(normalizeWebsite(""), null)
+  for (const bad of ["javascript:alert(1)", "izena", "ftp://izena.fr", "not a url.fr"]) assert.throws(() => normalizeWebsite(bad), ReviewError, bad)
+  assert.equal(normalizeLinkedIn("linkedin.com/company/izena/"), "https://linkedin.com/company/izena/")
+  assert.equal(normalizeLinkedIn("http://www.linkedin.com/company/izena/"), "https://www.linkedin.com/company/izena/", "always https")
+  for (const bad of ["https://izena.fr", "https://evil.example/linkedin.com/x", "https://notlinkedin.com/company/x", "https://www.linkedin.com/"]) {
+    assert.throws(() => normalizeLinkedIn(bad), ReviewError, bad)
+  }
+
+  const db = fakeSupabase(seed(), { rpc })
+  await runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve(CLEAN_CSV).fetchImpl, sleep: noSleep })
+  const t = db.tables
+  const before = snapshot(t)
+  const cand = t.detection_candidates.find((c) => c.title === "NEUROSEG")
+  const project = t.projects.find((p) => p.id === cand.project_id)
+
+  const res = await updateProjectDetails(db.client, cand.id, "admin-1", { brand_name: "  Neuro  Seg ", website_url: "neuroseg.fr", linkedin_url: "https://www.linkedin.com/company/neuroseg/" })
+  assert.deepEqual(res.changed, ["brand_name", "website_url", "linkedin_url"])
+  assert.deepEqual([project.brand_name, project.website_url, project.linkedin_url], ["Neuro Seg", "https://neuroseg.fr/", "https://www.linkedin.com/company/neuroseg/"])
+  const ev = t.candidate_events.filter((e) => e.candidate_id === cand.id && e.action === "details_updated")
+  assert.equal(ev.length, 1)
+  assert.equal(ev[0].details.before.brand_name, null)
+  assert.equal(ev[0].actor_id, "admin-1")
+
+  // Only the field sent changes; a refused value changes nothing; empty clears.
+  await updateProjectDetails(db.client, cand.id, "admin-1", { website_url: "https://neuroseg.ai" })
+  assert.deepEqual([project.brand_name, project.website_url], ["Neuro Seg", "https://neuroseg.ai/"])
+  await assert.rejects(updateProjectDetails(db.client, cand.id, "admin-1", { linkedin_url: "https://neuroseg.ai" }), /LinkedIn page/)
+  assert.equal(project.linkedin_url, "https://www.linkedin.com/company/neuroseg/")
+  await updateProjectDetails(db.client, cand.id, "admin-1", { linkedin_url: "" })
+  assert.equal(project.linkedin_url, null)
+
+  // Saving the same values again records nothing.
+  const events = t.candidate_events.length
+  assert.deepEqual((await updateProjectDetails(db.client, cand.id, "admin-1", { brand_name: "Neuro Seg" })).changed, [])
+  assert.equal(t.candidate_events.length, events)
+
+  // A later source version doesn't overwrite what the editor entered.
+  await runSource(db.client, "esr-iphd", { kind: "cron", fetchImpl: serve(CLEAN_CSV.replace("Premier dispositif", "Premier dispositif médical")).fetchImpl, sleep: noSleep })
+  assert.deepEqual([project.brand_name, project.website_url], ["Neuro Seg", "https://neuroseg.ai/"])
+
+  assert.equal(snapshot(t), before, "nothing public written")
+})

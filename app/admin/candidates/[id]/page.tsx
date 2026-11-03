@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
 import { STATE_LABELS, TRANSITIONS, type State } from "@/lib/detection/review"
-import { CandidateActions, SubjectDecisions, type Subject } from "@/components/admin/candidate-review"
+import { CandidateActions, ProjectDetailsForm, SubjectDecisions, type Subject } from "@/components/admin/candidate-review"
 
 type Row = Record<string, unknown>
 
@@ -73,6 +73,12 @@ export default async function CandidatePage({ params }: { params: Promise<{ id: 
           <p className="text-[13px] font-semibold text-foreground">{proj.name as string}{proj.sector ? <span className="font-normal text-muted-foreground"> · {proj.sector as string}</span> : null}</p>
           {proj.summary ? <p className="mt-1 whitespace-pre-line text-[13px] text-foreground">{proj.summary as string}</p> : null}
           <p className="mt-1 text-[12px] text-muted-foreground">Status: {String(proj.commercialization_status)}. Not incorporated according to this source unless a company is linked above.</p>
+          <ProjectDetailsForm
+            candidateId={id}
+            brandName={(proj.brand_name as string | null) ?? null}
+            websiteUrl={(proj.website_url as string | null) ?? null}
+            linkedinUrl={(proj.linkedin_url as string | null) ?? null}
+          />
           {((awards ?? []) as Row[]).map((a) => (
             <p key={a.id as string} className="mt-2 text-[12px] text-foreground">
               Award: {a.title as string}{a.category ? ` — ${a.category}` : ""} ({a.award_type as string}{a.funder_name ? `, ${a.funder_name}` : ""}). Not an equity round.
@@ -137,6 +143,7 @@ function describe(e: Row) {
     case "subject_proposed": return "match reopened"
     case "merge_received": return "another candidate merged in"
     case "note": return "note"
+    case "details_updated": return "brand, website or LinkedIn updated"
     default: return String(e.action)
   }
 }

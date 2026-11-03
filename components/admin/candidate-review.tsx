@@ -103,6 +103,73 @@ export function CandidateActions({ id, state, allowed }: { id: string; state: St
   )
 }
 
+/** Brand, website and LinkedIn found by an editor for a pre-company project. */
+export function ProjectDetailsForm({ candidateId, brandName, websiteUrl, linkedinUrl }: {
+  candidateId: string
+  brandName: string | null
+  websiteUrl: string | null
+  linkedinUrl: string | null
+}) {
+  const router = useRouter()
+  const [editing, setEditing] = useState(false)
+  const [brand, setBrand] = useState(brandName ?? "")
+  const [website, setWebsite] = useState(websiteUrl ?? "")
+  const [linkedin, setLinkedin] = useState(linkedinUrl ?? "")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const hasAny = !!(brandName || websiteUrl || linkedinUrl)
+
+  async function save() {
+    setBusy(true)
+    setError(null)
+    const err = await post(candidateId, { action: "details", brand_name: brand, website_url: website, linkedin_url: linkedin })
+    setBusy(false)
+    if (err) return setError(err)
+    setEditing(false)
+    router.refresh()
+  }
+
+  if (!editing) {
+    return (
+      <div className="mt-3 text-[12px]">
+        {hasAny ? (
+          <p className="text-foreground">
+            {brandName && <>Trading as <span className="font-semibold">{brandName}</span></>}
+            {websiteUrl && <>{brandName ? " · " : ""}<a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="underline">website ↗</a></>}
+            {linkedinUrl && <>{brandName || websiteUrl ? " · " : ""}<a href={linkedinUrl} target="_blank" rel="noopener noreferrer" className="underline">LinkedIn ↗</a></>}
+            {" "}<button className="text-muted-foreground underline" onClick={() => setEditing(true)}>edit</button>
+          </p>
+        ) : (
+          <button className="text-muted-foreground underline" onClick={() => setEditing(true)}>Add brand name, website or LinkedIn</button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="data-card mt-3 space-y-2 p-3">
+      <div>
+        <label className="text-[12px] text-muted-foreground">Brand name (what the project calls itself, e.g. Izena)</label>
+        <Input value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={200} />
+      </div>
+      <div>
+        <label className="text-[12px] text-muted-foreground">Website</label>
+        <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" />
+      </div>
+      <div>
+        <label className="text-[12px] text-muted-foreground">LinkedIn page</label>
+        <Input value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="https://www.linkedin.com/company/…" />
+      </div>
+      <p className="text-[11px] text-muted-foreground">Private, like the rest of the candidate. Leave a field empty to remove it. Changes are kept in the history.</p>
+      <div className="flex items-center gap-2">
+        <Button size="sm" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setEditing(false); setError(null); setBrand(brandName ?? ""); setWebsite(websiteUrl ?? ""); setLinkedin(linkedinUrl ?? "") }}>Cancel</Button>
+      </div>
+      {error && <p className="text-[12px] text-destructive">{error}</p>}
+    </div>
+  )
+}
+
 export function SubjectDecisions({ candidateId, subjects }: { candidateId: string; subjects: Subject[] }) {
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
