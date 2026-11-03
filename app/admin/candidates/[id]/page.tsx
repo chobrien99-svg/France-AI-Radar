@@ -130,6 +130,7 @@ function describe(e: Row) {
     case "created": return "created"
     case "state_changed": return `${STATE_LABELS[e.from_state as State] ?? e.from_state} → ${STATE_LABELS[e.to_state as State] ?? e.to_state}`
     case "evidence_added": return "new evidence"
+    case "subjects_updated": return "source corrected names or identifiers; affected matches need review again"
     case "subject_confirmed": return "match confirmed"
     case "subject_unmatched": return "marked not in our database"
     case "subject_rejected": return "name rejected"

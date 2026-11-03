@@ -301,7 +301,7 @@ test("undoing or changing a confirmed match downgrades the identifiers it verifi
   assert.equal(thesis("p-1").status, "rejected", "previous match's identifier downgraded")
   assert.equal(thesis("p-2").status, "verified")
   const changed = t.candidate_events.filter((e) => e.action === "subject_confirmed").at(-1)
-  assert.deepEqual(changed.details.released.identifiers_downgraded, ["theses_fr:s400001"], "audit trail says what was undone")
+  assert.deepEqual(changed.details.released.identifiers_downgraded, ["theses_fr:s400001→rejected"], "audit trail says what was undone")
 
   await decideSubject(db.client, person.id, "reject", editor)
   assert.equal(thesis("p-2").status, "rejected")
@@ -387,4 +387,91 @@ test("an editor can dismiss unreadable rows to finish the history import; a fail
   const reimport = await runSource(db.client, "esr-iphd", { kind: "backfill", fetchImpl: serve(withRow(CSV, row({ year: "2027", first: "Zoé", last: "Lambert", project: "NEUROLANG", summary: "Modèles de langage pour l'aphasie." }))).fetchImpl, sleep: noSleep })
   assert.equal(reimport.isHistoryImport, true)
   assert.equal(t.source_records.find((r) => r.external_id.startsWith("2027:neurolang")).is_backfill, true)
+})
+
+test("a corrected source version updates people, labs and identifiers, and undoes decisions based on the old values", async () => {
+  const { decideSubject } = await import("@/lib/detection/review")
+  const db = fakeSupabase(seed(), { rpc })
+  const t = db.tables
+  const editor = "admin-1"
+  let clock = Date.now()
+  const go = (csv) => runSource(db.client, "esr-iphd", { kind: "cron", fetchImpl: serve(csv).fetchImpl, sleep: noSleep, now: () => new Date((clock += 60_000)) })
+  await go(CLEAN_CSV)
+  const cand = t.detection_candidates.find((c) => c.title === "NEUROSEG")
+  const subjects = () => t.candidate_subjects.filter((s) => s.candidate_id === cand.id)
+  const person = subjects().find((s) => s.role === "person")
+  const oldLab = subjects().find((s) => s.role === "lab")
+  const institutionIds = subjects().filter((s) => s.role === "institution").map((s) => s.id)
+  const ident = (type, id, scheme, value) => t.external_identities.find((i) => i.entity_type === type && i.entity_id === id && i.scheme === scheme && i.value === value)
+  await decideSubject(db.client, person.id, "confirm", editor, "p-1")
+  await decideSubject(db.client, oldLab.id, "confirm", editor, "o-isir")
+  assert.equal(ident("person", "p-1", "theses_fr", "s400001").status, "verified")
+  assert.equal(ident("organization", "o-isir", "rnsr", "200918463J").status, "verified")
+
+  // The publisher corrects the thesis number and the lab (same laureate, same external ID).
+  const corrected = CLEAN_CSV.replaceAll("s400001", "s400009")
+    .replace("Institut des systèmes intelligents et de robotique (ISIR)", "Laboratoire d'informatique de Paris 6 (LIP6)")
+    .replace("200918463J", "199712604Z")
+  const run = await go(corrected)
+  assert.equal(run.changedRecords, 1)
+
+  assert.deepEqual([person.status, person.matched_person_id, person.identifiers], ["proposed", null, { theses_fr: "s400009" }], "reviewer sees the corrected number, decision undone")
+  assert.equal(person.proposed_affiliation, "Laboratoire d'informatique de Paris 6 (LIP6)")
+  assert.equal(ident("person", "p-1", "theses_fr", "s400001").status, "rejected", "the corrected-away number is no longer verified")
+  assert.equal(t.project_links.filter((l) => l.person_id === "p-1").length, 0)
+
+  assert.ok(!t.candidate_subjects.includes(oldLab), "the lab the source no longer names is removed")
+  assert.equal(ident("organization", "o-isir", "rnsr", "200918463J").status, "rejected")
+  assert.equal(t.project_links.filter((l) => l.organization_id === "o-isir").length, 0)
+  const newLab = subjects().find((s) => s.role === "lab")
+  assert.deepEqual([newLab.proposed_name, newLab.identifiers.rnsr, newLab.status], ["Laboratoire d'informatique de Paris 6 (LIP6)", "199712604Z", "proposed"])
+  assert.deepEqual(subjects().filter((s) => s.role === "institution").map((s) => s.id), institutionIds, "unchanged subjects are left alone")
+
+  const ev = t.candidate_events.filter((e) => e.candidate_id === cand.id && e.action === "subjects_updated")
+  assert.equal(ev.length, 1)
+  assert.deepEqual([ev[0].details.changed.length, ev[0].details.removed.length, ev[0].details.added.length], [1, 1, 1])
+  assert.equal(ev[0].details.changed[0].previous_status, "confirmed")
+
+  // Re-confirming verifies the corrected number only.
+  await decideSubject(db.client, person.id, "confirm", editor, "p-1")
+  assert.equal(ident("person", "p-1", "theses_fr", "s400009").status, "verified")
+  assert.equal(ident("person", "p-1", "theses_fr", "s400001").status, "rejected")
+
+  // Only the affiliation changes: the decision is undone, but the unchanged number goes back to proposed, not rejected.
+  await go(corrected.replace("Laboratoire d'informatique de Paris 6 (LIP6)", "LIP6 – Sorbonne Université"))
+  assert.equal(person.status, "proposed")
+  assert.equal(ident("person", "p-1", "theses_fr", "s400009").status, "proposed")
+
+  // Reading the same version again changes nothing.
+  const events = t.candidate_events.length
+  await go(corrected.replace("Laboratoire d'informatique de Paris 6 (LIP6)", "LIP6 – Sorbonne Université"))
+  assert.equal(t.candidate_events.length, events)
+})
+
+test("Company verified: only a startup or corporate can be linked, and leaving the state undoes the link", async () => {
+  const { changeState } = await import("@/lib/detection/review")
+  const db = fakeSupabase(seed(), { rpc })
+  await runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve(CLEAN_CSV).fetchImpl, sleep: noSleep })
+  const t = db.tables
+  const editor = "admin-1"
+  const cand = t.detection_candidates.find((c) => c.title === "NEUROSEG")
+  cand.state = "under_review"
+  const project = t.projects.find((p) => p.id === cand.project_id)
+  t.organizations.push({ id: "o-fund", name: "Deep Fund", slug: "deep-fund", organization_type: "investor" })
+
+  await assert.rejects(changeState(db.client, cand.id, "verified_company", editor, { organizationSlug: "isir" }), /research lab, not a company/)
+  await assert.rejects(changeState(db.client, cand.id, "verified_company", editor, { organizationSlug: "deep-fund" }), /investor, not a company/)
+  assert.deepEqual([cand.state, cand.organization_id, project.organization_id, project.commercialization_status], ["under_review", undefined, undefined, "awarded"], "a refused link changes nothing")
+
+  await changeState(db.client, cand.id, "verified_company", editor, { organizationSlug: "isir-sas" })
+  assert.deepEqual([cand.organization_id, project.organization_id, project.commercialization_status], ["o-startup", "o-startup", "incorporated"])
+
+  // The company was wrong: back to review, then rejected.
+  await changeState(db.client, cand.id, "under_review", editor, { note: "Wrong company." })
+  assert.deepEqual([cand.organization_id, project.organization_id, project.commercialization_status], [null, null, "awarded"], "link undone, earlier status restored")
+  const ev = t.candidate_events.filter((e) => e.candidate_id === cand.id && e.action === "state_changed").at(-1)
+  assert.deepEqual([ev.details.company_unlinked.organization_id, ev.details.project_status_restored], ["o-startup", "awarded"])
+  await changeState(db.client, cand.id, "rejected", editor)
+  assert.deepEqual([cand.organization_id, project.organization_id], [null, null], "a rejected candidate asserts no company")
+  assert.equal(t.candidate_evidence.filter((e) => e.candidate_id === cand.id).length, 1, "evidence kept throughout")
 })

@@ -12,6 +12,7 @@ import { createHash } from "node:crypto"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { CandidateDraft, SubjectDraft } from "@/lib/connectors/types"
 import { RELEVANCE_THRESHOLD, scoreAiRelevance } from "@/lib/detection/relevance"
+import { releaseMatch } from "@/lib/detection/review"
 
 type Row = Record<string, unknown>
 
@@ -59,7 +60,7 @@ export async function buildCandidate(
   if (relevance.score < RELEVANCE_THRESHOLD) return "not_relevant"
 
   const existing = must(
-    await svc.from("detection_candidates").select("id, state").eq("source_key", draft.sourceKey).maybeSingle(),
+    await svc.from("detection_candidates").select("id, state, project_id").eq("source_key", draft.sourceKey).maybeSingle(),
     "Candidate lookup",
   ) as Row | null
 
@@ -67,6 +68,16 @@ export async function buildCandidate(
     const candidateId = existing.id as string
     const added = await addEvidence(svc, candidateId, record, draft)
     if (added) {
+      // The latest version is what reviewers see: text, project and award follow it.
+      must(await svc.from("detection_candidates").update({ title: draft.title, summary: draft.summary }).eq("id", candidateId), "Candidate text")
+      if (existing.project_id && draft.project) {
+        must(await svc.from("projects").update({ name: draft.project.name, summary: draft.project.summary, sector: draft.project.sector })
+          .eq("id", existing.project_id as string), "Project text")
+        if (draft.award) {
+          must(await svc.from("awards").update({ category: draft.award.category, edition_year: draft.award.editionYear, source_record_id: record.id })
+            .eq("recipient_project_id", existing.project_id as string).eq("program_name", draft.award.programName), "Award")
+        }
+      }
       // A change found outside history mode is news: the candidate leaves the
       // history import and moves up the queue (sorted by latest evidence).
       must(await svc.from("detection_candidates")
@@ -81,8 +92,9 @@ export async function buildCandidate(
         details: { source_record_id: record.id, is_backfill: record.isBackfill },
       }), "Audit trail")
     }
-    // Finish a candidate whose first build stopped before its subjects were stored.
-    await ensureSubjects(svc, candidateId, draft)
+    // Bring people, labs and identifiers in line with this version (also
+    // finishes a candidate whose first build stopped before storing them).
+    await reconcileSubjects(svc, { id: candidateId, project_id: existing.project_id }, draft)
     return "updated"
   }
 
@@ -162,7 +174,7 @@ export async function buildCandidate(
     }
   }
 
-  await ensureSubjects(svc, candidateId, draft)
+  await reconcileSubjects(svc, { id: candidateId, project_id: projectId }, draft)
 
   return "created"
 }
@@ -176,22 +188,98 @@ async function addEvidence(svc: SupabaseClient, candidateId: string, record: Rec
   return (res.data ?? []).length > 0
 }
 
-async function ensureSubjects(svc: SupabaseClient, candidateId: string, draft: CandidateDraft) {
-  const have = must(await svc.from("candidate_subjects").select("id").eq("candidate_id", candidateId).limit(1), "Subjects lookup") as Row[]
-  if (have.length > 0 || draft.subjects.length === 0) return
+const subjectKey = (role: string, name: string) => `${role}:${slugPart(name)}`
+
+const sameIdentifiers = (a: Record<string, string>, b: Record<string, string>) => {
+  const ka = Object.keys(a ?? {}).filter((k) => a[k]).sort()
+  const kb = Object.keys(b ?? {}).filter((k) => b[k]).sort()
+  return ka.length === kb.length && ka.every((k, i) => k === kb[i] && a[k] === b[k])
+}
+
+/**
+ * Makes the candidate's people, labs and institutions match the latest
+ * version of the source item. A subject is the same when its role and name
+ * match. When its affiliation or identifiers changed, or the source no longer
+ * names it, any editor decision on it is undone: a confirmed match is
+ * released (its link removed; identifiers the publisher changed or dropped
+ * become "rejected", unchanged ones go back to "proposed") and the subject
+ * returns to "proposed" with fresh suggestions, or is removed if the source
+ * dropped it. Every change is logged in the candidate's history.
+ */
+async function reconcileSubjects(svc: SupabaseClient, candidate: { id: string; project_id: unknown }, draft: CandidateDraft) {
+  const current = (must(await svc.from("candidate_subjects").select("*").eq("candidate_id", candidate.id), "Subjects lookup") ?? []) as Row[]
+  const drafts = new Map<string, SubjectDraft>()
+  for (const d of draft.subjects) if (!drafts.has(subjectKey(d.role, d.name))) drafts.set(subjectKey(d.role, d.name), d)
+
+  const changed: Row[] = []
+  const removed: Row[] = []
+  const used = new Set<string>()
+
+  for (const s of current) {
+    const key = subjectKey(s.role as string, s.proposed_name as string)
+    const d = drafts.get(key)
+    const previousMatch = (s.matched_person_id ?? s.matched_organization_id) as string | null
+    // Captured before any update, for the history.
+    const before = { status: s.status, identifiers: { ...((s.identifiers ?? {}) as Row) }, affiliation: (s.proposed_affiliation as string | null) ?? null }
+    if (d && !used.has(key)) {
+      used.add(key)
+      const same = sameIdentifiers(s.identifiers as Record<string, string>, d.identifiers)
+        && ((s.proposed_affiliation as string | null) ?? null) === (d.affiliation ?? null)
+      if (same) continue
+      const released = previousMatch
+        ? await releaseMatch(svc, s, { project_id: candidate.project_id }, previousMatch, s.role === "person",
+            (scheme, value) => (d.identifiers[scheme] === value ? "proposed" : "rejected"))
+        : null
+      must(await svc.from("candidate_subjects").update({
+        proposed_name: d.name,
+        proposed_affiliation: d.affiliation,
+        identifiers: d.identifiers,
+        match_options: await matchOptions(svc, d),
+        status: "proposed",
+        matched_person_id: null,
+        matched_organization_id: null,
+        reviewed_by: null,
+        reviewed_at: null,
+      }).eq("id", s.id as string), "Subject update")
+      changed.push({
+        subject_id: s.id, role: s.role, name: d.name, previous_status: before.status,
+        identifiers: { before: before.identifiers, after: d.identifiers },
+        affiliation: { before: before.affiliation, after: d.affiliation ?? null },
+        ...(released ? { released } : {}),
+      })
+    } else {
+      const released = previousMatch
+        ? await releaseMatch(svc, s, { project_id: candidate.project_id }, previousMatch, s.role === "person", "rejected")
+        : null
+      must(await svc.from("candidate_subjects").delete().eq("id", s.id as string), "Subject removal")
+      removed.push({ subject_id: s.id, role: s.role, name: s.proposed_name, previous_status: before.status, identifiers: before.identifiers, ...(released ? { released } : {}) })
+    }
+  }
+
   const rows = []
-  for (const s of draft.subjects) {
+  for (const [key, d] of drafts) {
+    if (used.has(key)) continue
     rows.push({
-      candidate_id: candidateId,
-      role: s.role,
-      proposed_name: s.name,
-      proposed_affiliation: s.affiliation,
-      identifiers: s.identifiers,
-      match_options: await matchOptions(svc, s),
+      candidate_id: candidate.id,
+      role: d.role,
+      proposed_name: d.name,
+      proposed_affiliation: d.affiliation,
+      identifiers: d.identifiers,
+      match_options: await matchOptions(svc, d),
       status: "proposed",
     })
   }
-  must(await svc.from("candidate_subjects").insert(rows), "Subjects")
+  if (rows.length) must(await svc.from("candidate_subjects").insert(rows), "Subjects")
+
+  // The first build of a candidate just adds its subjects; anything after that is a correction.
+  if (current.length > 0 && (changed.length || removed.length || rows.length)) {
+    must(await svc.from("candidate_events").insert({
+      candidate_id: candidate.id,
+      action: "subjects_updated",
+      note: "The source changed the people, labs or identifiers it names. Affected matches were undone and need review again.",
+      details: { changed, removed, added: rows.map((r) => ({ role: r.role, name: r.proposed_name, identifiers: r.identifiers })) },
+    }), "Audit trail")
+  }
 }
 
 /** Suggested existing records for a named person or organization. Never fails the build. */

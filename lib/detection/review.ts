@@ -31,6 +31,9 @@ export const TRANSITIONS: Record<State, State[]> = {
 
 export class ReviewError extends Error {}
 
+/** Organization types that count as a company for "Company verified". */
+export const COMPANY_TYPES = ["startup", "corporate"]
+
 function must<T>(res: { data: T; error: { message: string } | null }, what: string): T {
   if (res.error) throw new Error(`${what}: ${res.error.message}`)
   return res.data
@@ -62,16 +65,40 @@ export async function changeState(
   const update: Row = { state: to, reviewed_by: actorId, reviewed_at: now }
   const details: Row = {}
 
+  const project = c.project_id
+    ? must(await svc.from("projects").select("id, organization_id, commercialization_status").eq("id", c.project_id as string).maybeSingle(), "Project") as Row | null
+    : null
+
   if (to === "verified_company") {
     const slug = opts.organizationSlug?.trim()
     if (!slug) throw new ReviewError("Give the slug of the company on the Radar or in the Navigator")
     const org = must(await svc.from("organizations").select("id, name, organization_type").eq("slug", slug).maybeSingle(), "Company lookup") as Row | null
     if (!org) throw new ReviewError(`No organization with slug "${slug}"`)
+    if (!COMPANY_TYPES.includes(String(org.organization_type))) {
+      throw new ReviewError(`"${org.name}" is recorded as ${String(org.organization_type).replace("_", " ")}, not a company. Give the slug of a startup or corporate.`)
+    }
     update.organization_id = org.id
     details.organization = { id: org.id, name: org.name, slug }
     // The project keeps all its pre-company evidence; it now points at the company.
-    if (c.project_id) {
-      must(await svc.from("projects").update({ organization_id: org.id, commercialization_status: "incorporated" }).eq("id", c.project_id as string), "Project link")
+    // Its previous status is kept in the history so leaving this state can restore it.
+    if (project) {
+      details.previous_commercialization_status = project.commercialization_status
+      must(await svc.from("projects").update({ organization_id: org.id, commercialization_status: "incorporated" }).eq("id", project.id as string), "Project link")
+    }
+  }
+
+  // Leaving "Company verified" (e.g. the company was wrong) undoes the company link.
+  if (from === "verified_company" && to !== "verified_company") {
+    update.organization_id = null
+    details.company_unlinked = { organization_id: c.organization_id ?? null }
+    if (project && (!c.organization_id || project.organization_id === c.organization_id)) {
+      const entered = (must(await svc.from("candidate_events").select("details, created_at")
+        .eq("candidate_id", candidateId).eq("action", "state_changed").eq("to_state", "verified_company")
+        .order("created_at", { ascending: false }).limit(1), "History lookup") as Row[])[0]
+      const restored = ((entered?.details ?? {}) as Row).previous_commercialization_status as string | undefined
+        ?? ((must(await svc.from("awards").select("id").eq("recipient_project_id", project.id as string).limit(1), "Award lookup") as Row[]).length ? "awarded" : "unknown")
+      must(await svc.from("projects").update({ organization_id: null, commercialization_status: restored }).eq("id", project.id as string), "Project unlink")
+      details.project_status_restored = restored
     }
   }
 
@@ -187,13 +214,13 @@ export async function decideSubject(
  * Undoes what confirming `subject` against `previousId` created, except where
  * another confirmed match still backs it. Returns what was done, for the audit trail.
  */
-async function releaseMatch(
+export async function releaseMatch(
   svc: SupabaseClient,
   subject: Row,
   candidate: Row,
   previousId: string,
   isPerson: boolean,
-  downgradeTo: "rejected" | "proposed",
+  downgradeTo: "rejected" | "proposed" | ((scheme: string, value: string) => "rejected" | "proposed"),
 ) {
   const column = isPerson ? "matched_person_id" : "matched_organization_id"
   const others = ((must(await svc.from("candidate_subjects").select("id, candidate_id, identifiers")
@@ -213,10 +240,11 @@ async function releaseMatch(
     if (!value) continue
     const stillBacked = others.some((o) => ((o.identifiers ?? {}) as Record<string, string>)[scheme] === value)
     if (stillBacked) { kept.push(`${scheme}:${value}`); continue }
-    must(await svc.from("external_identities").update({ status: downgradeTo })
+    const status = typeof downgradeTo === "function" ? downgradeTo(scheme, value) : downgradeTo
+    must(await svc.from("external_identities").update({ status })
       .eq("entity_type", isPerson ? "person" : "organization").eq("entity_id", previousId)
       .eq("scheme", scheme).eq("value", value).eq("status", "verified"), "Identifier downgrade")
-    downgraded.push(`${scheme}:${value}`)
+    downgraded.push(`${scheme}:${value}→${status}`)
   }
-  return { previous_id: previousId, link_removed: linkRemoved, identifiers_downgraded_to: downgradeTo, identifiers_downgraded: downgraded, identifiers_kept: kept }
+  return { previous_id: previousId, link_removed: linkRemoved, identifiers_downgraded: downgraded, identifiers_kept: kept }
 }

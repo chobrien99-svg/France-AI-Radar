@@ -67,9 +67,9 @@ export function CandidateActions({ id, state, allowed }: { id: string; state: St
       )}
       {to === "verified_company" && (
         <div>
-          <label className="text-[12px] text-muted-foreground">Company slug on the Radar or in the Navigator (e.g. <code>mistral-ai</code>)</label>
+          <label className="text-[12px] text-muted-foreground">Slug of the company (a startup or corporate) on the Radar or in the Navigator, e.g. <code>mistral-ai</code></label>
           <Input value={orgSlug} onChange={(e) => setOrgSlug(e.target.value)} placeholder="company-slug" />
-          <p className="mt-1 text-[11px] text-muted-foreground">The project keeps all its pre-company evidence and is linked to the company. No company is created here.</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">The project keeps all its pre-company evidence and is linked to the company. No company is created here. Moving the candidate out of this state later removes the link.</p>
         </div>
       )}
       {to === "merged" && (
