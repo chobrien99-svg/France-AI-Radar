@@ -263,3 +263,58 @@ test("review: allowed moves only, company link keeps the evidence, identity deci
   assert.deepEqual(actions, ["created", "state_changed", "state_changed", "subject_confirmed", "subject_confirmed", "subject_unmatched", "merge_received", "note"])
   assert.equal(snapshot(db.tables), before, "review actions never write to public tables")
 })
+
+test("undoing or changing a confirmed match downgrades the identifiers it verified, unless another match still backs them", async () => {
+  const { decideSubject } = await import("@/lib/detection/review")
+  const db = fakeSupabase(seed(), { rpc })
+  await runSource(db.client, "esr-iphd", { kind: "manual", fetchImpl: serve(CSV).fetchImpl, sleep: noSleep })
+  const t = db.tables
+  const editor = "admin-1"
+  const cand = t.detection_candidates.find((c) => c.title === "NEUROSEG")
+  cand.state = "under_review"
+  const person = t.candidate_subjects.find((s) => s.candidate_id === cand.id && s.role === "person")
+  const thesis = (id) => t.external_identities.find((i) => i.entity_type === "person" && i.entity_id === id && i.scheme === "theses_fr" && i.value === "s400001")
+
+  await decideSubject(db.client, person.id, "confirm", editor, "p-1")
+  assert.equal(thesis("p-1").status, "verified")
+
+  // Homonym corrected: the thesis number no longer counts as verified for the wrong person.
+  await decideSubject(db.client, person.id, "confirm", editor, "p-2")
+  assert.equal(thesis("p-1").status, "rejected", "previous match's identifier downgraded")
+  assert.equal(thesis("p-2").status, "verified")
+  const changed = t.candidate_events.filter((e) => e.action === "subject_confirmed").at(-1)
+  assert.deepEqual(changed.details.released.identifiers_downgraded, ["theses_fr:s400001"], "audit trail says what was undone")
+
+  await decideSubject(db.client, person.id, "reject", editor)
+  assert.equal(thesis("p-2").status, "rejected")
+
+  // Re-confirming a match that was downgraded makes it verified again.
+  await decideSubject(db.client, person.id, "confirm", editor, "p-1")
+  assert.equal(thesis("p-1").status, "verified")
+
+  await decideSubject(db.client, person.id, "reopen", editor)
+  assert.equal(thesis("p-1").status, "proposed", "reopen means undecided, not wrong")
+  assert.equal(t.project_links.filter((l) => l.person_id).length, 0)
+
+  // A refused request changes nothing.
+  await decideSubject(db.client, person.id, "confirm", editor, "p-1")
+  await assert.rejects(decideSubject(db.client, person.id, "confirm", editor, "o-isir"), /suggested matches/)
+  await assert.rejects(decideSubject(db.client, person.id, "nonsense", editor), /Unknown decision/)
+  assert.deepEqual([person.status, person.matched_person_id, thesis("p-1").status], ["confirmed", "p-1", "verified"])
+  assert.equal(t.project_links.filter((l) => l.person_id === "p-1").length, 1, "link kept after a refused request")
+
+  // The same lab code backed by two candidates: undoing one keeps it verified for the other.
+  const lab = t.candidate_subjects.find((s) => s.candidate_id === cand.id && s.role === "lab")
+  const other = t.detection_candidates.find((c) => c.title === "PREDICTIA")
+  const otherLab = { ...structuredClone(lab), id: "subject-shared-lab", candidate_id: other.id, status: "proposed", matched_organization_id: null }
+  t.candidate_subjects.push(otherLab)
+  const rnsr = () => t.external_identities.find((i) => i.entity_type === "organization" && i.entity_id === "o-isir" && i.scheme === "rnsr")
+  await decideSubject(db.client, lab.id, "confirm", editor, "o-isir")
+  await decideSubject(db.client, otherLab.id, "confirm", editor, "o-isir")
+  await decideSubject(db.client, lab.id, "unmatched", editor)
+  assert.equal(rnsr().status, "verified", "still backed by the other candidate's confirmed lab")
+  assert.equal(t.project_links.filter((l) => l.project_id === cand.project_id && l.organization_id === "o-isir").length, 0, "this candidate's link removed")
+  assert.equal(t.project_links.filter((l) => l.project_id === other.project_id && l.organization_id === "o-isir").length, 1, "the other candidate's link kept")
+  await decideSubject(db.client, otherLab.id, "reject", editor)
+  assert.equal(rnsr().status, "rejected", "downgraded once nothing backs it")
+})

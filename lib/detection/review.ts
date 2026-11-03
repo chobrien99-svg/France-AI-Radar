@@ -107,6 +107,12 @@ export async function addNote(svc: SupabaseClient, candidateId: string, actorId:
  *   reject    → the name was misread or isn't relevant
  *   reopen    → back to proposed
  * Confirming writes only private links (project_links, external_identities).
+ *
+ * Undoing or changing a confirmation releases what it created: the project
+ * link and the identifiers (thesis number, RNSR code…) it marked verified
+ * against the previous record are downgraded, to "rejected" when the match
+ * was wrong (changed, unmatched, rejected) or back to "proposed" on reopen.
+ * Anything another confirmed match still backs is left as it is.
  */
 export async function decideSubject(
   svc: SupabaseClient,
@@ -118,24 +124,32 @@ export async function decideSubject(
   const s = must(await svc.from("candidate_subjects").select("*").eq("id", subjectId).maybeSingle(), "Subject") as Row | null
   if (!s) throw new ReviewError("Subject not found")
   const candidate = await loadCandidate(svc, s.candidate_id as string)
+  const isPerson = s.role === "person"
+
+  // Check the request before changing anything.
+  let option: Row | undefined
+  if (decision === "confirm") {
+    const options = (Array.isArray(s.match_options) ? s.match_options : []) as Row[]
+    option = options.find((o) => o.id === optionId)
+    if (!option) throw new ReviewError("Pick one of the suggested matches")
+  }
+  const status = decision === "confirm" ? "confirmed" : ({ unmatched: "unmatched", reject: "rejected", reopen: "proposed" } as Record<string, string>)[decision]
+  if (!status) throw new ReviewError("Unknown decision")
+
   const now = new Date().toISOString()
   const base = { reviewed_by: actorId, reviewed_at: now }
 
-  // A previous confirmation is undone first, so changing your mind leaves no stale link.
+  // Release the previous confirmation, unless it is being confirmed again as is.
   const previous = (s.matched_person_id ?? s.matched_organization_id) as string | null
-  if (previous && candidate.project_id) {
-    must(await svc.from("project_links").delete().eq("project_id", candidate.project_id as string)
-      .eq(s.matched_person_id ? "person_id" : "organization_id", previous), "Previous link")
+  let released: Row | null = null
+  if (previous && !(option && option.id === previous)) {
+    released = await releaseMatch(svc, s, candidate, previous, isPerson, decision === "reopen" ? "proposed" : "rejected")
   }
 
-  if (decision === "confirm") {
-    const options = (Array.isArray(s.match_options) ? s.match_options : []) as Row[]
-    const option = options.find((o) => o.id === optionId)
-    if (!option) throw new ReviewError("Pick one of the suggested matches")
-    const isPerson = s.role === "person"
+  if (option) {
     must(await svc.from("candidate_subjects").update({
       ...base,
-      status: "confirmed",
+      status,
       matched_person_id: isPerson ? option.id : null,
       matched_organization_id: isPerson ? null : option.id,
     }).eq("id", subjectId), "Subject update")
@@ -147,26 +161,62 @@ export async function decideSubject(
         .eq(isPerson ? "person_id" : "organization_id", option.id as string).maybeSingle(), "Link lookup")
       if (!existing) must(await svc.from("project_links").insert(link), "Project link")
     }
-    const ids = (s.identifiers ?? {}) as Record<string, string>
-    for (const [scheme, value] of Object.entries(ids)) {
+    for (const [scheme, value] of Object.entries((s.identifiers ?? {}) as Record<string, string>)) {
       if (!value) continue
+      // Not "skip if present": a row downgraded by an earlier correction must become verified again.
       must(await svc.from("external_identities").upsert(
         { entity_type: isPerson ? "person" : "organization", entity_id: option.id, scheme, value, status: "verified" },
-        { onConflict: "scheme,value,entity_type,entity_id", ignoreDuplicates: true },
+        { onConflict: "scheme,value,entity_type,entity_id" },
       ), "Identifier")
     }
     await log(svc, {
       candidate_id: s.candidate_id as string, actor_id: actorId, action: "subject_confirmed",
-      note: `${s.proposed_name} → ${option.name}`, details: { subject_id: subjectId, matched: option },
+      note: `${s.proposed_name} → ${option.name}`, details: { subject_id: subjectId, matched: option, ...(released ? { released } : {}) },
     })
     return
   }
 
-  const status = { unmatched: "unmatched", reject: "rejected", reopen: "proposed" }[decision]
-  if (!status) throw new ReviewError("Unknown decision")
   must(await svc.from("candidate_subjects").update({ ...base, status, matched_person_id: null, matched_organization_id: null }).eq("id", subjectId), "Subject update")
   await log(svc, {
     candidate_id: s.candidate_id as string, actor_id: actorId, action: `subject_${status}`,
-    note: s.proposed_name as string, details: { subject_id: subjectId },
+    note: s.proposed_name as string, details: { subject_id: subjectId, ...(released ? { released } : {}) },
   })
+}
+
+/**
+ * Undoes what confirming `subject` against `previousId` created, except where
+ * another confirmed match still backs it. Returns what was done, for the audit trail.
+ */
+async function releaseMatch(
+  svc: SupabaseClient,
+  subject: Row,
+  candidate: Row,
+  previousId: string,
+  isPerson: boolean,
+  downgradeTo: "rejected" | "proposed",
+) {
+  const column = isPerson ? "matched_person_id" : "matched_organization_id"
+  const others = ((must(await svc.from("candidate_subjects").select("id, candidate_id, identifiers")
+    .eq(column, previousId).eq("status", "confirmed"), "Other matches") ?? []) as Row[])
+    .filter((o) => o.id !== subject.id)
+
+  let linkRemoved = false
+  if (candidate.project_id && !others.some((o) => o.candidate_id === subject.candidate_id)) {
+    must(await svc.from("project_links").delete().eq("project_id", candidate.project_id as string)
+      .eq(isPerson ? "person_id" : "organization_id", previousId), "Previous link")
+    linkRemoved = true
+  }
+
+  const downgraded: string[] = []
+  const kept: string[] = []
+  for (const [scheme, value] of Object.entries((subject.identifiers ?? {}) as Record<string, string>)) {
+    if (!value) continue
+    const stillBacked = others.some((o) => ((o.identifiers ?? {}) as Record<string, string>)[scheme] === value)
+    if (stillBacked) { kept.push(`${scheme}:${value}`); continue }
+    must(await svc.from("external_identities").update({ status: downgradeTo })
+      .eq("entity_type", isPerson ? "person" : "organization").eq("entity_id", previousId)
+      .eq("scheme", scheme).eq("value", value).eq("status", "verified"), "Identifier downgrade")
+    downgraded.push(`${scheme}:${value}`)
+  }
+  return { previous_id: previousId, link_removed: linkRemoved, identifiers_downgraded_to: downgradeTo, identifiers_downgraded: downgraded, identifiers_kept: kept }
 }
