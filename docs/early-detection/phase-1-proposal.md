@@ -1,6 +1,6 @@
 # Early Detection Engine — Phase 1 proposal (for review)
 
-Status: **proposal only.** No code written, no migration run, nothing deployed.
+Status: **approved 3 November 2026**, with the decisions below. Phase 1 is built (see [`docs/early-detection.md`](../early-detection.md)); the migration goes to a staging copy first, then to production, each with the owner's go-ahead.
 Prepared 2 November 2026 against *France AI Radar Early Detection Engine Handoff V2*.
 
 Database inspection was **read-only**: the live Navigator project (`oxqpmtttgicvxmesrjzy`) was queried for tables, columns, row counts, enums and RLS policies. Nothing was written.
@@ -283,3 +283,21 @@ Claude summarization is optional and switched off in Phase 1.
 5. **Alerts:** subscribers can currently save alerts that are never sent. Fix now as a separate quick win, or wait for My Radar (Phase 4)?
 6. **Entitlements** (§9 of the handoff): confirm the Explorer "preview" of Signals, and whether Enterprise should differ from Professional.
 7. **Editorial bar** for publishing a pre-company signal (for example, one official source is enough for an award, two independent sources for anything else).
+
+---
+
+## 10. Decisions (3 November 2026)
+
+1. **Scope approved:** a staff-only foundation and console, with no public pages yet. The overall goal is a system that accumulates and matches signals from different sources to discover potential founders and startups. Nothing goes live to users without an administrator validating and publishing it, and administrators need a clear way to monitor the signals.
+2. **First connector:** i-PhD.
+3. **Unconfirmed people** stay private inside candidates until an editor confirms them.
+4. **Migrations** are applied to a Supabase branch or staging copy first, then to Navigator production, with a go-ahead at each step. The database is shared with The Navigator.
+5. **Alerts:** already fixed (France-AI-Radar#89).
+6. **Entitlements:** Explorer gets a preview of Signals. Enterprise stays the same as Professional for now.
+7. **Editorial bar:** editors decide case by case for now.
+
+### What changed from the plan while building
+- All five planned pull requests went into one, as separate commits, because each step depends on the previous one.
+- `source_records.processed_at` was added, so a candidate whose creation was interrupted is finished by the next read instead of being skipped.
+- **Founding likelihood** is shown but not scored in Phase 1, since there is nothing yet to base it on. AI relevance and evidence confidence are scored.
+- Gender, which the i-PhD dataset includes, is not stored.
