@@ -18,6 +18,7 @@ The data is read from the database on every load, so editors' changes show strai
 | Funding stage | The furthest round reached (grants left out). A later undisclosed or strategic round doesn't take a company back. A company with no rounds and the tag "Bootstrapped" shows as bootstrapped. |
 | Rounds | `funding_rounds`, in the currency announced (`currency_original` / `amount_original`), otherwise `amount_eur` (stored in millions). Grants without an amount are left out of the list. |
 | Backers | Round investors, plus programmes of type accelerator (e.g. Y Combinator). "Business Angels" is left out. |
+| Programmes | The company's other programme memberships. Memberships marked `verification_status = 'private'` (known to editors, not public) are never shown. |
 | Founders | `organization_people` with `is_founder`. |
 | Our coverage | The Radar profile when the company is on the Radar, and `funding_rounds.ftj_url` (French Tech Journal articles). |
 

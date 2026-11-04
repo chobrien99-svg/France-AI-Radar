@@ -62,7 +62,8 @@ export type CohortRows = {
   roundInvestors: { funding_round_id: string; investor_id: string }[]
   investorNames: { id: string; name: string }[]
   founders: { organization_id: string; person_id: string; full_name: string }[]
-  programmes: { organization_id: string; program: string; program_type: string | null; cohort_label: string | null }[]
+  /** private = known to the editors but not public (verification_status "private"): never shown. */
+  programmes: { organization_id: string; program: string; program_type: string | null; cohort_label: string | null; private?: boolean }[]
   tags: { organization_id: string; tag: string }[]
   radarIds: string[]
 }
@@ -118,7 +119,7 @@ export function buildCohort(rows: CohortRows): Cohort {
     for (const x of list) m.set(x.organization_id, [...(m.get(x.organization_id) ?? []), x])
     return m
   }
-  const legal = by(rows.legal), rounds = by(rows.rounds), founders = by(rows.founders), progs = by(rows.programmes), tags = by(rows.tags)
+  const legal = by(rows.legal), rounds = by(rows.rounds), founders = by(rows.founders), progs = by(rows.programmes.filter((p) => !p.private)), tags = by(rows.tags)
   const investorsByRound = new Map<string, string[]>()
   for (const ri of rows.roundInvestors) {
     const n = investor.get(ri.investor_id)
@@ -188,7 +189,7 @@ export async function loadCohort(svc: SupabaseClient, editionSlug: string): Prom
     svc.from("legal_entities").select("organization_id, country, is_primary, incorporation_date").in("organization_id", ids),
     svc.from("funding_rounds").select("id, organization_id, stage, amount_eur, currency_original, amount_original, announced_date, ftj_url").in("organization_id", ids),
     svc.from("organization_people").select("organization_id, person_id, is_founder, people(full_name)").in("organization_id", ids).eq("is_founder", true),
-    svc.from("program_organizations").select("organization_id, program_edition_id, program_editions(cohort_label, programs(name, program_type))").in("organization_id", ids).neq("program_edition_id", edition.id),
+    svc.from("program_organizations").select("organization_id, program_edition_id, verification_status, program_editions(cohort_label, programs(name, program_type))").in("organization_id", ids).neq("program_edition_id", edition.id),
     svc.from("organization_tags").select("organization_id, tag").in("organization_id", ids),
     svc.from("product_organizations").select("organization_id, product_catalog!inner(slug)").eq("product_catalog.slug", "ai-radar").in("organization_id", ids),
   ])
@@ -223,7 +224,7 @@ export async function loadCohort(svc: SupabaseClient, editionSlug: string): Prom
     programmes: ((progs.data ?? []) as Row[]).flatMap((p) => {
       const ed = one(p.program_editions as Row | Row[] | null)
       const pr = one(ed?.programs as Row | Row[] | null)
-      return pr ? [{ organization_id: p.organization_id as string, program: pr.name as string, program_type: (pr.program_type as string) ?? null, cohort_label: (ed?.cohort_label as string) ?? null }] : []
+      return pr ? [{ organization_id: p.organization_id as string, program: pr.name as string, program_type: (pr.program_type as string) ?? null, cohort_label: (ed?.cohort_label as string) ?? null, private: p.verification_status === "private" }] : []
     }),
     tags: (tags.data ?? []) as CohortRows["tags"],
     radarIds: ((radar.data ?? []) as Row[]).map((r) => r.organization_id as string),

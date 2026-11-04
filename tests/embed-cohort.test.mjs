@@ -102,6 +102,8 @@ test("backers: round investors plus accelerators, deduplicated, without 'Busines
   rows.programmes = [
     { organization_id: "a", program: "Y Combinator", program_type: "accelerator", cohort_label: "S26" },
     { organization_id: "a", program: "Inria", program_type: "university", cohort_label: "Spin-off" },
+    // known to the editors but not public: never shown, not even as a backer
+    { organization_id: "a", program: "F/ai (Station F)", program_type: "accelerator", cohort_label: "Batch 2", private: true },
   ]
   const [a] = buildCohort(rows).companies
   assert.deepEqual(a.backers, ["Kima Ventures", "Seedcamp", "Y Combinator"])
