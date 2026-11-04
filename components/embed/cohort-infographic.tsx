@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { BASE_LABELS, OTHER_THEME, SITE_URL, STAGE_LABELS, type BaseKey, type Cohort, type CohortCompany, type StageKey } from "@/lib/embed/cohort"
 import type { CohortEmbed } from "@/lib/embed/editorial"
 
@@ -9,14 +9,16 @@ const STAGES: StageKey[] = ["a", "seed", "pre", "unsp", "boot", "none"]
 const SHORT_STAGE: Record<StageKey, string> = { a: "Series A+", seed: "Seed", pre: "Pre-seed", unsp: "Raised", boot: "Bootstrapped", none: "None disclosed" }
 const MAX_THEMES = 8
 
-type Props = { slug: string; editorial: CohortEmbed; cohort: Cohort; asOf: string }
+type Props = { slug: string; editorial: CohortEmbed; cohort: Cohort; asOf: string; canEmbed: boolean }
 
-export function CohortInfographic({ slug, editorial, cohort, asOf }: Props) {
+export function CohortInfographic({ slug, editorial, cohort, asOf, canEmbed }: Props) {
   const [theme, setTheme] = useState<string | null>(null)
   const [base, setBase] = useState<BaseKey | "all">("all")
   const [q, setQ] = useState("")
   const [sel, setSel] = useState(cohort.companies[0]?.slug ?? "")
   const [showEmbed, setShowEmbed] = useState(false)
+  // The embed code is for administrators viewing the page itself, never inside an article.
+  const framed = useSyncExternalStore(noSubscribe, isFramed, () => true)
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
 
@@ -54,7 +56,8 @@ export function CohortInfographic({ slug, editorial, cohort, asOf }: Props) {
 
   // Same on server and client (no hydration mismatch), and always the public address.
   const origin = SITE_URL
-  const embedCode = `<iframe src="${origin}/embed/program/${slug}" title="${editorial.title} (France AI Radar)" style="width:100%;min-height:900px;border:0" loading="lazy"></iframe>
+  // Wider than the article column: 75% of the window on desktop, never narrower than the column on phones.
+  const embedCode = `<iframe src="${origin}/embed/program/${slug}" title="${editorial.title} (France AI Radar)" style="display:block;width:max(100%,75vw);max-width:100vw;margin-left:calc((100% - max(100%,75vw)) / 2);min-height:900px;border:0" loading="lazy"></iframe>
 <script>addEventListener("message",function(e){if(e.origin!=="${origin}"||!e.data||e.data.type!=="far-embed:height")return;document.querySelectorAll('iframe[src^="${origin}/embed/"]').forEach(function(f){if(f.contentWindow===e.source)f.style.height=e.data.height+"px"})});</script>`
 
   return (
@@ -134,13 +137,18 @@ export function CohortInfographic({ slug, editorial, cohort, asOf }: Props) {
           <div><b>Sources.</b> {editorial.sources}</div>
           <div className="cx-foot-row">
             <a href={`${origin}/`} target="_blank" rel="noopener">Data: France AI Radar ↗</a>
-            <button className="cx-linkbtn" onClick={() => setShowEmbed(!showEmbed)} aria-expanded={showEmbed}>Embed this graphic</button>
+            {canEmbed && !framed && <button className="cx-linkbtn" onClick={() => setShowEmbed(!showEmbed)} aria-expanded={showEmbed}>Embed this graphic (admins only)</button>}
           </div>
-          {showEmbed && <EmbedCode code={embedCode} />}
+          {canEmbed && !framed && showEmbed && <EmbedCode code={embedCode} />}
         </footer>
       </div>
     </div>
   )
+}
+
+const noSubscribe = () => () => {}
+function isFramed() {
+  try { return window.self !== window.top } catch { return true }
 }
 
 function Panel({ c, colour, panelRef }: { c: CohortCompany; colour: string; panelRef: React.RefObject<HTMLElement | null> }) {

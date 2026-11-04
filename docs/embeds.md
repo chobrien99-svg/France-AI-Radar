@@ -30,14 +30,19 @@ Then check the edition's companies have a theme (`group_label`), and open the ad
 
 ## Embed code
 
-The footer of every graphic has **Embed this graphic**, which shows the code to paste:
+Only administrators get the embed code: open the graphic's address directly on franceairadar.com while logged in as an admin, and click **Embed this graphic (admins only)** at the bottom. Readers never see the button, and it never appears inside an article.
 
 ```html
-<iframe src="https://www.franceairadar.com/embed/program/future-40-2026" title="The Future 40, mapped (France AI Radar)" style="width:100%;min-height:900px;border:0" loading="lazy"></iframe>
+<iframe src="https://www.franceairadar.com/embed/program/future-40-2026" title="The Future 40, mapped (France AI Radar)" style="display:block;width:max(100%,75vw);max-width:100vw;margin-left:calc((100% - max(100%,75vw)) / 2);min-height:900px;border:0" loading="lazy"></iframe>
 <script>addEventListener("message",function(e){if(e.origin!=="https://www.franceairadar.com"||!e.data||e.data.type!=="far-embed:height")return;document.querySelectorAll('iframe[src^="https://www.franceairadar.com/embed/"]').forEach(function(f){if(f.contentWindow===e.source)f.style.height=e.data.height+"px"})});</script>
 ```
 
-The graphic tells the host page its height (`postMessage`, type `far-embed:height`), and the small script resizes the frame so readers never see a second scrollbar. Without the script it still works, at the `min-height`.
+- **Width:** the frame breaks out of the article column to 75% of the window, centred on the column, and is never narrower than the column (full width on phones). This assumes the article column is centred on the page.
+- **Height:** the graphic tells the host page its height (`postMessage`, type `far-embed:height`) and the script resizes the frame, so readers never see a second scrollbar. Without the script it still works, at the `min-height`.
+
+## Where it can be shown
+
+Browsers only display the graphic inside pages from our own sites: frenchtechjournal.com and franceairadar.com (`Content-Security-Policy: frame-ancestors`, set in `next.config.ts` from `lib/embed/hosts.ts`). Copying the iframe code onto another site shows nothing. To allow another site (a staging site, a partner), add it to `EMBED_ALLOWED_ORIGINS` in the Vercel environment (comma-separated, e.g. `https://staging.frenchtechjournal.com`) and redeploy.
 
 Embed pages show no cookie banner and load no analytics, and they are kept out of search results (`noindex`).
 
