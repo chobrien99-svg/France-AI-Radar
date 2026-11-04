@@ -141,3 +141,14 @@ test("an edition can be embedded only once an editor enables it", () => {
   assert.equal(cohortEmbed("test-off"), null)
   delete COHORT_EMBEDS["test-off"]
 })
+
+test("embeds may only be framed by our own sites, plus any listed in EMBED_ALLOWED_ORIGINS", async () => {
+  const { embedFrameAncestors } = await import("../lib/embed/hosts.ts")
+  const v = embedFrameAncestors("")
+  assert.match(v, /^'self' /)
+  assert.ok(v.includes("https://www.frenchtechjournal.com"))
+  assert.ok(!v.includes("*"))
+  const extra = embedFrameAncestors("https://staging.frenchtechjournal.com, javascript:alert(1), https://evil.example/path, https://x.com;script-src")
+  assert.ok(extra.includes("https://staging.frenchtechjournal.com"))
+  assert.ok(!extra.includes("javascript:") && !extra.includes("evil.example") && !extra.includes("script-src"))
+})

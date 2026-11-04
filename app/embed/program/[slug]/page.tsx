@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { createServiceClient } from "@/lib/supabase/server"
+import { getAdminUser } from "@/lib/admin"
 import { loadCohort } from "@/lib/embed/cohort"
 import { cohortEmbed } from "@/lib/embed/editorial"
 import { CohortInfographic } from "@/components/embed/cohort-infographic"
@@ -25,7 +26,8 @@ export default async function CohortEmbedPage({ params }: Props) {
   const { slug } = await params
   const editorial = cohortEmbed(slug)
   if (!editorial) notFound()
-  const cohort = await loadCohort(await createServiceClient(), slug)
+  const [cohort, admin] = await Promise.all([loadCohort(await createServiceClient(), slug), getAdminUser()])
   if (!cohort || cohort.companies.length === 0) notFound()
-  return <CohortInfographic slug={slug} editorial={editorial} cohort={cohort} asOf={new Date().toISOString().slice(0, 10)} />
+  // Only administrators get the embed code; readers never see it.
+  return <CohortInfographic slug={slug} editorial={editorial} cohort={cohort} asOf={new Date().toISOString().slice(0, 10)} canEmbed={!!admin} />
 }

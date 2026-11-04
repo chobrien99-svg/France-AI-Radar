@@ -21,7 +21,7 @@
   }
 }
 .cx-root * { box-sizing: border-box; }
-.cx-wrap { max-width: 1180px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)); }
+.cx-wrap { max-width: 1440px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)); }
 .cx-kicker { font-family: var(--cx-mono); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--cx-muted); display: flex; gap: 10px; flex-wrap: wrap; }
 .cx-kicker b { color: var(--cx-accent); font-weight: 500; }
 .cx-h1 { font-family: var(--cx-serif); font-weight: 600; font-size: clamp(30px, 4.6vw, 48px); line-height: 1.05; letter-spacing: -.01em; margin: 10px 0; text-wrap: balance; }
