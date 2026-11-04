@@ -2,20 +2,24 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { getConsent, setConsent, initPostHog } from "@/lib/analytics"
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false)
+  // Embeds (/embed/*) run inside other sites' pages: no banner, no analytics.
+  const embedded = usePathname()?.startsWith("/embed/") ?? false
 
   useEffect(() => {
+    if (embedded) return
     const existing = getConsent()
     if (existing === null) {
       setVisible(true)
     } else if (existing === "granted") {
       initPostHog()
     }
-  }, [])
+  }, [embedded])
 
   function accept() {
     setConsent("granted")
