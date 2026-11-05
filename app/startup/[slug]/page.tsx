@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
@@ -12,6 +13,7 @@ import { StartupCardV2 } from "@/components/radar/cards"
 import { ShortlistButton, AlertToggle, ShareButtonV2 } from "@/components/radar/profile-actions"
 import { formatDate, formatEur, founderTags, relativeDate, signalColor, signalLabel, stageFrom, toneFor } from "@/lib/radar"
 import { isRadarOrg, loadRelatedStartups } from "@/lib/radar-data"
+import { loadStartupShare, shareDescription, SITE_NAME } from "@/lib/share-meta"
 import { loadRoundInvestors } from "@/lib/investors"
 import { loadTechnicalProfile, type TechnicalProfile, type TermLink } from "@/lib/technical-profile"
 import { CLAIMS, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, familyLabel, labelFor } from "@/lib/taxonomy"
@@ -29,6 +31,23 @@ import type { Venture, Profile } from "@/lib/types"
 
 // Force dynamic rendering — data changes frequently via admin
 export const dynamic = "force-dynamic"
+
+// What a shared link shows. Only public facts; companies not on the Radar get the site's generic preview.
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const s = await loadStartupShare(await createServiceClient(), slug).catch(() => null)
+  if (!s) return {}
+  const title = `${s.name} · ${SITE_NAME}`
+  const description = shareDescription(s)
+  const url = `/startup/${s.slug}`
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { type: "website", siteName: SITE_NAME, url, title, description },
+    twitter: { card: "summary_large_image", title, description },
+  }
+}
 
 export default async function StartupProfilePage({
   params,
