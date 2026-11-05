@@ -18,6 +18,13 @@ export function shareText(text: string | null | undefined, max = 200): string | 
   return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.–-]+$/, "") + "…"
 }
 
+/** Title size by length, so long names never push the description or footer off the share card. */
+export function titleFit(title: string): { text: string; fontSize: number } {
+  const t = title.replace(/\s+/g, " ").trim()
+  const text = t.length > 60 ? t.slice(0, 59).trimEnd() + "…" : t
+  return { text, fontSize: text.length > 40 ? 56 : text.length > 24 ? 72 : 96 }
+}
+
 /** Description for the preview: the company's own line, or a neutral sentence built from public facts. */
 export function shareDescription(s: StartupShare): string {
   const own = shareText(s.description)
@@ -49,7 +56,8 @@ export async function loadStartupShare(svc: SupabaseClient, slug: string): Promi
   return {
     name: org.name as string,
     slug: org.slug as string,
-    description: (org.description as string | null) ?? (org.short_description as string | null),
+    // The curated one-liner (used on cards across the site) first, then the longer profile text.
+    description: shareText(org.short_description as string | null) ?? shareText(org.description as string | null),
     sector,
     place: city,
   }

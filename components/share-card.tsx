@@ -1,5 +1,6 @@
 // Share card image (1200×630) rendered by next/og for link previews.
 // Plain inline styles only: next/og supports a subset of CSS (flexbox, no grid).
+import { titleFit } from "@/lib/share-meta"
 
 const INK = "#0b0e13"
 const PAPER = "#f4f4f1"
@@ -9,7 +10,7 @@ const MUTED = "#5f656a"
 export const SHARE_CARD_SIZE = { width: 1200, height: 630 }
 
 export function ShareCard({ eyebrow, title, description }: { eyebrow?: string | null; title: string; description?: string | null }) {
-  const long = title.length > 28
+  const fit = titleFit(title)
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: PAPER, color: INK, fontFamily: "sans-serif" }}>
       <div style={{ height: 14, background: BLUE, display: "flex" }} />
@@ -19,7 +20,7 @@ export function ShareCard({ eyebrow, title, description }: { eyebrow?: string | 
           FRANCE AI RADAR
         </div>
         {eyebrow ? <div style={{ marginTop: 44, fontSize: 28, color: MUTED, letterSpacing: 1, display: "flex" }}>{eyebrow}</div> : <div style={{ marginTop: 44, display: "flex" }} />}
-        <div style={{ marginTop: 12, fontSize: long ? 72 : 96, fontWeight: 700, lineHeight: 1.05, letterSpacing: -2, display: "flex" }}>{title}</div>
+        <div style={{ marginTop: 12, fontSize: fit.fontSize, fontWeight: 700, lineHeight: 1.05, letterSpacing: -2, display: "flex" }}>{fit.text}</div>
         {description ? (
           <div style={{ marginTop: 28, fontSize: 34, lineHeight: 1.35, color: "#3c4146", display: "flex", maxWidth: 1000 }}>{description}</div>
         ) : null}
