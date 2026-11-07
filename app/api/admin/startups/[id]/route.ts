@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminUser } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
+import { toStoredMillions } from "@/lib/money"
 
 export const runtime = "nodejs"
 
@@ -73,7 +74,7 @@ export async function PATCH(
     phone: fields.phone || fields.contact_phone || null,
     description: fields.description || null,
     ...(fields.technology_layer ? { technology_layer: fields.technology_layer } : {}),
-    total_raised_eur: fields.total_raised_eur ?? null,
+    total_raised_eur: toStoredMillions(fields.total_raised_eur), // form sends whole euros; column is €M
     last_round: fields.last_round || null,
     fundraising_status: fields.fundraising_status || "unknown",
     founded_date: fields.founded_date || null,

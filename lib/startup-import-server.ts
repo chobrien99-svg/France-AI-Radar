@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { loadVocabulary } from "@/lib/technical-profile"
 import { exactNamePattern, findOrCreateInvestor, fold, foldedNamePattern, linkInvestor } from "@/lib/investors"
 import type { ImportVocab, Issue, NormalizedDraft } from "@/lib/startup-import"
+import { EUR_MILLIONS_UNIT, toStoredMillions } from "@/lib/money"
 
 // ------------------------------------------------------------------
 // Database side of the draft import: vocabulary, duplicate checks and
@@ -10,8 +11,8 @@ import type { ImportVocab, Issue, NormalizedDraft } from "@/lib/startup-import"
 
 type Row = Record<string, unknown>
 
-/** funding_rounds.amount_eur is stored in millions (see the funding-rounds admin route) */
-const FUNDING_AMOUNT_UNIT = 1_000_000
+/** funding_rounds.amount_eur and organizations.total_raised_eur are stored in millions (lib/money.ts) */
+const FUNDING_AMOUNT_UNIT = EUR_MILLIONS_UNIT
 
 export async function loadImportVocab(svc: SupabaseClient): Promise<ImportVocab> {
   const [vocab, { data: sectorRows }] = await Promise.all([
@@ -300,7 +301,7 @@ export async function writeDraft(svc: SupabaseClient, draft: NormalizedDraft, fo
           email: org.email,
           phone: org.phone,
           description: org.description,
-          total_raised_eur: org.total_raised_eur,
+          total_raised_eur: toStoredMillions(org.total_raised_eur), // draft is whole euros; column is €M
           last_round: org.last_round,
           fundraising_status: org.fundraising_status,
         })
@@ -434,7 +435,7 @@ export async function updateFromDraft(
     const candidate: Row = {
       city_id: cityId, secondary_city_id: secondaryCityId, founded_date: org.founded_date, website: org.website,
       linkedin_url: org.linkedin_url, email: org.email, phone: org.phone, description: org.description,
-      total_raised_eur: org.total_raised_eur, last_round: org.last_round, fundraising_status: org.fundraising_status,
+      total_raised_eur: toStoredMillions(org.total_raised_eur), last_round: org.last_round, fundraising_status: org.fundraising_status,
     }
     const orgPatch = Object.fromEntries(Object.entries(candidate).filter(([k, v]) => !isBlank(v) && isBlank(current[k])))
     if (Object.keys(orgPatch).length) {

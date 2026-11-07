@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { fromStoredMillions } from "@/lib/money"
 import { loadTechnicalProfile, type Evidence } from "@/lib/technical-profile"
 import { CLAIMS, EVIDENCE_STATUSES, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, RELATIONSHIP_KINDS, labelFor } from "@/lib/taxonomy"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
@@ -153,7 +154,7 @@ export async function GET(
     ["Description", startup.description ?? ""],
     ["Technology Layer (legacy)", startup.technology_layer ?? ""],
     ["Fundraising Status", startup.fundraising_status ?? ""],
-    ["Total Raised (EUR)", startup.total_raised_eur ? formatEur(startup.total_raised_eur) : ""],
+    ["Total Raised (EUR)", formatEur(fromStoredMillions(startup.total_raised_eur))], // stored in €M
     ["Last Round", startup.last_round ?? ""],
     ["Signal Count", String(startup.signal_count ?? 0)],
     ["Last Signal Date", startup.last_signal_date ? formatDate(startup.last_signal_date) : ""],
@@ -298,7 +299,7 @@ export async function GET(
       const investors = (investorsByRound[r.id] ?? []).map((i) => (i.is_lead ? `${i.name} (lead)` : i.name)).join("; ")
       lines.push([
         csvEscape(r.stage),
-        csvEscape(r.amount_eur ? formatEur(r.amount_eur * 1_000_000) : ""), // stored in €M
+        csvEscape(formatEur(fromStoredMillions(r.amount_eur))), // stored in €M
         csvEscape(formatDate(r.announced_date)),
         csvEscape(investors),
         csvEscape(r.source_name),

@@ -33,6 +33,7 @@ test("creates the startup as a Draft with every section linked", async () => {
   assert.equal(tables.people[0].slug, "camille-exemple")
   assert.equal(tables.organization_people[0].is_founder, true)
   assert.equal(tables.funding_rounds[0].amount_eur, 1.5, "funding amounts are stored in millions")
+  assert.equal(org.total_raised_eur, 1.5, "total raised is stored in millions too (the draft says 1500000)")
   assert.equal(tables.grants[0].amount_eur, 30000)
   assert.equal(tables.program_organizations.length, 1)
   assert.equal(tables.legal_entities[0].naf_code, "72.11Z")
@@ -91,6 +92,16 @@ function thinNavigatorRecord() {
   })
 }
 
+test("updating keeps a total raised that is already there, in millions", async () => {
+  const { client, tables } = thinNavigatorRecord()
+  tables.organizations[0].total_raised_eur = 6
+  const check = await checkExisting(client, draft, "o-1")
+  const res = await updateFromDraft(client, draft, "o-1", check.founderMatches)
+  assert.equal(res.ok, true)
+  assert.equal(tables.organizations[0].total_raised_eur, 6)
+  assert.ok(!res.filled.includes("total_raised_eur"))
+})
+
 test("the check offers to update the record with the same slug, and in update mode the slug is no conflict", async () => {
   const { client } = thinNavigatorRecord()
   const check = await checkExisting(client, draft)
@@ -112,6 +123,7 @@ test("updating fills only empty fields, joins the Radar, adds what is missing, a
   assert.equal(org.website, "https://old.example.org", "a value already there is never overwritten")
   assert.equal(org.status, "active", "the status is kept")
   assert.equal(org.description, draft.organization.description, "an empty field is filled")
+  assert.equal(org.total_raised_eur, 1.5, "an empty total raised is filled in millions")
   assert.equal(org.city_id, "city-lyon")
   assert.equal(org.signal_count, 1)
   assert.equal(tables.organization_profiles[0].product_description, "Kept as is")

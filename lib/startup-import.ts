@@ -77,7 +77,7 @@ export type NormalizedDraft = {
     email: string | null
     phone: string | null
     description: string | null
-    total_raised_eur: number | null
+    total_raised_eur: number | null   // whole euros here; stored in €M (lib/money.ts)
     last_round: string | null
     fundraising_status: string
   }

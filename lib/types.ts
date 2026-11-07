@@ -69,7 +69,7 @@ export type Venture = {
   technology_layer: TechnologyLayer | null
 
   // Fundraising
-  total_raised_eur: number | null
+  total_raised_eur: number | null   // millions of euros (5 = €5M), shared with the Navigator
   last_round: string | null
   fundraising_status: FundraisingStatus
 

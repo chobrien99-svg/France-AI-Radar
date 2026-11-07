@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { fromStoredMillions } from "@/lib/money"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { getExportLimit, canUseAdvancedFilters, canSaveAndList, canAccessPremiumFields, hasActiveAccess } from "@/lib/subscription"
 import { parseDatabaseQuery, loadRadarDataset, filterStartups } from "@/lib/radar-dataset"
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
       (tech?.modality ?? []).join("; "),
       (tech?.domain ?? []).join("; "),
       v.fundraising_status ?? "",
-      v.total_raised_eur ?? "",
+      fromStoredMillions(v.total_raised_eur) ?? "", // stored in €M, exported in whole euros
       v.last_round ?? "",
       v.website ?? "",
       v.linkedin_url ?? "",

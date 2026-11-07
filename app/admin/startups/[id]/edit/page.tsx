@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { requireAdmin } from "@/lib/admin"
 import { createServiceClient } from "@/lib/supabase/server"
+import { fromStoredMillions } from "@/lib/money"
 import { StartupForm, type StartupFormValues, type TagRow } from "@/components/admin/startup-form"
 import { Button } from "@/components/ui/button"
 import { DeleteStartupButton } from "@/components/admin/delete-startup-button"
@@ -168,7 +169,7 @@ export default async function EditStartupPage({
     technology_differentiation: profile?.technology_differentiation ?? "",
     current_strategy: profile?.current_strategy ?? "",
     business_model_hypothesis: profile?.business_model_hypothesis ?? "",
-    total_raised_eur: startup.total_raised_eur != null ? String(startup.total_raised_eur) : "",
+    total_raised_eur: startup.total_raised_eur != null ? String(fromStoredMillions(startup.total_raised_eur)) : "", // €M → whole euros for the form
     last_round: startup.last_round ?? "",
     est_next_raise: profile?.est_next_raise ?? "",
     fundraising_status: startup.fundraising_status ?? "unknown",

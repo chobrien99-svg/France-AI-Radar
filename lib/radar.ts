@@ -1,4 +1,5 @@
 import { SIGNAL_TYPE_LABELS } from "@/lib/subscription"
+import { fromStoredMillions } from "@/lib/money"
 
 // ------------------------------------------------------------------
 // Display helpers shared by the v2 database and profile pages
@@ -73,11 +74,17 @@ export function relativeDate(iso: string | null): string {
   return `${Math.floor(days / 365)}y ago`
 }
 
+/** Formats whole euros. For columns stored in millions use formatEurMillions. */
 export function formatEur(amount: number | null): string {
   if (!amount) return "Undisclosed"
   if (amount >= 1_000_000) return `€${(amount / 1_000_000).toFixed(1)}M`
   if (amount >= 1_000) return `€${(amount / 1_000).toFixed(0)}K`
   return `€${amount}`
+}
+
+/** Formats a value stored in millions (organizations.total_raised_eur, funding_rounds.amount_eur). */
+export function formatEurMillions(millions: number | string | null): string {
+  return formatEur(fromStoredMillions(millions))
 }
 
 /** Normalise the free-text `last_round` column into a stage label */
