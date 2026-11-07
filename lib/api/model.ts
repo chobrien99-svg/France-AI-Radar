@@ -40,6 +40,7 @@ export type CompanyRecord = {
   isStealth: boolean
   employeeRange: string | null
   lastRound: string | null
+  /** Sum of the published rounds' disclosed amounts, in millions of euros */
   totalRaisedEurMillions: number | null
   signalCount: number
   latestSignalAt: string | null

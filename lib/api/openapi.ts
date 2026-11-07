@@ -42,7 +42,7 @@ const summaryProps = {
   is_stealth: { type: "boolean" },
   publication_status: { const: "published" },
   latest_signal_at: ndt,
-  updated_at: { type: "string", format: "date-time", description: "UTC. When the company record last changed." },
+  updated_at: { type: "string", format: "date-time", description: "UTC. Last change to anything in the public record (company, rounds, investors, founders, sectors, technology, programmes, signals). Removals are reported by the change feed (next stage)." },
 }
 
 export const OPENAPI = {
@@ -71,7 +71,7 @@ export const OPENAPI = {
           q("term", "Technical term slugs from any facet (any matches). Broader terms include narrower ones."),
           q("stage", "Stage slugs (any matches)", { type: "string" }),
           q("city", "City slugs (any matches), main or second city"),
-          q("updated_since", "Only companies updated at or after this time, e.g. 2026-11-01T00:00:00Z", { type: "string", format: "date-time" }),
+          q("updated_since", "Only companies whose public record (including rounds, founders, sectors, technology, programmes or signals) changed at or after this time, e.g. 2026-11-01T00:00:00Z", { type: "string", format: "date-time" }),
           q("sort", "updated_at (newest first, default), name (A–Z) or latest_signal_at (newest first)", { type: "string", enum: ["updated_at", "name", "latest_signal_at"] }),
           ...pageParams(100),
         ],
@@ -95,6 +95,7 @@ export const OPENAPI = {
           q("type", "Signal type slugs (any matches). See /taxonomy."),
           q("since", "Signal date on or after (YYYY-MM-DD)", { type: "string", format: "date" }),
           q("until", "Signal date on or before (YYYY-MM-DD)", { type: "string", format: "date" }),
+          q("updated_since", "Only signals added or edited at or after this time, whatever their signal date. Use this to poll for new signals.", { type: "string", format: "date-time" }),
           ...pageParams(100),
         ],
         responses: ok("SignalList", "A page of signals"),
@@ -120,7 +121,7 @@ export const OPENAPI = {
         secondary_city: nstr,
         founded_year: nint,
         employee_range: nstr,
-        total_raised_eur: { ...nint, description: "Total disclosed funding in euros" },
+        total_raised_eur: { ...nint, description: "Sum of the disclosed amounts of the published funding_rounds, in euros; null when none is disclosed" },
         signal_count: { type: "integer" },
         first_seen_at: { ...ndt, description: "When France AI Radar first detected the company" },
         sectors: { type: "array", items: obj({ slug: str, name: str, primary: { type: "boolean" } }) },

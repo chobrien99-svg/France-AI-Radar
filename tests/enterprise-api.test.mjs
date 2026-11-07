@@ -182,6 +182,10 @@ test("signals: only published companies, newest first, filtered by company, type
   assert.equal(listSignals(ds, P(`company_id=${companies[0].id}`)).total, 2)
   assert.equal(listSignals(ds, P("type=award")).total, 1)
   assert.equal(listSignals(ds, P("since=2026-09-15&until=2026-10-31")).total, 1)
+  // A signal approved today about an older date is found by updated_since, not by since
+  const backfilled = { ...ds, signals: [...ds.signals, { ...signal(5, 2, "2026-01-15"), title: "Backfilled", createdAt: "2026-11-07T09:00:00Z", updatedAt: "2026-11-07T09:00:00Z" }] }
+  assert.deepEqual(listSignals(backfilled, P("updated_since=2026-11-05T00:00:00Z")).data.map((s) => s.title), ["Backfilled"])
+  assert.equal(listSignals(backfilled, P("since=2026-11-05")).total, 0)
   const p1 = listSignals(ds, P("limit=2"))
   assert.equal(listSignals(ds, P(`limit=2&cursor=${p1.next_cursor}`)).data[0].title, "Signal 3")
 })

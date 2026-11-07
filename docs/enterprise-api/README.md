@@ -42,14 +42,19 @@ curl -H "Authorization: Bearer $FAR_API_KEY" "https://www.franceairadar.com/v1/s
 
 - **Pagination:** responses carry `next_cursor`; pass it back as `cursor=` with the same filters. `limit` is 1–100 (default 50).
 - **Sorting:** `/companies` takes `sort=updated_at` (default, newest first), `name` or `latest_signal_at`. Ties break on `id`, so pages never overlap.
-- **Filters:** `q`, `sector`, `layer` (+ `layer_scope=any`), `term` (broader terms include narrower ones), `stage`, `city`, `updated_since`. Valid values: `/v1/taxonomy`. Unknown parameters are rejected with `400 invalid_parameter`.
+- **Filters:** `q`, `sector`, `layer` (+ `layer_scope=any`), `term` (broader terms include narrower ones), `stage`, `city`, `updated_since`. Signals: `company_id`, `type`, `since`/`until` (signal date), `updated_since` (when added or edited). Valid values: `/v1/taxonomy`. Unknown parameters are rejected with `400 invalid_parameter`.
 - **Errors:** `{ "error": { "code", "message", "request_id" } }` with codes `invalid_parameter`, `unauthorized`, `not_found`, `rate_limited` (with `Retry-After`), `internal`.
 - **Limits:** 120 requests per minute per key (per server instance, a safety net until Stage 3 metering).
-- **Units:** amounts in whole euros; timestamps UTC ISO 8601.
+- **Units:** amounts in whole euros; timestamps UTC ISO 8601. `total_raised_eur` is the sum of the published rounds' disclosed amounts.
 
 Until the change feed ships, a client can keep a CRM current by polling
-`/v1/companies?updated_since=<last run>` and `/v1/signals?since=<date>`. This
-does not report removals; Stage 2's change feed does.
+`/v1/companies?updated_since=<last run>` and `/v1/signals?updated_since=<last run>`.
+A company's `updated_at` moves when anything in its public record changes
+(rounds, investors, founders, sectors, technology, programmes, signals).
+Use `updated_since` for signals, not `since`: `since` filters on the signal's
+own date, so a signal approved today about last month would be missed.
+Polling does not report removals (a withdrawn company or deleted signal);
+Stage 2's change feed does.
 
 ## What is returned, and what never is
 

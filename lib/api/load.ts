@@ -48,6 +48,8 @@ async function all(label: string, build: (from: number, to: number) => PromiseLi
   }
 }
 
+const latestOf = (a: string, b: string | undefined) => (b && Date.parse(b) > Date.parse(a) ? b : a)
+
 function place(v: unknown): Place | null {
   const c = one(v as Row | Row[] | null)
   return c && str(c.name) ? { name: c.name as string, slug: str(c.slug), region: str(c.region) } : null
@@ -66,7 +68,7 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
     svc
       .from("organizations")
       .select(
-        "id, name, slug, short_description, description, website, linkedin_url, twitter_url, logo_url, country, founded_year, is_stealth, employee_range, last_round, total_raised_eur, signal_count, last_signal_date, first_seen_at, created_at, updated_at, city:cities!organizations_city_id_fkey(name, slug, region), secondary_city:cities!organizations_secondary_city_id_fkey(name, slug, region)",
+        "id, name, slug, short_description, description, website, linkedin_url, twitter_url, logo_url, country, founded_year, is_stealth, employee_range, last_round, signal_count, last_signal_date, first_seen_at, created_at, updated_at, city:cities!organizations_city_id_fkey(name, slug, region), secondary_city:cities!organizations_secondary_city_id_fkey(name, slug, region)",
       )
       .in("id", ids)
       .eq("status", "active"),
@@ -74,16 +76,16 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
   const pubIds = orgRows.map((o) => o.id as string)
   const pub = pubIds.length ? pubIds : ["00000000-0000-0000-0000-000000000000"]
 
-  const [sectorRows, founderRows, roundRows, programRows, signalRows, techIndex] = await Promise.all([
-    must<Row[]>("organization_sectors", svc.from("organization_sectors").select("organization_id, is_primary, sectors(slug, name)").in("organization_id", pub)),
+  const [sectorRows, founderRows, roundRows, programRows, signalRows, techIndex, techLayerTimes, techTermTimes] = await Promise.all([
+    must<Row[]>("organization_sectors", svc.from("organization_sectors").select("organization_id, is_primary, created_at, sectors(slug, name)").in("organization_id", pub)),
     must<Row[]>(
       "organization_people",
-      svc.from("organization_people").select("organization_id, role, people(id, full_name, slug, linkedin_url, short_bio)").in("organization_id", pub).eq("is_founder", true),
+      svc.from("organization_people").select("organization_id, role, updated_at, people(id, full_name, slug, linkedin_url, short_bio, updated_at)").in("organization_id", pub).eq("is_founder", true),
     ),
     all("funding_rounds", (from, to) =>
       svc
         .from("funding_rounds")
-        .select("id, organization_id, stage, amount_eur, amount_original, currency_original, announced_date, closed_date, is_estimated, source_name, source_url, press_release_url, ftj_url")
+        .select("id, organization_id, stage, amount_eur, amount_original, currency_original, announced_date, closed_date, is_estimated, source_name, source_url, press_release_url, ftj_url, updated_at")
         .in("organization_id", pub)
         .eq("publish_status", "published")
         .order("id")
@@ -93,7 +95,7 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
       "program_organizations",
       svc
         .from("program_organizations")
-        .select("organization_id, membership_role, verification_status, program_editions(name, slug, year, cohort_label, verification_status, programs(name, slug, verification_status))")
+        .select("organization_id, membership_role, verification_status, updated_at, program_editions(name, slug, year, cohort_label, verification_status, programs(name, slug, verification_status))")
         .in("organization_id", pub),
     ),
     all("signals", (from, to) =>
@@ -105,8 +107,35 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
         .range(from, to),
     ),
     loadTechnicalIndex(svc, pub),
+    // Only for change times: the technical index above doesn't carry them.
+    must<Row[]>("organization_technical_layers", svc.from("organization_technical_layers").select("organization_id, updated_at").in("organization_id", pub)),
+    must<Row[]>("organization_technical_terms", svc.from("organization_technical_terms").select("organization_id, updated_at").in("organization_id", pub)),
   ])
-  const investorsByRound = await loadRoundInvestors(svc, roundRows.map((r) => r.id as string))
+  const roundIds = roundRows.map((r) => r.id as string)
+  const [investorsByRound, investorTimes] = await Promise.all([
+    loadRoundInvestors(svc, roundIds),
+    roundIds.length ? must<Row[]>("funding_round_investors", svc.from("funding_round_investors").select("funding_round_id, created_at").in("funding_round_id", roundIds)) : Promise.resolve([] as Row[]),
+  ])
+
+  // A company counts as updated when anything in its public record changes,
+  // not only its organizations row (a new round, founder, sector, term…).
+  // Removals leave no timestamp; the Stage 2 change feed reports those.
+  const touched = new Map<string, string>()
+  const touch = (orgId: unknown, ...times: unknown[]) => {
+    for (const t of times) {
+      if (typeof t !== "string" || !t) continue
+      const prev = touched.get(orgId as string)
+      if (!prev || Date.parse(t) > Date.parse(prev)) touched.set(orgId as string, t)
+    }
+  }
+  const orgOfRound = new Map(roundRows.map((r) => [r.id as string, r.organization_id as string]))
+  for (const r of sectorRows) touch(r.organization_id, r.created_at)
+  for (const r of founderRows) touch(r.organization_id, r.updated_at, one(r.people as Row | Row[] | null)?.updated_at)
+  for (const r of roundRows) touch(r.organization_id, r.updated_at)
+  for (const r of investorTimes) touch(orgOfRound.get(r.funding_round_id as string), r.created_at)
+  for (const r of programRows) touch(r.organization_id, r.updated_at)
+  for (const r of [...techLayerTimes, ...techTermTimes]) touch(r.organization_id, r.updated_at)
+  for (const r of signalRows) touch(r.organization_id, r.updated_at, r.created_at)
 
   const group = <T,>(rows: Row[], map: (r: Row) => T | null) => {
     const m = new Map<string, T[]>()
@@ -170,12 +199,13 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
       isStealth: !!o.is_stealth,
       employeeRange: str(o.employee_range),
       lastRound: str(o.last_round),
-      totalRaisedEurMillions: num(o.total_raised_eur),
+      // Summed from the published rounds: organizations.total_raised_eur mixes units (older rows in millions, the importer writes euros).
+      totalRaisedEurMillions: roundList.some((r) => r.amountEurMillions != null) ? roundList.reduce((sum, r) => sum + (r.amountEurMillions ?? 0), 0) : null,
       signalCount: num(o.signal_count) ?? 0,
       latestSignalAt: str(o.last_signal_date),
       firstSeenAt: str(o.first_seen_at),
       createdAt: o.created_at as string,
-      updatedAt: (o.updated_at as string) ?? (o.created_at as string),
+      updatedAt: latestOf((o.updated_at as string) ?? (o.created_at as string), touched.get(id)),
       sectors: sectorList,
       tech: { primary: tc?.primary ?? null, secondary: tc?.secondary ?? [], terms: tc?.terms ?? [] },
       founders: founders.get(id) ?? [],

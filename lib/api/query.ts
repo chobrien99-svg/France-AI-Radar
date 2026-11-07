@@ -75,7 +75,7 @@ export function getCompany(ds: Dataset, idOrSlug: string) {
   return { data: toCompany(c) }
 }
 
-export const SIGNAL_PARAMS = ["company_id", "type", "since", "until", "limit", "cursor"]
+export const SIGNAL_PARAMS = ["company_id", "type", "since", "until", "updated_since", "limit", "cursor"]
 
 export function prepareListSignals(params: URLSearchParams) {
   rejectUnknown(params, SIGNAL_PARAMS)
@@ -83,6 +83,7 @@ export function prepareListSignals(params: URLSearchParams) {
   const types = slugList(params, "type", SIGNAL_TYPES)
   const since = dateParam(params, "since")
   const until = dateParam(params, "until")
+  const updatedSince = dateTimeParam(params, "updated_since")
   const limit = limitParam(params, { max: 100, fallback: 50 })
   const fingerprint = queryFingerprint(params)
   const after = decodeCursor(params.get("cursor"), fingerprint)
@@ -95,7 +96,8 @@ export function prepareListSignals(params: URLSearchParams) {
         (!companyIds.length || companyIds.includes(s.companyId)) &&
         (!types.length || types.includes(s.type)) &&
         (!since || (s.date ?? "") >= since) &&
-        (!until || (s.date ?? "9999") <= until),
+        (!until || (s.date ?? "9999") <= until) &&
+      (updatedSince == null || Math.max(Date.parse(s.updatedAt), Date.parse(s.createdAt)) >= updatedSince),
     )
     const keyOf = (s: SignalRecord): CursorKey => [s.date, s.id]
     const compareKeys = keyComparator("desc")
