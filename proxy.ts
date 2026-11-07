@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 export async function proxy(request: NextRequest) {
+  // The Enterprise API authenticates with API keys, not the site's login cookie.
+  if (request.nextUrl.pathname.startsWith("/v1/")) return NextResponse.next()
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
