@@ -7,10 +7,38 @@ Every statement below is labelled **[verified]** (checked in code, the database 
 
 ---
 
+## Update after owner review (7 November 2026)
+
+**Decisions received**
+- **Scope: France AI Radar only.** The Navigator stays internal and is not part of the API. Any Radar company's funding history comes strictly from funding data compiled by The French Tech Journal. [owner decision; verified: the 27 funding rounds on Radar companies come from FTJ's own records (25) and the FTJ Funding Tracker (2), none from the Crunchbase-labelled imports]. The licensing question (G9, D3) therefore only applies if the Navigator becomes a public product.
+- **Vercel: Pro plan** ($30/month) confirmed by the owner. Assumption 1 below is withdrawn. Functions still run in `iad1` (Washington DC) while the database is in London; moving them stays recommended (D4).
+- **Do not disrupt the Navigator.** Every database change is checked against the Navigator's code and live traffic first.
+- **No pilot VC firms yet** (D11). Stages 3 and 4 wait until pilots are known.
+- **D1 approved and applied** (below).
+
+**D1: what the Navigator check found** [verified in the Navigator repository and seven days of database request logs]
+- The Navigator reads its data as a signed-in team member, so tightening rules for outsiders does not affect it. The Radar website reads with the server-only service role.
+- Four things legitimately read **without a login**: the Navigator's public funding API (`/api/public/v1/funding/*`) and funding-hub embed, the Next 40 embed, and the quarterly deals-database pages for FTJ articles (which query the database directly from the browser). They read published funding rounds, their companies, investors and founders, sectors, cities and programme members.
+- So most company and funding data is public **on purpose**: about 15,100 of 15,300 organisations are linked to a published round, an investment or a public programme. Section 1.4 overstated the leak. Also corrected: `organization_tags`, `organization_events`, `grants`, `patents`, `articles` and `products` were already team-only.
+
+**D1: what changed** (migration `supabase/migrations/20261108_narrow_public_read.sql`, rollback in `supabase/rollbacks/`; policies only, no data or columns changed)
+1. Private programme memberships (`verification_status = 'private'`, e.g. F/ai Batch 2) are hidden from everyone outside the Navigator team.
+2. The Radar's technology intelligence (`organization_technical_terms`, `organization_technical_layers`, `organization_technology_claims`) is readable only by the Navigator team (and the server-side service role).
+3. Funding rounds and investor rows are public only when `publish_status = 'published'`. All 13,896 rounds are published today, so nothing disappears; this stops future unpublished rounds from leaking.
+
+**How it was tested:** before applying, the change was run inside a transaction that cancelled itself, as an anonymous visitor, a Radar subscriber and a Navigator team member. Visitors and subscribers lost the 9 private memberships and the technology tables, and kept every public count unchanged (13,896 rounds, 23,910 investor rows, 840 Next 40 members). The team kept full access. After applying: the Navigator funding API, the Next 40 embed and a Radar startup page returned normally, and every database request since has succeeded.
+
+**Still open after D1**
+- Radar draft companies' basic facts (name, website, one-line description) stay readable, like every other company, because two of them (Revox, Shiplog) appear in the public funding feed. What makes them drafts (Radar listing, profile) was already team-only.
+- A Radar subscriber's login token can read the same public data as a visitor, plus internal columns such as `signal_count`. Limiting columns would break the Navigator, which reads whole rows as team members. The API will never use these tables directly (section 3), so this does not block the API.
+- Supabase advisor items from section 1.4 are unchanged, except `record_profile_view`, which was already limited to the signed-in user's own id in October.
+
+---
+
 ## 0. Summary
 
 1. **The foundation is reusable.** The Radar already has one query path for the Database page and the CSV export (`lib/radar-dataset.ts`), a clean technical taxonomy with stable slugs, UUID primary keys, `updated_at` triggers on 29 tables and a clear publication rule (on the Radar + `status = 'active'`). A read-only REST API can be built on top without touching the website.
-2. **Three blockers must be fixed before any external access**, whatever the API design:
+2. **Three blockers were identified** (status after owner review: database exposure fixed on 7 Nov; licensing reduced to Pappers/LinkedIn-derived fields by the Radar-only scope; Vercel confirmed on Pro; see the update above). As first written:
    - **Database exposure (pre-existing).** The public "anon" key shipped to every browser can read `organizations`, `people`, `funding_rounds`, `funding_round_investors`, `organization_people`, `program_organizations`, technical terms and more, including Radar drafts, ~10,000 Navigator-only companies and the editor-only F/ai Batch 2 memberships. The paywalled content (profiles, signals, legal entities) is correctly restricted. [verified]
    - **Data licensing.** About 2,400 company records and an unknown share of funding rounds were imported from files labelled `*_crunchbase`; signals cite Pappers and LinkedIn. Redistribution through a paid API needs a licence review per field. [verified sources; licence terms are an assumption]
    - **Hosting plan.** Vercel's billing API answers "Plan not found" for the team, which usually means the Hobby plan; Hobby is not licensed for commercial use. [assumption: confirm in the Vercel dashboard]
@@ -382,27 +410,27 @@ Total ≈ **22–27 working days** for Stages 0.5–4.
 
 | # | Decision | Recommendation |
 |---|---|---|
-| D1 | Approve Stage 0.5 hardening of public database access (after checking what the Navigator relies on) | **Yes, first**, independent of the API |
-| D2 | Dataset scope: Radar-published companies only, or also Navigator-wide companies and funding | Radar-published only for P0 |
-| D3 | Field policy, especially funding rounds from Crunchbase-derived imports, Pappers-derived facts, LinkedIn-sourced signals, logos | Exclude until each source is cleared; ship funding only from cleared sources |
-| D4 | Confirm the Vercel plan and approve Pro if on Hobby; move functions to London (`lhr1`) | Yes |
+| D1 | Approve Stage 0.5 hardening of public database access (after checking what the Navigator relies on) | **Approved and applied 7 Nov** (see the update at the top) |
+| D2 | Dataset scope: Radar-published companies only, or also Navigator-wide companies and funding | **Decided: Radar only** |
+| D3 | Field policy, especially Pappers-derived facts, LinkedIn-sourced signals and logos | Funding settled (FTJ's own data). Still to confirm: Pappers-derived facts and LinkedIn-sourced signal text |
+| D4 | Vercel plan; move functions to London (`lhr1`) | **Plan confirmed: Pro.** Moving functions to London still recommended |
 | D5 | What is `france-ai-radar-m4zo`? Keep or remove | Confirm, then remove if unused |
 | D6 | Are the "France AI Radar" (Stockholm) and "French Tech Funding Tracker" Supabase projects still used? | Leave untouched; no API reads from them |
 | D7 | Hosting: same app at `api.franceairadar.com` | Yes |
 | D8 | MCP auth: API key for developer clients first, OAuth provider choice for hosted clients | Pilot with keys; choose OAuth provider once pilot clients are known |
 | D9 | "Approved" vs "verified" wording for signals, and whether to backfill `verification_status` | Expose both; backfill later |
 | D10 | Change-feed retention (90 days proposed) and resync policy | 90 days |
-| D11 | Pilot firms, their CRMs (Affinity, HubSpot, Attio, Salesforce…) and AI clients | Needed before Stage 3 |
+| D11 | Pilot firms, their CRMs (Affinity, HubSpot, Attio, Salesforce…) and AI clients | **None yet.** Needed before Stage 3 |
 | D12 | Pricing and billing: none activated until you approve | — |
 
 ---
 
 ## 12. Assumptions to confirm
 
-1. Vercel team is on Hobby (billing API: "Plan not found").
-2. Function region is `iad1` for all routes (observed on one preview response).
-3. The Navigator frontend may rely on anon/authenticated grants to some base tables; M0 must be checked against it.
-4. Crunchbase-derived and Pappers-derived data cannot be redistributed via API without a licence.
+1. ~~Vercel team is on Hobby.~~ Withdrawn: the owner confirmed the Pro plan.
+2. Function region is `iad1` for all routes (observed on preview and production responses).
+3. ~~The Navigator may rely on public grants.~~ Checked: see the update at the top.
+4. Pappers-derived facts and LinkedIn-sourced signal text may need permission before redistribution through a paid API (Crunchbase no longer applies: Radar funding is FTJ's own).
 5. The two other Supabase projects are not read by the Radar site.
 6. MCP client authentication requirements as described in §6 (to re-verify against current client releases).
 7. Scenario usage numbers in §9 are estimates, not measurements.
