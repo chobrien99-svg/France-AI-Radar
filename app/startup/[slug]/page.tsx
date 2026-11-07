@@ -11,7 +11,7 @@ import { Icon } from "@/components/radar/icons"
 import { Monogram } from "@/components/radar/monogram"
 import { StartupCardV2 } from "@/components/radar/cards"
 import { ShortlistButton, AlertToggle, ShareButtonV2 } from "@/components/radar/profile-actions"
-import { formatDate, formatEur, founderTags, relativeDate, signalColor, signalLabel, stageFrom, toneFor } from "@/lib/radar"
+import { formatDate, formatEurMillions, founderTags, relativeDate, signalColor, signalLabel, stageFrom, toneFor } from "@/lib/radar"
 import { isRadarOrg, loadRelatedStartups } from "@/lib/radar-data"
 import { loadStartupShare, shareDescription, SITE_NAME } from "@/lib/share-meta"
 import { loadRoundInvestors } from "@/lib/investors"
@@ -773,7 +773,7 @@ function Rail({ venture, founders, programs, investors, profileData, tech, blurP
         <div className="r2-box">
           <div className="r2-box-h"><span className="r2-lbl">Funding</span></div>
           <div className="r2-box-b">
-            <div className="r2-kv"><span className="k">Total raised</span><span className="v"><BlurredText blur={blurPremium}>{formatEur(venture.total_raised_eur)}</BlurredText></span></div>
+            <div className="r2-kv"><span className="k">Total raised</span><span className="v"><BlurredText blur={blurPremium}>{formatEurMillions(venture.total_raised_eur)}</BlurredText></span></div>
             <div className="r2-kv"><span className="k">Last round</span><span className="v"><BlurredText blur={blurPremium}>{venture.last_round ?? "—"}</BlurredText></span></div>
             {investors.length > 0 && (
               <div className="r2-kv">

@@ -33,6 +33,7 @@ test("creates the startup as a Draft with every section linked", async () => {
   assert.equal(tables.people[0].slug, "camille-exemple")
   assert.equal(tables.organization_people[0].is_founder, true)
   assert.equal(tables.funding_rounds[0].amount_eur, 1.5, "funding amounts are stored in millions")
+  assert.equal(tables.organizations[0].total_raised_eur, 1.5, "total raised is stored in millions too")
   assert.equal(tables.grants[0].amount_eur, 30000)
   assert.equal(tables.program_organizations.length, 1)
   assert.equal(tables.legal_entities[0].naf_code, "72.11Z")

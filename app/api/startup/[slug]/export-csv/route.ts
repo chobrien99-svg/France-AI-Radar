@@ -153,7 +153,7 @@ export async function GET(
     ["Description", startup.description ?? ""],
     ["Technology Layer (legacy)", startup.technology_layer ?? ""],
     ["Fundraising Status", startup.fundraising_status ?? ""],
-    ["Total Raised (EUR)", startup.total_raised_eur ? formatEur(startup.total_raised_eur) : ""],
+    ["Total Raised (EUR)", startup.total_raised_eur ? formatEur(startup.total_raised_eur * 1_000_000) : ""], // stored in €M
     ["Last Round", startup.last_round ?? ""],
     ["Signal Count", String(startup.signal_count ?? 0)],
     ["Last Signal Date", startup.last_signal_date ? formatDate(startup.last_signal_date) : ""],

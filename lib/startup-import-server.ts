@@ -10,7 +10,7 @@ import type { ImportVocab, Issue, NormalizedDraft } from "@/lib/startup-import"
 
 type Row = Record<string, unknown>
 
-/** funding_rounds.amount_eur is stored in millions (see the funding-rounds admin route) */
+/** funding_rounds.amount_eur and organizations.total_raised_eur are stored in millions (see the funding-rounds admin route) */
 const FUNDING_AMOUNT_UNIT = 1_000_000
 
 export async function loadImportVocab(svc: SupabaseClient): Promise<ImportVocab> {
@@ -300,7 +300,7 @@ export async function writeDraft(svc: SupabaseClient, draft: NormalizedDraft, fo
           email: org.email,
           phone: org.phone,
           description: org.description,
-          total_raised_eur: org.total_raised_eur,
+          total_raised_eur: org.total_raised_eur === null ? null : org.total_raised_eur / FUNDING_AMOUNT_UNIT,
           last_round: org.last_round,
           fundraising_status: org.fundraising_status,
         })
@@ -434,7 +434,7 @@ export async function updateFromDraft(
     const candidate: Row = {
       city_id: cityId, secondary_city_id: secondaryCityId, founded_date: org.founded_date, website: org.website,
       linkedin_url: org.linkedin_url, email: org.email, phone: org.phone, description: org.description,
-      total_raised_eur: org.total_raised_eur, last_round: org.last_round, fundraising_status: org.fundraising_status,
+      total_raised_eur: org.total_raised_eur === null ? null : org.total_raised_eur / FUNDING_AMOUNT_UNIT, last_round: org.last_round, fundraising_status: org.fundraising_status,
     }
     const orgPatch = Object.fromEntries(Object.entries(candidate).filter(([k, v]) => !isBlank(v) && isBlank(current[k])))
     if (Object.keys(orgPatch).length) {

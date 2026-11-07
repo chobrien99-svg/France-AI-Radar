@@ -411,8 +411,8 @@ export function StartupForm({ initialValues, initialTags = [], startupId, initia
       {/* ── Fundraising ── */}
       <SectionTitle>Fundraising</SectionTitle>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Total raised (EUR)">
-          <Input type="number" className={inputClass} value={form.total_raised_eur} onChange={(e) => set("total_raised_eur", e.target.value)} placeholder="5000000" />
+        <Field label="Total raised (in € millions)">
+          <Input type="number" className={inputClass} value={form.total_raised_eur} onChange={(e) => set("total_raised_eur", e.target.value)} placeholder="5 (= €5M)" step="any" />
         </Field>
         <Field label="Last round">
           <Input className={inputClass} value={form.last_round} onChange={(e) => set("last_round", e.target.value)} placeholder="Seed — €3M — Jan 2025" />

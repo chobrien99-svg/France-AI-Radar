@@ -73,6 +73,19 @@ export function relativeDate(iso: string | null): string {
   return `${Math.floor(days / 365)}y ago`
 }
 
+/** Converts an amount stored in millions of euros (`organizations.total_raised_eur`, `funding_rounds.amount_eur`) to whole euros. */
+export function eurFromMillions(millions: number | string | null | undefined): number | null {
+  if (millions === null || millions === undefined || millions === "") return null
+  const n = Number(millions)
+  return Number.isFinite(n) ? Math.round(n * 1_000_000) : null
+}
+
+/** Formats an amount stored in millions of euros, e.g. 6 → "€6.0M". */
+export function formatEurMillions(millions: number | string | null | undefined): string {
+  return formatEur(eurFromMillions(millions))
+}
+
+/** Formats an amount in whole euros, e.g. 6_000_000 → "€6.0M". */
 export function formatEur(amount: number | null): string {
   if (!amount) return "Undisclosed"
   if (amount >= 1_000_000) return `€${(amount / 1_000_000).toFixed(1)}M`
