@@ -20,6 +20,7 @@ import { CLAIMS, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, familyLabel, l
 import { AnalyticsPageTrack } from "@/components/analytics-page-track"
 import { AnalyticsIdentifier } from "@/components/analytics-identifier"
 import type { Venture, Profile } from "@/lib/types"
+import { programMemberships, PROGRAM_MEMBERSHIP_SELECT, type ProgramMembership } from "@/lib/program-memberships"
 
 // ------------------------------------------------------------------
 // Helpers
@@ -162,25 +163,11 @@ export default async function StartupProfilePage({
   // Fetch programs
   const { data: programsRaw } = await svcForRead
     .from("program_organizations")
-    .select("id, membership_role, notes, program_editions(name, cohort_label, year, programs(name, program_type))")
+    .select(PROGRAM_MEMBERSHIP_SELECT)
     .eq("organization_id", venture.id)
 
-  const programs = (programsRaw ?? []).map((row: Record<string, unknown>) => {
-    const ed = Array.isArray(row.program_editions)
-      ? (row.program_editions as Record<string, unknown>[])[0]
-      : (row.program_editions as Record<string, unknown> | null)
-    const prog = ed
-      ? (Array.isArray(ed.programs) ? (ed.programs as Record<string, unknown>[])[0] : ed.programs as Record<string, unknown> | null)
-      : null
-    return {
-      id: row.id as string,
-      program_name: (prog?.name as string) ?? "Unknown",
-      program_type: (prog?.program_type as string) ?? "other",
-      edition_label: (ed?.cohort_label as string) ?? (ed?.name as string) ?? null,
-      year: (ed?.year as number) ?? null,
-      membership_role: row.membership_role as string | null,
-    }
-  })
+  // Private (editor-only) memberships are dropped for everyone but admins.
+  const programs = programMemberships(programsRaw as Record<string, unknown>[] | null, isAdmin)
 
   // Check watchlist status
   let isBookmarked = false
@@ -454,14 +441,7 @@ type FounderLocal = {
   has_big_tech_background: boolean
 }
 
-type ProgramLink = {
-  id: string
-  program_name: string
-  program_type: string
-  edition_label: string | null
-  year: number | null
-  membership_role: string | null
-}
+type ProgramLink = ProgramMembership
 
 type BodyProps = {
   venture: Venture
@@ -799,7 +779,10 @@ function Rail({ venture, founders, programs, investors, profileData, tech, blurP
           <div className="r2-box-b">
             {programs.map((p) => (
               <div key={p.id} className="r2-related">
-                <div className="r2-lbl" style={{ marginBottom: 0 }}>{PROGRAM_TYPE_LABELS[p.program_type] ?? p.program_type}</div>
+                <div className="r2-lbl" style={{ marginBottom: 0 }}>
+                  {PROGRAM_TYPE_LABELS[p.program_type] ?? p.program_type}
+                  {p.isPrivate && <span title="Editor-only: hidden from the public"> · Private</span>}
+                </div>
                 <div className="ttl"><BlurredText blur={blurPremium}>{p.program_name}</BlurredText></div>
                 {(p.edition_label || p.year || p.membership_role) && (
                   <div className="r2-mono-sm" style={{ marginTop: 2 }}>

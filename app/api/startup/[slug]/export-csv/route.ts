@@ -3,6 +3,7 @@ import { loadTechnicalProfile, type Evidence } from "@/lib/technical-profile"
 import { CLAIMS, EVIDENCE_STATUSES, FACETS, MATURITIES, POSITIONINGS, PRODUCT_ROLES, RELATIONSHIP_KINDS, labelFor } from "@/lib/taxonomy"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { isRadarOrg } from "@/lib/radar-data"
+import { programMemberships, PROGRAM_MEMBERSHIP_SELECT } from "@/lib/program-memberships"
 import { loadRoundInvestors } from "@/lib/investors"
 import { getExportLimit, hasActiveAccess, SIGNAL_TYPE_LABELS } from "@/lib/subscription"
 
@@ -114,7 +115,7 @@ export async function GET(
     svc.from("signals").select("*").eq("organization_id", orgId).order("signal_date", { ascending: false }),
     svc.from("grants").select("*").eq("organization_id", orgId),
     svc.from("funding_rounds").select("*").eq("organization_id", orgId).order("announced_date", { ascending: false }),
-    svc.from("program_organizations").select("membership_role, program_editions(name, cohort_label, year, programs(name, program_type))").eq("organization_id", orgId),
+    svc.from("program_organizations").select(PROGRAM_MEMBERSHIP_SELECT).eq("organization_id", orgId),
     svc.from("legal_entities").select("*").eq("organization_id", orgId),
     svc.from("organization_sectors").select("sectors(name)").eq("organization_id", orgId),
     loadTechnicalProfile(svc, orgId),
@@ -327,21 +328,22 @@ export async function GET(
   }
 
   // === PROGRAMS ===
-  if (programsData && programsData.length > 0) {
+  // Private (editor-only) memberships are left out unless the exporter is an admin.
+  const programs = programMemberships(programsData as Record<string, unknown>[] | null, !!profile?.is_admin)
+  if (programs.length > 0) {
     lines.push("")
     lines.push("=== PROGRAMS & AFFILIATIONS ===")
     lines.push("")
-    const progHeaders = ["Program", "Type", "Edition", "Year", "Role"]
+    const progHeaders = ["Program", "Type", "Edition", "Year", "Role", "Visibility"]
     lines.push(progHeaders.map(csvEscape).join(","))
-    for (const row of programsData) {
-      const ed = Array.isArray(row.program_editions) ? row.program_editions[0] : row.program_editions
-      const prog = ed ? (Array.isArray(ed.programs) ? ed.programs[0] : ed.programs) : null
+    for (const p of programs) {
       lines.push([
-        csvEscape(prog?.name),
-        csvEscape(prog?.program_type),
-        csvEscape(ed?.cohort_label ?? ed?.name),
-        csvEscape(ed?.year),
-        csvEscape(row.membership_role),
+        csvEscape(p.program_name),
+        csvEscape(p.program_type),
+        csvEscape(p.edition_label),
+        csvEscape(p.year),
+        csvEscape(p.membership_role),
+        csvEscape(p.isPrivate ? "Private" : ""),
       ].join(","))
     }
   }
