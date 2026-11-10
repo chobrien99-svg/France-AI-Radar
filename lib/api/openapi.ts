@@ -53,6 +53,7 @@ export const OPENAPI = {
     description:
       "Read-only access to companies published on France AI Radar, their founders, technology classification, funding and editor-approved signals. " +
       "All timestamps are UTC (ISO 8601). Amounts are in whole euros. Lists are sorted with a stable tiebreak on id and paginated with opaque cursors. " +
+      "Funding data is compiled by The French Tech Journal. " +
       "Drafts, Navigator-only companies, editor notes, legal identifiers and contact details are never returned. " +
       "The change feed for incremental sync (/v1/changes, /v1/snapshot) arrives in the next stage.",
   },
@@ -144,7 +145,8 @@ export const OPENAPI = {
             announced_date: ndate,
             closed_date: ndate,
             investors: { type: "array", items: obj({ name: str, lead: { type: "boolean" } }) },
-            sources: { type: "array", items: obj({ name: nstr, url: { type: "string", format: "uri" } }) },
+            compiled_by: { const: "The French Tech Journal", description: "France AI Radar funding data is compiled by The French Tech Journal" },
+            references: { type: "array", description: "Public pages that report or confirm the round (articles, filings, press releases), labelled by website", items: obj({ label: str, url: { type: "string", format: "uri" } }) },
           }),
         },
         programs: { type: "array", items: obj({ program: str, edition: nstr, year: nint, role: nstr }) },

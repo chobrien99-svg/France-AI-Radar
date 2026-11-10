@@ -125,7 +125,8 @@ export type Company = Omit<CompanySummary, "sectors" | "primary_layer"> & {
     announced_date: string | null
     closed_date: string | null
     investors: { name: string; lead: boolean }[]
-    sources: { name: string | null; url: string }[]
+    compiled_by: string
+    references: { label: string; url: string }[]
   }[]
   programs: { program: string; edition: string | null; year: number | null; role: string | null }[]
   first_seen_at: string | null

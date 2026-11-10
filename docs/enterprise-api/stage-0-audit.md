@@ -16,6 +16,11 @@ Every statement below is labelled **[verified]** (checked in code, the database 
 - **No pilot VC firms yet** (D11). Stages 3 and 4 wait until pilots are known.
 - **D1 approved and applied** (below).
 
+**Licensing position (owner, 10 November 2026)**
+- All funding data on France AI Radar companies, and all funding from 2022 onward, is data The French Tech Journal gathered and verified itself. Third-party sources may have been used to verify facts, but the dataset is FTJ's own, so nothing published through the Radar API or MCP needs a third-party licence. The API marks every round `compiled_by: "The French Tech Journal"`, lists public links only as references labelled by website, and never links to data vendors (Pitchbook, Dealroom, Crunchbase…).
+- The Navigator's historical backfill did use third-party data. If the Navigator becomes a public product, decide then between licensing that history or keeping it for aggregate analysis only.
+- Data fix applied the same day: three pre-2022 rounds (Navigator backfill, belonging to Green-Acres) had been attached to Castalie. They were moved back to the Green Acres record, Castalie's stale "total raised" (16.10) was cleared, and two wrong sectors (Blue Economy, WaterTech) were removed from Castalie.
+
 **D1: what the Navigator check found** [verified in the Navigator repository and seven days of database request logs]
 - The Navigator reads its data as a signed-in team member, so tightening rules for outsiders does not affect it. The Radar website reads with the server-only service role.
 - Four things legitimately read **without a login**: the Navigator's public funding API (`/api/public/v1/funding/*`) and funding-hub embed, the Next 40 embed, and the quarterly deals-database pages for FTJ articles (which query the database directly from the browser). They read published funding rounds, their companies, investors and founders, sectors, cities and programme members.
@@ -412,7 +417,7 @@ Total ≈ **22–27 working days** for Stages 0.5–4.
 |---|---|---|
 | D1 | Approve Stage 0.5 hardening of public database access (after checking what the Navigator relies on) | **Approved and applied 7 Nov** (see the update at the top) |
 | D2 | Dataset scope: Radar-published companies only, or also Navigator-wide companies and funding | **Decided: Radar only** |
-| D3 | Field policy, especially Pappers-derived facts, LinkedIn-sourced signals and logos | Funding settled (FTJ's own data). Still to confirm: Pappers-derived facts and LinkedIn-sourced signal text |
+| D3 | Field policy, especially Pappers-derived facts, LinkedIn-sourced signals and logos | **Funding settled 10 Nov:** all Radar funding is FTJ-compiled; no licence needed. Still to confirm: Pappers-derived facts and LinkedIn-sourced signal text |
 | D4 | Vercel plan; move functions to London (`lhr1`) | **Plan confirmed: Pro.** Moving functions to London still recommended |
 | D5 | What is `france-ai-radar-m4zo`? Keep or remove | Confirm, then remove if unused |
 | D6 | Are the "France AI Radar" (Stockholm) and "French Tech Funding Tracker" Supabase projects still used? | Leave untouched; no API reads from them |

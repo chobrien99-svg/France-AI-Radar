@@ -8,7 +8,7 @@
 // check the output against this list.
 import { stageFrom } from "@/lib/radar"
 import { SIGNAL_TYPE_LABELS } from "@/lib/subscription"
-import type { Company, CompanyRecord, CompanyRef, CompanySummary, Signal, SignalRecord } from "@/lib/api/model"
+import type { Company, CompanyRecord, CompanyRef, CompanySummary, RoundRecord, Signal, SignalRecord } from "@/lib/api/model"
 import { STAGES } from "@/lib/api/model"
 
 export const SITE_URL = "https://www.franceairadar.com"
@@ -17,10 +17,53 @@ const toEuros = (millions: number | null) => (millions == null || !Number.isFini
 const httpUrl = (u: string | null | undefined) => (u && /^https?:\/\//i.test(u.trim()) ? u.trim() : null)
 const iso = (t: string | null | undefined) => (t ? new Date(t).toISOString() : null)
 
-/** The Radar's stage label for a company, as a slug (series_b_plus, …) */
-export function stageSlug(c: Pick<CompanyRecord, "lastRound">): string {
-  const label = stageFrom(c.lastRound)
-  return STAGES.find((s) => s.label === label)?.slug ?? "other"
+/** Funding round stage (database enum) → the Radar's stage buckets */
+const ROUND_STAGE: Record<string, string> = {
+  pre_seed: "pre_seed", seed: "seed", series_a: "series_a",
+  series_b: "series_b_plus", series_c: "series_b_plus", series_d: "series_b_plus", series_e: "series_b_plus", series_f: "series_b_plus", growth: "series_b_plus",
+  grant: "grant", undisclosed: "undisclosed",
+}
+
+/**
+ * The Radar's stage for a company, as a slug (series_b_plus, …): from the
+ * editor's "last round" text, or, when that is empty, the latest published round.
+ */
+export function stageSlug(c: Pick<CompanyRecord, "lastRound" | "rounds">): string {
+  if (c.lastRound?.trim()) {
+    const label = stageFrom(c.lastRound)
+    return STAGES.find((s) => s.label === label)?.slug ?? "other"
+  }
+  const latest = c.rounds.find((r) => r.stage) // rounds are newest first
+  return latest ? ROUND_STAGE[latest.stage!] ?? "other" : "undisclosed"
+}
+
+// France AI Radar funding is compiled by The French Tech Journal. Links are
+// references only, labelled by website, and never to data vendors.
+export const COMPILED_BY = "The French Tech Journal"
+const VENDOR_DOMAINS = ["pitchbook.com", "crunchbase.com", "dealroom.co", "cbinsights.com", "tracxn.com", "harmonic.ai", "specter.com", "growjo.com", "owler.com", "zoominfo.com", "apollo.io", "lusha.com"]
+
+function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "")
+  } catch {
+    return null
+  }
+}
+
+export function isVendorUrl(url: string): boolean {
+  const host = hostOf(url)
+  return !!host && VENDOR_DOMAINS.some((d) => host === d || host.endsWith("." + d))
+}
+
+export function roundReferences(r: Pick<RoundRecord, "ftjUrl" | "pressReleaseUrl" | "sourceUrl">): { label: string; url: string }[] {
+  const out: { label: string; url: string }[] = []
+  for (const raw of [r.ftjUrl, r.pressReleaseUrl, r.sourceUrl]) {
+    const url = httpUrl(raw)
+    const host = url ? hostOf(url) : null
+    if (!url || !host || isVendorUrl(url) || out.some((x) => x.url === url)) continue
+    out.push({ label: host === "frenchtechjournal.com" ? "The French Tech Journal" : host, url })
+  }
+  return out
 }
 
 export function companyUrl(slug: string) {
@@ -88,11 +131,8 @@ export function toCompany(c: CompanyRecord): Company {
       announced_date: r.announcedDate,
       closed_date: r.closedDate,
       investors: r.investors.map((i) => ({ name: i.name, lead: i.isLead })),
-      sources: [
-        ...(httpUrl(r.ftjUrl) ? [{ name: "The French Tech Journal", url: httpUrl(r.ftjUrl)! }] : []),
-        ...(httpUrl(r.pressReleaseUrl) ? [{ name: "Press release", url: httpUrl(r.pressReleaseUrl)! }] : []),
-        ...(httpUrl(r.sourceUrl) ? [{ name: r.sourceName, url: httpUrl(r.sourceUrl)! }] : []),
-      ],
+      compiled_by: COMPILED_BY,
+      references: roundReferences(r),
     })),
     programs: c.programs.map((p) => ({ program: p.program, edition: p.edition, year: p.year, role: p.role })),
     first_seen_at: iso(c.firstSeenAt),
