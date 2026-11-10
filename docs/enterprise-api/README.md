@@ -61,7 +61,7 @@ Stage 2's change feed does.
 The field list lives in `lib/api/serialize.ts` and is checked against the
 OpenAPI contract (`lib/api/openapi.ts`) by `tests/enterprise-api.test.mjs`.
 
-- **Returned:** name, slug, Radar profile URL, descriptions, website and social links, location, founded year, stage, stealth flag, sectors, technology classification, founders (name, role, LinkedIn, short bio), published funding rounds with investors and sources, non-private programme memberships, editor-approved signals with source and evidence status.
+- **Returned:** name, slug, Radar profile URL, descriptions, website and social links, location, founded year, stage, stealth flag, sectors, technology classification, founders (name, role, LinkedIn, short bio), published funding rounds with investors and public references (each round marked `compiled_by: "The French Tech Journal"`; links labelled by website; data-vendor links such as Pitchbook, Dealroom or Crunchbase never included), non-private programme memberships, editor-approved signals with source and evidence status.
 - **Never returned:** drafts and Navigator-only companies, SIREN/SIRET and legal entities, emails and phone numbers, investor briefs and editor notes, detection candidates, private memberships, unpublished rounds, internal ids.
 - **Open (decision D3):** signals cite their source (some are Pappers or LinkedIn). Confirm before the first external customer.
 

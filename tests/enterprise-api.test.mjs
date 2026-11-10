@@ -3,7 +3,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { listCompanies, getCompany, listSignals, taxonomy, COMPANY_PARAMS } from "../lib/api/query.ts"
-import { toCompany, toCompanySummary } from "../lib/api/serialize.ts"
+import { toCompany, toCompanySummary, isVendorUrl } from "../lib/api/serialize.ts"
 import { OPENAPI } from "../lib/api/openapi.ts"
 import { authenticate, bearerToken, hashKey, parseKeyConfig } from "../lib/api/keys.ts"
 import { ApiError } from "../lib/api/errors.ts"
@@ -112,16 +112,30 @@ test("company outputs match the OpenAPI contract exactly and carry no internal f
   check(taxonomy(ds, P()), { $ref: "#/components/schemas/TaxonomyResponse" })
 })
 
-test("amounts are whole euros, unsafe links are dropped, sources are listed", () => {
+test("amounts are whole euros, unsafe links are dropped, rounds are FTJ-compiled with references", () => {
   const c = toCompany(companies[0])
   assert.equal(c.total_raised_eur, 2_000_000)
   assert.equal(c.funding_rounds[0].amount_eur, 2_500_000)
   assert.equal(c.logo_url, null)
   assert.equal(c.url, "https://www.franceairadar.com/startup/co-1")
-  assert.deepEqual(c.funding_rounds[0].sources.map((s) => s.name), ["The French Tech Journal", "Les Echos"])
+  assert.equal(c.funding_rounds[0].compiled_by, "The French Tech Journal")
+  assert.deepEqual(c.funding_rounds[0].references, [
+    { label: "The French Tech Journal", url: "https://www.frenchtechjournal.com/x" },
+    { label: "lesechos.fr", url: "https://lesechos.fr/x" },
+  ])
+  // Internal labels never appear; data-vendor links are dropped
+  const vendor = toCompany({ ...companies[0], rounds: [{ ...companies[0].rounds[0], ftjUrl: null, sourceName: "Valmy_def_tech.docx", sourceUrl: "https://pitchbook.com/profiles/company/1" }] })
+  assert.deepEqual(vendor.funding_rounds[0].references, [])
+  assert.ok(!JSON.stringify(vendor).includes("Valmy_def_tech") && !JSON.stringify(vendor).toLowerCase().includes("pitchbook"))
+  assert.equal(isVendorUrl("https://app.dealroom.co/companies/x"), true)
+  assert.equal(isVendorUrl("https://www.crunchbase.com/organization/x"), true)
+  assert.equal(isVendorUrl("https://www.pappers.fr/entreprise/x"), false)
   assert.equal(c.stage, "seed")
   assert.equal(toCompany(companies[1]).stage, "series_a")
-  assert.equal(toCompany(companies[2]).stage, "undisclosed")
+  assert.equal(toCompany(companies[2]).stage, "seed", "no last-round text: falls back to the latest round")
+  assert.equal(toCompany({ ...companies[2], rounds: [] }).stage, "undisclosed")
+  assert.equal(toCompany({ ...companies[2], lastRound: "—" }).stage, "seed", "a placeholder last round also falls back")
+  assert.equal(toCompany({ ...companies[2], rounds: [{ ...companies[2].rounds[0], stage: "series_c" }] }).stage, "series_b_plus")
 })
 
 test("filters: sector, stage, city, layer scope, umbrella terms, search, updated_since", () => {
