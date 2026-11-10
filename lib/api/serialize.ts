@@ -29,10 +29,9 @@ const ROUND_STAGE: Record<string, string> = {
  * editor's "last round" text, or, when that is empty, the latest published round.
  */
 export function stageSlug(c: Pick<CompanyRecord, "lastRound" | "rounds">): string {
-  if (c.lastRound?.trim()) {
-    const label = stageFrom(c.lastRound)
-    return STAGES.find((s) => s.label === label)?.slug ?? "other"
-  }
+  // Placeholders ("", "—") resolve to Undisclosed: fall back to the rounds then.
+  const label = stageFrom(c.lastRound)
+  if (label !== "Undisclosed") return STAGES.find((s) => s.label === label)?.slug ?? "other"
   const latest = c.rounds.find((r) => r.stage) // rounds are newest first
   return latest ? ROUND_STAGE[latest.stage!] ?? "other" : "undisclosed"
 }

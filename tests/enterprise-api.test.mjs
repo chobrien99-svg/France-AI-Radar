@@ -134,6 +134,7 @@ test("amounts are whole euros, unsafe links are dropped, rounds are FTJ-compiled
   assert.equal(toCompany(companies[1]).stage, "series_a")
   assert.equal(toCompany(companies[2]).stage, "seed", "no last-round text: falls back to the latest round")
   assert.equal(toCompany({ ...companies[2], rounds: [] }).stage, "undisclosed")
+  assert.equal(toCompany({ ...companies[2], lastRound: "—" }).stage, "seed", "a placeholder last round also falls back")
   assert.equal(toCompany({ ...companies[2], rounds: [{ ...companies[2].rounds[0], stage: "series_c" }] }).stage, "series_b_plus")
 })
 
