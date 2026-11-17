@@ -134,6 +134,7 @@ export function toCompany(c: CompanyRecord): Company {
       references: roundReferences(r),
     })),
     programs: c.programs.map((p) => ({ program: p.program, edition: p.edition, year: p.year, role: p.role })),
+    aliases: [...c.aliases].sort(),
     first_seen_at: iso(c.firstSeenAt),
   }
 }

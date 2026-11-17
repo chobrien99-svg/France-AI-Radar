@@ -24,8 +24,8 @@ const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : null)
 const TTL_MS = 60_000
 let cache: { at: number; promise: Promise<Dataset> } | null = null
 
-export function loadDataset(svc: SupabaseClient): Promise<Dataset> {
-  if (cache && Date.now() - cache.at < TTL_MS) return cache.promise
+export function loadDataset(svc: SupabaseClient, opts: { fresh?: boolean } = {}): Promise<Dataset> {
+  if (!opts.fresh && cache && Date.now() - cache.at < TTL_MS) return cache.promise
   const promise = fetchDataset(svc)
   cache = { at: Date.now(), promise }
   promise.catch(() => { if (cache?.promise === promise) cache = null })
@@ -111,6 +111,16 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
     must<Row[]>("organization_technical_layers", svc.from("organization_technical_layers").select("organization_id, updated_at").in("organization_id", pub)),
     must<Row[]>("organization_technical_terms", svc.from("organization_technical_terms").select("organization_id, updated_at").in("organization_id", pub)),
   ])
+  // Old ids of companies merged into a published one (recorded by merges in this database)
+  const aliasRows = await must<Row[]>(
+    "organization_merge_map",
+    svc.from("organization_merge_map").select("organization_id, source_id").eq("source_db", "france_ai_radar").eq("source_table", "organizations").in("organization_id", pub),
+  )
+  const aliases = new Map<string, string[]>()
+  for (const a of aliasRows) {
+    const id = String(a.source_id ?? "").toLowerCase()
+    if (/^[0-9a-f-]{36}$/.test(id)) aliases.set(a.organization_id as string, [...(aliases.get(a.organization_id as string) ?? []), id])
+  }
   const roundIds = roundRows.map((r) => r.id as string)
   const [investorsByRound, investorTimes] = await Promise.all([
     loadRoundInvestors(svc, roundIds),
@@ -211,6 +221,7 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
       founders: founders.get(id) ?? [],
       rounds: roundList,
       programs: programs.get(id) ?? [],
+      aliases: aliases.get(id) ?? [],
     }
   })
 

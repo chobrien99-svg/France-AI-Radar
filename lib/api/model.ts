@@ -52,6 +52,8 @@ export type CompanyRecord = {
   founders: { id: string; name: string; slug: string | null; role: string | null; linkedinUrl: string | null; shortBio: string | null }[]
   rounds: RoundRecord[]
   programs: { program: string; programSlug: string | null; edition: string | null; editionSlug: string | null; year: number | null; role: string | null }[]
+  /** Ids of companies merged into this one */
+  aliases: string[]
 }
 
 export type SignalRecord = {
@@ -129,6 +131,7 @@ export type Company = Omit<CompanySummary, "sectors" | "primary_layer"> & {
     references: { label: string; url: string }[]
   }[]
   programs: { program: string; edition: string | null; year: number | null; role: string | null }[]
+  aliases: string[]
   first_seen_at: string | null
 }
 
