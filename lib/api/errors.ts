@@ -7,6 +7,7 @@ export const ERROR_STATUS = {
   forbidden_scope: 403,
   not_found: 404,
   gone: 410,
+  cursor_expired: 410,
   rate_limited: 429,
   internal: 500,
 } as const

@@ -55,7 +55,7 @@ export const OPENAPI = {
       "All timestamps are UTC (ISO 8601). Amounts are in whole euros. Lists are sorted with a stable tiebreak on id and paginated with opaque cursors. " +
       "Funding data is compiled by The French Tech Journal. " +
       "Drafts, Navigator-only companies, editor notes, legal identifiers and contact details are never returned. " +
-      "The change feed for incremental sync (/v1/changes, /v1/snapshot) arrives in the next stage.",
+      "Keep a copy in sync with /snapshot then /changes.",
   },
   servers: [{ url: "https://www.franceairadar.com/v1" }],
   security: [{ apiKey: [] }],
@@ -100,6 +100,38 @@ export const OPENAPI = {
           ...pageParams(100),
         ],
         responses: ok("SignalList", "A page of signals"),
+      },
+    },
+    "/signals/{id}": {
+      get: {
+        operationId: "getSignal",
+        summary: "One approved signal on a published company",
+        parameters: [{ name: "id", in: "path", required: true, description: "Signal id (UUID)", schema: uuid }],
+        responses: { "200": { description: "The signal", content: { "application/json": { schema: ref("SignalResponse") } } }, ...errors, "404": { description: "not_found", content: { "application/json": { schema: ref("Error") } } } },
+      },
+    },
+    "/snapshot": {
+      get: {
+        operationId: "startSnapshot",
+        summary: "Start a full sync",
+        description: "Returns replay_cursor. Store it, read every page of /companies (and /signals), then follow /changes from replay_cursor. Changes made while you read the snapshot are replayed, so nothing is missed; a record may arrive twice, and record_version tells you which copy is newer.",
+        parameters: [],
+        responses: ok("SnapshotResponse", "Where to replay changes from"),
+      },
+    },
+    "/changes": {
+      get: {
+        operationId: "listChanges",
+        summary: "Change feed, oldest first",
+        description:
+          "Every change to a published company or signal, in order. Store next_cursor after you have processed a page and pass it back. Delivery is at least once: event_id identifies an event and record_version only increases. " +
+          "created/updated: fetch the record at href. withdrawn (no longer published) and deleted: remove it from your copy; these events carry ids only. merged: the company now lives at merged_into. " +
+          "History is kept 90 days; an older cursor returns 410 cursor_expired and you run a full sync again. The feed is refreshed every 10 minutes.",
+        parameters: [
+          q("cursor", "next_cursor from the previous page, or replay_cursor from /snapshot. Omit to read the whole retained history."),
+          q("limit", "Page size, 1–500. Default 200.", { type: "integer", minimum: 1, maximum: 500, default: 200 }),
+        ],
+        responses: { ...ok("ChangeList", "A page of changes"), "410": { description: "cursor_expired: run a full sync from /snapshot", content: { "application/json": { schema: ref("Error") } } } },
       },
     },
     "/taxonomy": {
@@ -150,6 +182,7 @@ export const OPENAPI = {
           }),
         },
         programs: { type: "array", items: obj({ program: str, edition: nstr, year: nint, role: nstr }) },
+        aliases: { type: "array", items: uuid, description: "Ids of companies merged into this one. Looking up an alias returns this company." },
       }),
       Signal: obj({
         object: { const: "signal" },
@@ -167,6 +200,22 @@ export const OPENAPI = {
         created_at: { type: "string", format: "date-time" },
         updated_at: { type: "string", format: "date-time" },
       }),
+      Change: obj({
+        object: { const: "change" },
+        event_id: uuid,
+        cursor: { ...str, description: "Opaque; resume after this event" },
+        entity_type: { type: "string", enum: ["company", "signal"] },
+        entity_id: uuid,
+        event_type: { type: "string", enum: ["created", "updated", "withdrawn", "deleted", "merged"] },
+        record_version: { type: "integer", description: "Increases with every change to this entity" },
+        occurred_at: { type: "string", format: "date-time" },
+        changed_fields: { type: "array", items: str, description: "Top-level fields that changed (updated events)" },
+        merged_into: { anyOf: [uuid, { type: "null" }] },
+        href: { ...nstr, description: "Where to fetch the current record; null for withdrawn, deleted and merged" },
+      }),
+      ChangeList: obj({ object: { const: "list" }, data: { type: "array", items: ref("Change") }, next_cursor: str, has_more: { type: "boolean" }, synced_at: ndt }),
+      SnapshotResponse: obj({ data: obj({ replay_cursor: str, synced_at: ndt, steps: { type: "array", items: str } }) }),
+      SignalResponse: obj({ data: ref("Signal") }),
       CompanyList: list("CompanySummary"),
       SignalList: list("Signal"),
       CompanyResponse: obj({ data: ref("Company") }),
@@ -182,7 +231,7 @@ export const OPENAPI = {
       }),
       Error: obj({
         error: obj({
-          code: { type: "string", enum: ["invalid_parameter", "unauthorized", "forbidden_scope", "not_found", "gone", "rate_limited", "internal"] },
+          code: { type: "string", enum: ["invalid_parameter", "unauthorized", "forbidden_scope", "not_found", "gone", "cursor_expired", "rate_limited", "internal"] },
           message: str,
           request_id: str,
         }),

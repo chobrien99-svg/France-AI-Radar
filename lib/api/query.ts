@@ -70,9 +70,21 @@ export const listCompanies = (ds: Dataset, params: URLSearchParams) => prepareLi
 /** One company by id or slug. Drafts and Navigator-only companies are not in the dataset, so they 404. */
 export function getCompany(ds: Dataset, idOrSlug: string) {
   const key = idOrSlug.trim().toLowerCase()
-  const c = isUuid(key) ? ds.companies.find((x) => x.id === key) : ds.companies.find((x) => x.slug.toLowerCase() === key)
+  // An old id of a merged company returns the company it was merged into
+  const c = isUuid(key)
+    ? ds.companies.find((x) => x.id === key) ?? ds.companies.find((x) => x.aliases.includes(key))
+    : ds.companies.find((x) => x.slug.toLowerCase() === key)
   if (!c) throw new ApiError("not_found", "No published company with that id or slug")
   return { data: toCompany(c) }
+}
+
+/** One signal on a published company. */
+export function getSignal(ds: Dataset, id: string) {
+  const key = id.trim().toLowerCase()
+  const s = isUuid(key) ? ds.signals.find((x) => x.id === key) : undefined
+  const company = s ? ds.companies.find((c) => c.id === s.companyId) : undefined
+  if (!s || !company) throw new ApiError("not_found", "No published signal with that id")
+  return { data: toSignal(s, company) }
 }
 
 export const SIGNAL_PARAMS = ["company_id", "type", "since", "until", "updated_since", "limit", "cursor"]

@@ -7,10 +7,10 @@ Enterprise customers. Plan and decisions: `docs/enterprise-api/stage-0-audit.md`
 
 | | |
 |---|---|
-| Endpoints | `GET /v1/companies`, `/v1/companies/{id}`, `/v1/signals`, `/v1/taxonomy`, `/v1/openapi.json` |
+| Endpoints | `GET /v1/companies`, `/v1/companies/{id}`, `/v1/signals`, `/v1/signals/{id}`, `/v1/taxonomy`, `/v1/snapshot`, `/v1/changes`, `/v1/openapi.json` |
 | Switched on? | **Off until a key is configured.** With `ENTERPRISE_API_KEYS` empty, every `/v1` URL answers 404. |
-| Database changes | None. The API reads with the server-side service client; no new grants or schemas. |
-| Not yet | Change feed (`/v1/changes`, `/v1/snapshot`, Stage 2), per-customer accounts and usage metering (Stage 3), MCP (Stage 4). |
+| Database changes | Stage 2 adds the change-feed tables and one function (`supabase/migrations/20261117_api_change_feed.sql`, rollback in `supabase/rollbacks/`). No trigger or change on existing tables. |
+| Not yet | Per-customer accounts and usage metering (Stage 3), MCP (Stage 4). |
 
 ## Turning it on for a pilot
 
@@ -47,14 +47,20 @@ curl -H "Authorization: Bearer $FAR_API_KEY" "https://www.franceairadar.com/v1/s
 - **Limits:** 120 requests per minute per key (per server instance, a safety net until Stage 3 metering).
 - **Units:** amounts in whole euros; timestamps UTC ISO 8601. `total_raised_eur` is the sum of the published rounds' disclosed amounts.
 
-Until the change feed ships, a client can keep a CRM current by polling
-`/v1/companies?updated_since=<last run>` and `/v1/signals?updated_since=<last run>`.
-A company's `updated_at` moves when anything in its public record changes
-(rounds, investors, founders, sectors, technology, programmes, signals).
-Use `updated_since` for signals, not `since`: `since` filters on the signal's
-own date, so a signal approved today about last month would be missed.
-Polling does not report removals (a withdrawn company or deleted signal);
-Stage 2's change feed does.
+## Keeping a copy in sync (change feed)
+
+1. `GET /v1/snapshot` → store `data.replay_cursor`.
+2. Read every page of `/v1/companies` (and `/v1/signals` if you sync signals).
+3. `GET /v1/changes?cursor=<replay_cursor>`; process the page; store `next_cursor`; repeat while `has_more`. Then poll every few minutes with the stored cursor.
+
+For each change:
+- `created` / `updated`: fetch the record at `href` and upsert it by `entity_id` (`changed_fields` lists what moved).
+- `withdrawn` (no longer published) / `deleted`: remove or archive it. These events carry ids only.
+- `merged`: the company now lives at `merged_into`; looking up the old id also returns the surviving company.
+
+Guarantees: no gaps (events are numbered in commit order under a lock, and changes made while you read the snapshot are replayed); at least once (an event may arrive twice: dedupe on `event_id`, keep the highest `record_version`). History is kept 90 days; an older cursor returns `410 cursor_expired`, and you run the snapshot again.
+
+How it works: every 10 minutes (and on demand when a client reads the feed and it is older than that), the server builds the public JSON of every published company and signal with the API's own serializer and records the differences against the last run. Customers therefore get events for exactly the fields they can see; editor-only edits never appear. Changing only `updated_at` produces no event, and renaming a company does not re-announce its signals.
 
 ## What is returned, and what never is
 

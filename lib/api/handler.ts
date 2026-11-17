@@ -1,6 +1,7 @@
 // Shared wrapper for every /v1 route: feature switch, API-key check,
 // request id, JSON errors, no caching, and a log line without secrets.
 import { randomUUID } from "node:crypto"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { createServiceClient } from "@/lib/supabase/server"
 import { ApiError } from "@/lib/api/errors"
 import { authenticate, bearerToken, parseKeyConfig } from "@/lib/api/keys"
@@ -23,7 +24,7 @@ function overLimit(label: string, now = Date.now()): number | null {
   return w.count > RATE_LIMIT_PER_MINUTE ? Math.ceil((w.start + 60_000 - now) / 1000) : null
 }
 
-type Ctx = { dataset: () => Promise<Dataset>; params: URLSearchParams; keyLabel: string }
+type Ctx = { dataset: () => Promise<Dataset>; svc: () => Promise<SupabaseClient>; params: URLSearchParams; keyLabel: string }
 
 function json(body: unknown, status: number, requestId: string, extra: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
@@ -63,7 +64,7 @@ export function apiRoute(handler: (req: Request, ctx: Ctx) => Promise<unknown> |
       }
       const params = new URL(req.url).searchParams
       const dataset = async () => loadDataset(await createServiceClient())
-      const body = await handler(req, { dataset, params, keyLabel })
+      const body = await handler(req, { dataset, svc: createServiceClient, params, keyLabel })
       return json(body, 200, requestId)
     } catch (e) {
       if (e instanceof ApiError) {

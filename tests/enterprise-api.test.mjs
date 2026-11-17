@@ -49,6 +49,7 @@ const company = (n, over = {}) => ({
     sourceName: "Les Echos", sourceUrl: "https://lesechos.fr/x", pressReleaseUrl: null, ftjUrl: "https://www.frenchtechjournal.com/x", investors: [{ name: "Fund A", isLead: true }],
   }],
   programs: [{ program: "Station F Future 40", programSlug: "station-f-future-40", edition: "Future 40 — 2026", editionSlug: "future-40-2026", year: 2026, role: "selected company" }],
+  aliases: [],
   ...over,
 })
 
@@ -217,7 +218,72 @@ test("API keys: hashed config, bearer parsing, wrong or malformed keys refused",
 })
 
 test("the contract documents every route and parameter the code accepts", () => {
-  assert.deepEqual(Object.keys(OPENAPI.paths).sort(), ["/companies", "/companies/{id}", "/openapi.json", "/signals", "/taxonomy"])
+  assert.deepEqual(Object.keys(OPENAPI.paths).sort(), ["/changes", "/companies", "/companies/{id}", "/openapi.json", "/signals", "/signals/{id}", "/snapshot", "/taxonomy"])
   const documented = OPENAPI.paths["/companies"].get.parameters.map((p) => p.name).sort()
   assert.deepEqual(documented, [...COMPANY_PARAMS].sort())
+})
+
+// ---- change feed (Stage 2) ----
+import { trackedRecords, stableStringify, encodeSeqCursor, decodeSeqCursor, toChange, parseChangesQuery, CHANGES_PARAMS } from "../lib/api/changes.ts"
+import { getSignal } from "../lib/api/query.ts"
+
+test("tracked records hash what customers see, minus fields that move without a real change", () => {
+  const recs = trackedRecords(ds)
+  assert.equal(recs.filter((r) => r.entity_type === "company").length, companies.length)
+  assert.equal(recs.filter((r) => r.entity_type === "signal").length, 3, "signals of unpublished companies are not tracked")
+  for (const r of recs) assert.ok(!("updated_at" in r.record), "updated_at is not tracked")
+  assert.equal(stableStringify({ b: 1, a: [{ d: 2, c: 3 }] }), stableStringify({ a: [{ c: 3, d: 2 }], b: 1 }))
+
+  const hashOf = (d, type, id) => trackedRecords(d).find((r) => r.entity_type === type && r.entity_id === id).hash
+  const c0 = companies[0]
+  // Touching updated_at alone changes nothing
+  const touched = { ...ds, companies: ds.companies.map((c) => (c.id === c0.id ? { ...c, updatedAt: "2027-01-01T00:00:00Z" } : c)) }
+  assert.equal(hashOf(touched, "company", c0.id), hashOf(ds, "company", c0.id))
+  // A real change does
+  const moved = { ...ds, companies: ds.companies.map((c) => (c.id === c0.id ? { ...c, city: lyon } : c)) }
+  assert.notEqual(hashOf(moved, "company", c0.id), hashOf(ds, "company", c0.id))
+  // Renaming a company does not re-announce its signals
+  const renamed = { ...ds, companies: ds.companies.map((c) => (c.id === c0.id ? { ...c, name: "Renamed" } : c)) }
+  assert.equal(hashOf(renamed, "signal", ds.signals[0].id), hashOf(ds, "signal", ds.signals[0].id))
+})
+
+test("change cursors round-trip and bad ones are rejected", () => {
+  assert.equal(decodeSeqCursor(encodeSeqCursor(42)), 42)
+  assert.equal(decodeSeqCursor(null), null)
+  for (const bad of ["nope", encodeSeqCursor(-1), Buffer.from('{"v":2,"seq":1}').toString("base64url")]) {
+    assert.throws(() => decodeSeqCursor(bad), (e) => e.code === "invalid_parameter", bad)
+  }
+  assert.deepEqual(parseChangesQuery(P(`cursor=${encodeSeqCursor(7)}&limit=10`)), { after: 7, limit: 10 })
+  assert.throws(() => parseChangesQuery(P("limit=501")), (e) => e.code === "invalid_parameter")
+  assert.throws(() => parseChangesQuery(P("since=2026-01-01")), (e) => e.code === "invalid_parameter")
+})
+
+test("change events: href only for live records; withdrawn and deleted carry ids only", () => {
+  const base = { seq: 5, event_id: "e", entity_id: companies[0].id, record_version: 2, changed_fields: null, merged_into: null, occurred_at: "2026-11-17T10:00:00Z" }
+  const upd = toChange({ ...base, entity_type: "company", event_type: "updated", changed_fields: ["city"] })
+  check(upd, { $ref: "#/components/schemas/Change" })
+  assert.equal(upd.href, `/v1/companies/${companies[0].id}`)
+  assert.equal(decodeSeqCursor(upd.cursor), 5)
+  const sig = toChange({ ...base, entity_type: "signal", event_type: "created" })
+  assert.equal(sig.href, `/v1/signals/${companies[0].id}`)
+  for (const t of ["withdrawn", "deleted", "merged"]) {
+    const e = toChange({ ...base, entity_type: "company", event_type: t, merged_into: t === "merged" ? companies[1].id : null })
+    check(e, { $ref: "#/components/schemas/Change" })
+    assert.equal(e.href, null)
+    assert.deepEqual(e.changed_fields, [])
+  }
+})
+
+test("merged ids resolve to the surviving company; signals have their own endpoint", () => {
+  const merged = { ...ds, companies: ds.companies.map((c, i) => (i === 0 ? { ...c, aliases: ["00000000-0000-4000-8000-0000000000aa"] } : c)) }
+  assert.equal(getCompany(merged, "00000000-0000-4000-8000-0000000000aa").data.id, companies[0].id)
+  assert.deepEqual(getCompany(merged, companies[0].id).data.aliases, ["00000000-0000-4000-8000-0000000000aa"])
+  assert.equal(getSignal(ds, ds.signals[0].id).data.title, "Signal 1")
+  assert.throws(() => getSignal(ds, ds.signals[3].id), (e) => e.code === "not_found", "a signal on an unpublished company is not found")
+  check(getSignal(ds, ds.signals[0].id), { $ref: "#/components/schemas/SignalResponse" })
+})
+
+test("the contract documents the change feed and its parameters", () => {
+  for (const p of ["/changes", "/snapshot", "/signals/{id}"]) assert.ok(OPENAPI.paths[p], p)
+  assert.deepEqual(OPENAPI.paths["/changes"].get.parameters.map((p) => p.name).sort(), [...CHANGES_PARAMS].sort())
 })
