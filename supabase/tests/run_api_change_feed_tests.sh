@@ -32,6 +32,8 @@ rollback="$root/supabase/rollbacks/20261117_api_change_feed.sql"
 "${psql[@]}" -f "$migration"
 "${psql[@]}" -f "$here/api_change_feed_test.sql"
 "${psql[@]}" -f "$rollback"
+restored=$("${psql[@]}" -c "SELECT position('france_ai_radar' in pg_get_functiondef('public.merge_organizations(text,text)'::regprocedure)) = 0")
+[ "$(echo $restored)" = "t" ] || { echo "FAIL rollback did not restore merge_organizations"; exit 1; }
 "${psql[@]}" -f "$migration"
 "${psql[@]}" -f "$here/api_change_feed_test.sql"
 echo "api change feed: migration, rollback and re-apply OK"

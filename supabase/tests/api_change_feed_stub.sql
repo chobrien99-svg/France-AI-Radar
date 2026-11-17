@@ -6,4 +6,4 @@ DO $$ BEGIN
 END $$;
 CREATE TABLE IF NOT EXISTS public.organizations (id uuid PRIMARY KEY, name text);
 CREATE TABLE IF NOT EXISTS public.signals (id uuid PRIMARY KEY);
-CREATE TABLE IF NOT EXISTS public.organization_merge_map (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), organization_id uuid, source_db text, source_table text, source_id text);
+CREATE TABLE IF NOT EXISTS public.organization_merge_map (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), organization_id uuid, source_db text, source_table text, source_id text, notes text, migrated_at timestamptz DEFAULT now(), UNIQUE (source_db, source_table, source_id));

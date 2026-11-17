@@ -48,6 +48,7 @@ async function all(label: string, build: (from: number, to: number) => PromiseLi
   }
 }
 
+const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
 const latestOf = (a: string, b: string | undefined) => (b && Date.parse(b) > Date.parse(a) ? b : a)
 
 function place(v: unknown): Place | null {
@@ -190,7 +191,9 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
   const companies: CompanyRecord[] = orgRows.map((o) => {
     const id = o.id as string
     const tc = techIndex.byOrg.get(id)
-    const roundList = (rounds.get(id) ?? []).sort((a, b) => (b.announcedDate ?? "").localeCompare(a.announcedDate ?? ""))
+    // Every list has a fixed order (with id as the last tiebreak), so the same
+    // data always serializes, and hashes, the same way in the change feed.
+    const roundList = (rounds.get(id) ?? []).sort((a, b) => (b.announcedDate ?? "").localeCompare(a.announcedDate ?? "") || cmp(a.id, b.id))
     const sectorList = (sectors.get(id) ?? []).sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name))
     return {
       id,
@@ -217,10 +220,14 @@ async function fetchDataset(svc: SupabaseClient): Promise<Dataset> {
       createdAt: o.created_at as string,
       updatedAt: latestOf((o.updated_at as string) ?? (o.created_at as string), touched.get(id)),
       sectors: sectorList,
-      tech: { primary: tc?.primary ?? null, secondary: tc?.secondary ?? [], terms: tc?.terms ?? [] },
-      founders: founders.get(id) ?? [],
+      tech: {
+        primary: tc?.primary ?? null,
+        secondary: [...(tc?.secondary ?? [])].sort((a, b) => cmp(a.slug, b.slug)),
+        terms: [...(tc?.terms ?? [])].sort((a, b) => cmp(a.term.facet, b.term.facet) || cmp(a.term.slug, b.term.slug) || cmp(a.kind, b.kind)),
+      },
+      founders: (founders.get(id) ?? []).sort((a, b) => cmp(a.name, b.name) || cmp(a.id, b.id)),
       rounds: roundList,
-      programs: programs.get(id) ?? [],
+      programs: (programs.get(id) ?? []).sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || cmp(a.program, b.program) || cmp(a.edition ?? "", b.edition ?? "")),
       aliases: aliases.get(id) ?? [],
     }
   })

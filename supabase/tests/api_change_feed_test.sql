@@ -71,4 +71,7 @@ SELECT pg_temp.eq('anon cannot read events', has_table_privilege('anon', 'public
 SELECT pg_temp.eq('authenticated cannot read state', has_table_privilege('authenticated', 'public.api_entity_state', 'SELECT'), false);
 SELECT pg_temp.eq('anon cannot run the writer', has_function_privilege('anon', 'public.api_record_changes(jsonb, integer, numeric)', 'EXECUTE'), false);
 
+-- 8. merge_organizations() now records the merged id (the rest of it is unchanged)
+SELECT pg_temp.eq('merge records alias', position('france_ai_radar' in pg_get_functiondef('public.merge_organizations(text,text)'::regprocedure)) > 0, true);
+
 SELECT 'api change feed: all assertions passed';
